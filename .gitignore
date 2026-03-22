@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+.env
+models/*.zip
+models/*.pkl
+mlruns/
+*.egg-info/
+dist/
+build/
+.pytest_cache/

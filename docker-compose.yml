@@ -1,0 +1,29 @@
+version: "3.9"
+
+services:
+  trainer:
+    build: .
+    volumes:
+      - ./models:/app/models
+      - ./mlruns:/app/mlruns
+    env_file:
+      - .env
+    command: python src/train.py
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+  mlflow-ui:
+    image: python:3.10-slim
+    working_dir: /app
+    volumes:
+      - ./mlruns:/app/mlruns
+    ports:
+      - "5000:5000"
+    command: >
+      sh -c "pip install --quiet mlflow &&
+             mlflow ui --host 0.0.0.0 --port 5000 --backend-store-uri /app/mlruns"

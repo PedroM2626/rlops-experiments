@@ -78,20 +78,20 @@ class ParkourEnv(gym.Env):
     MAX_STEPS = 2000
 
     # Agent dimensions (used for spawn height)
-    AGENT_TOTAL_HEIGHT = 1.70   # metres (torso + head + leg assembly)
+    AGENT_TOTAL_HEIGHT = 0.65   # metres (from URDF torso height)
 
     # Reward
     GOAL_REWARD    =  150.0
     FALL_PENALTY   =   -5.0    # reduced constraint to encourage risk-taking
     STEP_PENALTY   =   -0.02
     PROGRESS_SCALE =    5.0
-    SPEED_SCALE    =    2.0    # massively reward forward speed (0.5 -> 2.0)
+    SPEED_SCALE    =    0.3    # reduced: was 2.0, too high
     UPRIGHT_SCALE  =    0.4
     ENERGY_SCALE   =    0.001
     LATERAL_VEL_SCALE = 0.5
     LATERAL_POS_SCALE = 0.3
-    ALIVE_BONUS    =    0.1    # reduced: existing shouldn't be too profitable
-    HEIGHT_SCALE   =    0.05   # reduced
+    ALIVE_BONUS    =    0.0    # removed: was 0.1, allowed standing still to farm reward
+    HEIGHT_SCALE   =    0.0    # removed: was 0.05, too easy to collect
     STANDING_ABOVE =    0.9    # target: torso this many metres above platform
 
     # Lateral spring
@@ -99,7 +99,7 @@ class ParkourEnv(gym.Env):
     LATERAL_SPRING_MAX = 200.0
 
     # Fall threshold: torso Z below this → fallen
-    FALL_Z = 0.6   # ~knee height; if torso drops below this it has fallen
+    FALL_Z = 0.25   # lowered to allow more walking time
 
     # Raycasts
     RAY_PITCHES = [15, 30, 45, 60, 75]   # degrees *below* horizontal
@@ -153,11 +153,19 @@ class ParkourEnv(gym.Env):
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)
 
-        if self._client is None:
-            self._init_physics()
-        else:
-            p.resetSimulation(physicsClientId=self._client)
-            self._setup_world()
+        # Always create fresh physics client for each episode
+        # This prevents stale state from previous episodes
+        if self._client is not None:
+            try:
+                p.disconnect(physicsClientId=self._client)
+            except Exception:
+                pass
+            self._client = None
+        
+        self._init_physics()
+        
+        # Setup world and load agent
+        self._setup_world()
 
         self._step_count = 0
         self._prev_dist_to_goal = float(
@@ -217,46 +225,48 @@ class ParkourEnv(gym.Env):
 
         p.setAdditionalSearchPath(pybullet_data.getDataPath(),
                                   physicsClientId=self._client)
-        self._setup_world()
+        # NOTE: _setup_world is called from reset(), not here
 
     def _setup_world(self):
         p.setGravity(0, 0, self.GRAVITY, physicsClientId=self._client)
-        p.setTimeStep(self.TIME_STEP,     physicsClientId=self._client)
+        p.setTimeStep(self.TIME_STEP, physicsClientId=self._client)
 
         seed = self.level_seed if self.level_seed is not None else int(
             self.np_random.integers(0, 9999))
         gen = LevelGenerator(self._client, seed=seed)
         self._level_ids, self._start_pos, self._goal_pos = gen.build()
 
-        # Spawn humanoid above start platform
         spawn_pos = self._start_pos.copy()
-        spawn_pos[2] += self.AGENT_TOTAL_HEIGHT * 0.55   # centre of mass is ~mid-torso
-        spawn_orn = p.getQuaternionFromEuler([0, 0, 0])  # facing +X
+        spawn_pos[2] = 1.4  # spawn 1.4m above platform (feet will be above platform)
+        spawn_orn = p.getQuaternionFromEuler([0, 0, 0])
 
         self._agent_id = p.loadURDF(
             self._urdf_path,
             basePosition=spawn_pos.tolist(),
             baseOrientation=spawn_orn,
             useFixedBase=False,
+            flags=p.URDF_USE_SELF_COLLISION_EXCLUDE_ALL_PARENTS,
             physicsClientId=self._client)
 
         self._build_joint_map()
         self._configure_dynamics()
 
-        # Camera
         if self.render_mode == "human":
             p.resetDebugVisualizerCamera(
                 cameraDistance=6, cameraYaw=30, cameraPitch=-20,
                 cameraTargetPosition=spawn_pos.tolist(),
                 physicsClientId=self._client)
 
-        # Apply initial noise to break perfect symmetry
+        initial_pose = np.zeros(N_JOINTS)
+        
         for i, ji in enumerate(self._joint_indices):
-            noise = float(np.random.uniform(-0.1, 0.1))
-            p.resetJointState(self._agent_id, ji, targetValue=noise, physicsClientId=self._client)
+            lo, hi = self._joint_limits[i]
+            mid = (lo + hi) / 2.0
+            span = (hi - lo) / 2.0
+            target_angle = mid + initial_pose[i] * span
+            p.resetJointState(self._agent_id, ji, targetValue=target_angle, physicsClientId=self._client)
 
-        # Let agent settle
-        for _ in range(120):
+        for _ in range(20):
             p.stepSimulation(physicsClientId=self._client)
 
     def _build_joint_map(self):
@@ -519,26 +529,15 @@ class ParkourEnv(gym.Env):
         # --- Base time penalty ---
         reward = self.STEP_PENALTY
 
-        # --- Alive bonus + height reward (platform-relative and velocity-conditioned) ---
-        # Reward being tall above the start platform; zero when lying on the ground.
-        height_above_platform = float(pos[2]) - self._platform_z
-        # Normalise: 0 = on platform, 1 = at target standing height
-        stand_ratio = min(1.0, height_above_platform / (self.STANDING_ABOVE + 1e-6))
-        
-        # Velocity ratio: must be moving forward to earn the alive bonus.
-        # min=0.0 (standing still or backwards), max=1.0 (moving >= 0.5 m/s)
-        vel_ratio = min(1.0, max(0.0, float(vel[0]) / 0.5))
-        
-        reward += self.ALIVE_BONUS * stand_ratio * vel_ratio
-        reward += self.HEIGHT_SCALE * stand_ratio
-
         # --- Forward progress ---
         delta = self._prev_dist_to_goal - dist
         reward += delta * self.PROGRESS_SCALE
         self._prev_dist_to_goal = dist
 
-        # --- Forward speed reward ---
-        reward += max(0.0, float(vel[0])) * self.SPEED_SCALE
+        # --- Forward speed reward (only if making progress) ---
+        forward_vel = max(0.0, float(vel[0]))
+        if delta > 0.01:  # only reward speed when getting closer to goal
+            reward += forward_vel * self.SPEED_SCALE
 
         # --- Posture reward (penalise leaning) ---
         roll, pitch = euler[0], euler[1]

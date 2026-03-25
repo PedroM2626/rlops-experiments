@@ -71,6 +71,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--checkpoint-freq", type=int,
                    default=int(os.getenv("CHECKPOINT_FREQ", 50_000)))
     p.add_argument("--model-dir",   type=str, default="models")
+    p.add_argument("--model",       type=str, default=None,
+                   help="Path to pretrained model (.zip) to continue training")
 
     return p.parse_args()
 
@@ -124,7 +126,12 @@ def main():
             activation_fn=torch.nn.Tanh,
         )
 
-        model = PPO(
+        if args.model:
+            print(f"\nLoading pretrained model: {args.model}")
+            model = PPO.load(args.model, env=vec_env, device="auto")
+            print(f"Continuing from step {model.num_timesteps:,}")
+        else:
+            model = PPO(
             policy          = "MlpPolicy",
             env             = vec_env,
             learning_rate   = args.lr,

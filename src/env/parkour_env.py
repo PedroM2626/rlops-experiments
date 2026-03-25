@@ -90,8 +90,8 @@ class ParkourEnv(gym.Env):
     ENERGY_SCALE   =    0.001
     LATERAL_VEL_SCALE = 0.5
     LATERAL_POS_SCALE = 0.3
-    ALIVE_BONUS    =    0.0    # removed: was 0.1, allowed standing still to farm reward
-    HEIGHT_SCALE   =    0.0    # removed: was 0.05, too easy to collect
+    ALIVE_BONUS    =    0.005   # small reward for staying alive
+    HEIGHT_SCALE   =    0.1     # reward for standing upright
     STANDING_ABOVE =    0.9    # target: torso this many metres above platform
 
     # Lateral spring

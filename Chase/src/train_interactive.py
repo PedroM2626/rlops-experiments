@@ -23,6 +23,7 @@ import numpy as np
 import torch
 from dotenv import load_dotenv
 from stable_baselines3 import PPO
+from stable_baselines3.common.callbacks import BaseCallback, CallbackList
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import VecNormalize, DummyVecEnv
 
@@ -41,6 +42,56 @@ def make_env(render_mode: str = "direct"):
         env = Monitor(env)
         return env
     return _init
+
+
+class InteractiveUICallback(BaseCallback):
+    """Callback that polls PyBullet UI, updates HUD, and controls training pace/pauses."""
+    def __init__(self, trainer, verbose=0):
+        super().__init__(verbose)
+        self.trainer = trainer
+        self.last_hud_update = 0
+        self.last_save_time = time.time()
+
+    def _on_step(self):
+        speed, target_timesteps = self.trainer._read_ui()
+        self.trainer.current_step = self.num_timesteps
+
+        # Update HUD ~2x a second
+        if time.time() - self.last_hud_update > 0.5:
+            self.trainer._update_hud(speed, target_timesteps)
+            self.last_hud_update = time.time()
+
+        # Handle pause
+        while self.trainer.paused and self.trainer.running:
+            time.sleep(0.1)
+            # Still need to read UI while paused so we can unpause
+            speed, target_timesteps = self.trainer._read_ui()
+            if time.time() - self.last_hud_update > 0.5:
+                self.trainer._update_hud(speed, target_timesteps)
+                self.last_hud_update = time.time()
+
+        if not self.trainer.running:
+            return False
+
+        if self.trainer.save_requested:
+            self.trainer._save_checkpoint()
+            self.trainer.save_requested = False
+
+        if target_timesteps > 0 and self.num_timesteps >= target_timesteps:
+            print(f"\nTimestep limit reached ({target_timesteps:,}). Stopping.")
+            return False
+
+        if time.time() - self.last_save_time > 60:
+            self.trainer._save_checkpoint()
+            self.last_save_time = time.time()
+
+        # Step the visual environment to animate the agent live
+        self.trainer._render_step()
+
+        if speed < 1.0:
+            time.sleep((1.0 / speed - 1.0) * 0.01)
+
+        return True
 
 
 class InteractiveTrainer:
@@ -64,6 +115,8 @@ class InteractiveTrainer:
         self.last_reward   = 0.0
         self.best_reward   = float("-inf")
 
+        self.mlflow_callback = None
+
         self._setup()
         self._setup_debug_ui()
 
@@ -86,9 +139,7 @@ class InteractiveTrainer:
         self.render_env = make_env("human")()
 
         # Grab the physics client ID from the render env so we can add debug widgets
-        # The client is created on first reset()
-        obs, _ = self.render_env.reset()
-        # ChaseEnv wraps Monitor which wraps ChaseEnv; unwrap to get _client
+        self.render_obs, _ = self.render_env.reset()
         base_env = self.render_env
         while hasattr(base_env, "env"):
             base_env = base_env.env
@@ -138,6 +189,9 @@ class InteractiveTrainer:
     def _setup_debug_ui(self):
         """Add sliders and buttons to the PyBullet debug window."""
         client = self._physics_client
+
+        # Enable UI panel explicitly just in case it was hidden
+        p.configureDebugVisualizer(p.COV_ENABLE_GUI, 1, physicsClientId=client)
 
         # Speed slider: 0.1 to 4.0, default 1.0
         self._SLIDER_SPEED = p.addUserDebugParameter(
@@ -204,6 +258,12 @@ class InteractiveTrainer:
         limit_str = f"{target:,}" if target > 0 else "unlimited"
         status    = "PAUSED" if self.paused else "running"
 
+        # Sync stats from MLflow callback
+        if self.mlflow_callback is not None:
+            self.episode_count = self.mlflow_callback.episode_count
+            self.last_reward   = self.mlflow_callback.last_reward
+            self.best_reward   = self.mlflow_callback.best_reward
+
         lines = [
             f"Status:  {status}",
             f"Step:    {self.current_step:,} / {limit_str}",
@@ -243,68 +303,23 @@ class InteractiveTrainer:
 
     def train(self, mlflow_callback: MLflowCallback):
         print("Starting training. Use the PyBullet window controls.\n")
+        self.mlflow_callback = mlflow_callback
 
-        steps_per_call   = self.args.n_steps * self.args.n_envs
-        last_render      = 0
-        last_save_time   = time.time()
-        last_hud_update  = 0
+        ui_callback = InteractiveUICallback(self)
+        callbacks = CallbackList([mlflow_callback, ui_callback])
 
-        # Infinite loop unless a limit is set
-        while self.running:
-            speed, target_timesteps = self._read_ui()
+        # We pass a massive number to learn() because the callback governs early stopping
+        huge_timesteps = 5_000_000_000
 
-            # Sync callback stats
-            self.episode_count = mlflow_callback.episode_count
-            self.last_reward   = mlflow_callback.last_reward
-            self.best_reward   = mlflow_callback.best_reward
-
-            # Check timestep limit
-            if target_timesteps > 0 and self.current_step >= target_timesteps:
-                print(f"\nTimestep limit reached ({target_timesteps:,}). Stopping.")
-                break
-
-            # Update HUD ~2x/sec
-            if time.time() - last_hud_update > 0.5:
-                self._update_hud(speed, target_timesteps)
-                last_hud_update = time.time()
-
-            if self.paused:
-                time.sleep(0.1)
-                continue
-
-            # Determine how many rollout calls to do this tick
-            iters = max(1, int(speed))
-
-            for _ in range(iters):
-                if target_timesteps > 0 and self.current_step >= target_timesteps:
-                    break
-
-                self.model.learn(
-                    total_timesteps=steps_per_call,
-                    reset_num_timesteps=False,
-                    progress_bar=False,
-                    callback=mlflow_callback,
-                )
-                self.current_step += steps_per_call
-
-                # Periodic render
-                if self.current_step - last_render > 500:
-                    self._render()
-                    last_render = self.current_step
-
-            # Auto-save every 60 s
-            if time.time() - last_save_time > 60:
-                self._save_checkpoint()
-                last_save_time = time.time()
-
-            # Handle manual save request
-            if self.save_requested:
-                self._save_checkpoint()
-                self.save_requested = False
-
-            # When speed < 1, apply a sleep to slow things down
-            if speed < 1.0:
-                time.sleep((1.0 / speed - 1.0) * 0.01)
+        try:
+            self.model.learn(
+                total_timesteps=huge_timesteps,
+                reset_num_timesteps=False,
+                progress_bar=False,
+                callback=callbacks,
+            )
+        except KeyboardInterrupt:
+            print("\nInterrupted by user.")
 
         print("\nTraining finished.")
         self._save_final()
@@ -313,17 +328,15 @@ class InteractiveTrainer:
     # Render & save helpers
     # ------------------------------------------------------------------
 
-    def _render(self):
-        """Run a few steps in the render env to show the current policy."""
+    def _render_step(self):
+        """Run a single step in the render env to show the current policy live."""
         try:
-            obs, _ = self.render_env.reset()
-            for _ in range(50):
-                action, _ = self.model.predict(obs, deterministic=True)
-                obs, _, done, _, _ = self.render_env.step(action)
-                if done:
-                    obs, _ = self.render_env.reset()
+            action, _ = self.model.predict(self.render_obs, deterministic=True)
+            self.render_obs, _, done, _, _ = self.render_env.step(action)
+            if done:
+                self.render_obs, _ = self.render_env.reset()
         except Exception as e:
-            print(f"Render error: {e}")
+            pass
 
     def _save_checkpoint(self):
         checkpoint_name = f"ppo_chase_{self.current_step:010d}"

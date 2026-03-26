@@ -156,7 +156,7 @@ class ParkourEnv(gym.Env):
         if self._client is None:
             if self.render_mode == "human":
                 self._client = p.connect(p.GUI)
-                p.configureDebugVisualizer(p.COV_ENABLE_GUI, 0, physicsClientId=self._client)
+                p.configureDebugVisualizer(p.COV_ENABLE_GUI, 1, physicsClientId=self._client)
                 p.configureDebugVisualizer(p.COV_ENABLE_SHADOWS, 1, physicsClientId=self._client)
             else:
                 self._client = p.connect(p.DIRECT)
@@ -215,7 +215,7 @@ class ParkourEnv(gym.Env):
     def _init_physics(self):
         if self.render_mode == "human":
             self._client = p.connect(p.GUI)
-            p.configureDebugVisualizer(p.COV_ENABLE_GUI,     0, physicsClientId=self._client)
+            p.configureDebugVisualizer(p.COV_ENABLE_GUI,     1, physicsClientId=self._client)
             p.configureDebugVisualizer(p.COV_ENABLE_SHADOWS, 1, physicsClientId=self._client)
         else:
             self._client = p.connect(p.DIRECT)

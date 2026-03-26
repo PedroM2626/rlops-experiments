@@ -4,6 +4,11 @@ Training entrypoint for the 3D Parkour RL agent.
 Usage:
     python src/train.py [options]
 
+Options:
+    --test          Test trained model instead of training
+    --episodes N    Number of test episodes (default: 5)
+    --model PATH    Path to model for testing or resuming training
+
 MLflow logs:
     - All hyperparameters
     - Per-episode reward and length
@@ -33,6 +38,10 @@ load_dotenv()
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Train PPO agent on Parkour env")
 
+    # Mode
+    p.add_argument("--test", action="store_true", help="Test trained model instead of training")
+    p.add_argument("--episodes", type=int, default=5, help="Number of test episodes")
+    
     # MLflow
     p.add_argument("--experiment-name", type=str,
                    default=os.getenv("EXPERIMENT_NAME", "parkour_ppo"))
@@ -86,8 +95,40 @@ def make_env(render_mode: str = "direct"):
     return _init
 
 
+def test(env, model, episodes: int = 5):
+    """Test trained model in human-rendered environment."""
+    print(f"\nTesting for {episodes} episodes...")
+    
+    for ep in range(episodes):
+        obs, _ = env.reset()
+        total_reward = 0
+        steps = 0
+        
+        while True:
+            action, _ = model.predict(obs, deterministic=True)
+            obs, reward, terminated, truncated, _ = env.step(action)
+            total_reward += reward
+            steps += 1
+            
+            if terminated or truncated:
+                print(f"Episode {ep+1}: steps={steps}, reward={total_reward:.2f}")
+                break
+    
+    env.close()
+
+
 def main():
     args = parse_args()
+
+    if args.test:
+        if not args.model:
+            print("Error: --model required for testing")
+            return
+        print(f"Loading model: {args.model}")
+        model = PPO.load(args.model)
+        test_env = make_env("human")()
+        test(test_env, model, args.episodes)
+        return
 
     # ------------------------------------------------------------------ MLflow setup
     mlflow.set_tracking_uri(args.tracking_uri)

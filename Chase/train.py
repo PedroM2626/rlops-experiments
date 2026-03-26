@@ -29,8 +29,34 @@ def make_env(render_mode: str = "direct"):
     return _init
 
 
+def test(env, model, episodes: int = 5):
+    """Test trained model in human-rendered environment."""
+    print(f"\nTesting for {episodes} episodes...")
+    
+    for ep in range(episodes):
+        obs, _ = env.reset()
+        total_reward = 0
+        steps = 0
+        
+        while True:
+            action, _ = model.predict(obs, deterministic=True)
+            obs, reward, terminated, truncated, _ = env.step(action)
+            total_reward += reward
+            steps += 1
+            
+            if terminated or truncated:
+                print(f"Episode {ep+1}: steps={steps}, reward={total_reward:.2f}")
+                break
+    
+    env.close()
+
+
 def parse_args():
     p = argparse.ArgumentParser(description="Train PPO on Chase environment")
+    
+    # Mode
+    p.add_argument("--test", action="store_true", help="Test trained model instead of training")
+    p.add_argument("--episodes", type=int, default=5, help="Number of test episodes")
     
     # MLflow
     p.add_argument("--tracking-uri", type=str, default=os.getenv("MLFLOW_TRACKING_URI", "./mlruns"))
@@ -53,7 +79,7 @@ def parse_args():
     # Checkpointing
     p.add_argument("--checkpoint-freq", type=int, default=int(os.getenv("CHECKPOINT_FREQ", 50_000)))
     p.add_argument("--model-dir", type=str, default="models")
-    p.add_argument("--model", type=str, default=None, help="Path to pretrained model to continue training")
+    p.add_argument("--model", type=str, default=None, help="Path to pretrained model")
     
     return p.parse_args()
 
@@ -61,7 +87,16 @@ def parse_args():
 def main():
     args = parse_args()
     
-    # MLflow setup
+    if args.test:
+        if not args.model:
+            print("Error: --model required for testing")
+            return
+        print(f"Loading model: {args.model}")
+        model = PPO.load(args.model)
+        test_env = make_env("human")()
+        test(test_env, model, args.episodes)
+        return
+    
     mlflow.set_tracking_uri(args.tracking_uri)
     mlflow.set_experiment(args.experiment_name)
     
@@ -69,7 +104,6 @@ def main():
         print(f"MLflow run id: {run.info.run_id}")
         print(f"Experiment: {args.experiment_name}")
         
-        # Log hyperparameters
         params = {
             "algorithm": "PPO",
             "total_timesteps": args.n_steps * args.n_epochs * 100,
@@ -86,12 +120,10 @@ def main():
         }
         mlflow.log_params(params)
         
-        # Environment
         print(f"\nCreating {args.n_envs} parallel environments...")
         vec_env = DummyVecEnv([make_env("direct") for _ in range(args.n_envs)])
         vec_env = VecNormalize(vec_env, norm_obs=True, norm_reward=True, clip_obs=10.0)
         
-        # Model
         net_arch = [int(x) for x in args.net_arch.split(",")]
         policy_kwargs = dict(
             net_arch=dict(pi=net_arch, vf=net_arch),
@@ -124,7 +156,6 @@ def main():
         mlflow.log_param("device", device_name)
         print(f"Training on device: {device_name}")
         
-        # Train
         total_timesteps = args.n_steps * args.n_epochs * 100
         print(f"Total timesteps: {total_timesteps:,}\n")
         
@@ -133,7 +164,6 @@ def main():
             progress_bar=True,
         )
         
-        # Save final model
         os.makedirs(args.model_dir, exist_ok=True)
         final_path = os.path.join(args.model_dir, "ppo_chase_final")
         model.save(final_path)

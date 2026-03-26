@@ -72,39 +72,22 @@ class ChaseEnv(gym.Env):
         self.seed = seed
         self.rng = random.Random(seed)
         
-        # PyBullet client
-        if render_mode == "human":
-            self._client = p.connect(p.GUI)
-        else:
-            self._client = p.connect(p.DIRECT)
-        
-        p.setAdditionalSearchPath(pybullet_data.getDataPath(), physicsClientId=self._client)
-        
-        # spaces
-        self._setup_spaces()
-        
-        # State
-        self._step_count = 0
-        self._grace_steps = 500  # Increased grace period for proper stabilization
-        self._chaser_speed = self.CHASER_SPEED_BASE
-        self._prev_dist_to_chaser = None
-        
-        # Agent ID
+        self._client = None
         self._agent_id = None
         self._chaser_id = None
-        
-        # Joint info
         self._joint_indices = []
         self._joint_limits = []
         self._joint_torques = []
         self._foot_link_ids = {}
-        
-        # Spawn tracking
         self._spawn_pos = np.zeros(3, dtype=np.float32)
-        
-        # For rendering
+        self._step_count = 0
+        self._grace_steps = 500
+        self._chaser_speed = self.CHASER_SPEED_BASE
+        self._prev_dist_to_chaser = None
         self._cam_dist = 8.0
         self._cam_yaw = 50.0
+        
+        self._setup_spaces()
     
     def _setup_spaces(self):
         """Setup gym spaces."""
@@ -126,26 +109,27 @@ class ChaseEnv(gym.Env):
             low=-10.0, high=10.0, shape=(obs_dim,), dtype=np.float32
         )
     
-    def reset(self, seed=None, options=None) -> Tuple[np.ndarray, Dict]:
+    def reset(self, seed: int = None, options: dict = None) -> Tuple[np.ndarray, dict]:
         """Reset the environment."""
         if seed is not None:
             self.seed = seed
             self.rng = random.Random(seed)
         
+        if self._client is None:
+            if self.render_mode == "human":
+                self._client = p.connect(p.GUI)
+            else:
+                self._client = p.connect(p.DIRECT)
+        
         p.resetSimulation(physicsClientId=self._client)
         p.setGravity(0, 0, -9.81, physicsClientId=self._client)
         p.setTimeStep(self.TIMESTEP, physicsClientId=self._client)
+        p.setAdditionalSearchPath(pybullet_data.getDataPath(), physicsClientId=self._client)
         
-        # Create ground
         p.loadURDF("plane.urdf", physicsClientId=self._client)
         
-        # Create walls to bound the arena
         self._create_arena()
-        
-        # Create humanoid agent
         self._create_agent()
-        
-        # Create chaser capsule
         self._create_chaser()
         
         # Reset state
@@ -205,27 +189,22 @@ class ChaseEnv(gym.Env):
     
     def _create_agent(self):
         """Create the humanoid agent."""
-        # Get Chase directory
         base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
         urdf_path = os.path.join(base_dir, "assets", "humanoid.urdf")
         
-        # Spawn position - higher to give time to land
         spawn_x = self.rng.uniform(-10, 10)
         spawn_y = self.rng.uniform(-10, 10)
         
         self._agent_id = p.loadURDF(
             urdf_path,
-            basePosition=[spawn_x, spawn_y, 2.5],
+            basePosition=[spawn_x, spawn_y, 1.4],
             baseOrientation=[0, 0, 0, 1],
             useFixedBase=False,
             flags=p.URDF_USE_SELF_COLLISION_EXCLUDE_ALL_PARENTS,
             physicsClientId=self._client)
         
-        # Get joint info
         num_joints = p.getNumJoints(self._agent_id, physicsClientId=self._client)
         
-        # Map joint names to indices
-        # We want: shoulders(2), elbows(2), hips(2), knees(2), ankles(2) = 10 joints
         joint_names = [
             "left_shoulder", "right_shoulder",
             "left_elbow", "right_elbow", 
@@ -245,31 +224,64 @@ class ChaseEnv(gym.Env):
             
             if name in joint_names:
                 self._joint_indices.append(i)
-                self._joint_limits.append((info[8], info[9]))  # (lower, upper)
-                self._joint_torques.append(info[10])  # max force
+                self._joint_limits.append((info[8], info[9]))
+                self._joint_torques.append(info[10])
             
-            # Track foot links
             if "foot" in name.lower():
                 self._foot_link_ids[name] = i
         
-        # Let agent fall and settle - more time to stand up
-        for _ in range(500):
-            p.stepSimulation(physicsClientId=self._client)
+        self._configure_dynamics()
         
-        # Reset joint positions to standing pose (slightly bent knees)
+        name_to_idx = {p.getJointInfo(self._agent_id, i, physicsClientId=self._client)[1].decode(): i 
+                       for i in range(num_joints)}
+        for fname in ("foot_L", "foot_R"):
+            if fname not in self._foot_link_ids:
+                for jname in ("left_ankle", "right_ankle"):
+                    if jname in name_to_idx:
+                        self._foot_link_ids[fname] = name_to_idx[jname]
+        
+        standing_angles = {
+            "left_shoulder": 0.0,
+            "right_shoulder": 0.0,
+            "left_elbow": 0.0,
+            "right_elbow": 0.0,
+            "left_hip": 0.0,
+            "right_hip": 0.0,
+            "left_knee": 0.0,
+            "right_knee": 0.0,
+            "left_ankle": 0.0,
+            "right_ankle": 0.0,
+        }
+        
         for i, ji in enumerate(self._joint_indices):
-            # Joint order: left_shoulder, right_shoulder, left_elbow, right_elbow, 
-            # left_hip, right_hip, left_knee, right_knee, left_ankle, right_ankle
-            if 'knee' in p.getJointInfo(self._agent_id, ji, physicsClientId=self._client)[1].decode():
-                # Knees slightly bent for stability
-                target_pos = -0.2
-            else:
-                target_pos = 0.0
-            p.resetJointState(self._agent_id, ji, target_pos, physicsClientId=self._client)
+            joint_name = p.getJointInfo(self._agent_id, ji, physicsClientId=self._client)[1].decode()
+            target_angle = standing_angles.get(joint_name, 0.0)
+            p.resetJointState(self._agent_id, ji, targetValue=target_angle, physicsClientId=self._client)
         
-        # Settle again - longer time to stabilize
-        for _ in range(500):
+        for _ in range(100):
             p.stepSimulation(physicsClientId=self._client)
+    
+    def _configure_dynamics(self):
+        """Apply friction and damping to all links and feet."""
+        num_joints = p.getNumJoints(self._agent_id, physicsClientId=self._client)
+        foot_ids = set(self._foot_link_ids.values())
+        
+        for ji in range(-1, num_joints):
+            friction = 2.0 if ji in foot_ids else 0.9
+            p.changeDynamics(self._agent_id, ji,
+                             lateralFriction=friction,
+                             spinningFriction=0.05,
+                             rollingFriction=0.01,
+                             restitution=0.0,
+                             linearDamping=0.04,
+                             angularDamping=0.1,
+                             physicsClientId=self._client)
+        
+        for link_idx in self._foot_link_ids.values():
+            p.changeDynamics(self._agent_id, link_idx,
+                             lateralFriction=1.4,
+                             spinningFriction=0.1,
+                             physicsClientId=self._client)
     
     def _create_chaser(self):
         """Create the floating capsule that chases the agent."""
@@ -563,6 +575,9 @@ class ChaseEnv(gym.Env):
     
     def close(self):
         """Close environment."""
-        if self._client >= 0:
-            p.disconnect(physicsClientId=self._client)
-            self._client = -1
+        if self._client is not None:
+            try:
+                p.disconnect(physicsClientId=self._client)
+            except Exception:
+                pass
+            self._client = None

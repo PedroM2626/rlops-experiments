@@ -152,19 +152,16 @@ class ParkourEnv(gym.Env):
 
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)
-
-        # Always create fresh physics client for each episode
-        # This prevents stale state from previous episodes
-        if self._client is not None:
-            try:
-                p.disconnect(physicsClientId=self._client)
-            except Exception:
-                pass
-            self._client = None
         
-        self._init_physics()
+        if self._client is None:
+            if self.render_mode == "human":
+                self._client = p.connect(p.GUI)
+                p.configureDebugVisualizer(p.COV_ENABLE_GUI, 0, physicsClientId=self._client)
+                p.configureDebugVisualizer(p.COV_ENABLE_SHADOWS, 1, physicsClientId=self._client)
+            else:
+                self._client = p.connect(p.DIRECT)
+            p.setAdditionalSearchPath(pybullet_data.getDataPath(), physicsClientId=self._client)
         
-        # Setup world and load agent
         self._setup_world()
 
         self._step_count = 0

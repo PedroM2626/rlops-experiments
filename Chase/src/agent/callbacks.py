@@ -1,5 +1,5 @@
 """
-Custom Stable Baselines3 callback for MLflow experiment tracking - Parkour game.
+Custom Stable Baselines3 callback for MLflow experiment tracking - Chase game.
 
 Logs per-episode reward, length, and cumulative timesteps.
 Saves model checkpoints as MLflow artifacts every N steps.
@@ -23,21 +23,25 @@ class MLflowCallback(BaseCallback):
         Local directory where checkpoint files are saved before being logged.
     verbose : int
         Verbosity level.
+    stats_callback : callable, optional
+        Called with (ep_reward, ep_length) after each episode for live UI updates.
     """
 
     def __init__(self,
                  checkpoint_freq: int = 50_000,
                  model_save_dir: str = "models",
-                 verbose: int = 1):
+                 verbose: int = 1,
+                 stats_callback=None):
         super().__init__(verbose)
         self.checkpoint_freq  = checkpoint_freq
         self.model_save_dir   = model_save_dir
         self._last_checkpoint = 0
+        self.stats_callback   = stats_callback
 
-        # Public stats accessible from the interactive training loop
-        self.episode_count = 0
-        self.best_reward   = float("-inf")
-        self.last_reward   = 0.0
+        # Public stats accessible from the training loop
+        self.episode_count    = 0
+        self.best_reward      = float("-inf")
+        self.last_reward      = 0.0
 
     # ------------------------------------------------------------------
     # SB3 hooks
@@ -69,12 +73,15 @@ class MLflowCallback(BaseCallback):
                 except Exception:
                     pass
 
+                if self.stats_callback is not None:
+                    self.stats_callback(ep_reward, ep_length)
+
                 if self.verbose >= 1:
                     print(
                         f"  [ep={self.episode_count}] "
                         f"step={self.num_timesteps:,} "
-                        f"ep_reward={ep_reward:.2f} "
-                        f"ep_length={ep_length}"
+                        f"reward={ep_reward:.2f} "
+                        f"len={ep_length}"
                     )
 
         # Checkpoint
@@ -92,10 +99,10 @@ class MLflowCallback(BaseCallback):
     # ------------------------------------------------------------------
 
     def _save_checkpoint(self, tag: str = None) -> None:
-        step_str = f"{self.num_timesteps:010d}"
-        suffix   = f"_{tag}" if tag else ""
-        filename = f"ppo_parkour_{step_str}{suffix}.zip"
-        path     = os.path.join(self.model_save_dir, filename)
+        step_str  = f"{self.num_timesteps:010d}"
+        suffix    = f"_{tag}" if tag else ""
+        filename  = f"ppo_chase_{step_str}{suffix}.zip"
+        path      = os.path.join(self.model_save_dir, filename)
 
         self.model.save(path)
 

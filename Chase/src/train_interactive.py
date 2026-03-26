@@ -1,20 +1,21 @@
 """
-Interactive training script for Parkour environment with in-window controls.
+Interactive training script for Chase environment with in-window controls.
 
 Usage:
     python src/train_interactive.py
-    python src/train_interactive.py --model models/ppo_parkour_final.zip --timesteps 3000000
+    python src/train_interactive.py --model models/ppo_chase_final.zip
 
 Controls (PyBullet window):
-    Speed slider           - Training speed multiplier (0.1 - 4.0)
-    Timestep Limit slider  - Max timesteps (0 = unlimited)
-    Pause/Resume button    - Toggle training pause
+    Speed slider         - Training speed multiplier (0.1 - 4.0)
+    Timestep Limit slider- Max timesteps (0 = unlimited)
+    Pause/Resume button  - Toggle training pause
     Save Checkpoint button - Save model immediately
 """
 
 import argparse
 import os
 import sys
+import threading
 import time
 
 import mlflow
@@ -27,45 +28,41 @@ from stable_baselines3.common.vec_env import VecNormalize, DummyVecEnv
 
 import pybullet as p
 
-from src.env.parkour_env import ParkourEnv
+from src.env.chase_env import ChaseEnv
 from src.agent.callbacks import MLflowCallback
 
 load_dotenv()
 
 
-def make_env(render_mode: str = "direct", seed: int = None):
-    """Factory for a single monitored Parkour environment."""
+def make_env(render_mode: str = "direct"):
+    """Factory for a single monitored Chase environment."""
     def _init():
-        env = ParkourEnv(render_mode=render_mode, level_seed=seed)
+        env = ChaseEnv(render_mode=render_mode)
         env = Monitor(env)
         return env
     return _init
 
 
 class InteractiveTrainer:
+    # PyBullet debug param IDs
+    _SLIDER_SPEED    = None
+    _SLIDER_LIMIT    = None
+    _BTN_PAUSE       = None
+    _BTN_SAVE        = None
+    _HUD_IDS: list   = []
 
     def __init__(self, args):
-        self.args           = args
-        self.paused         = False
-        self.running        = True
+        self.args          = args
+        self.paused        = False
+        self.running       = True
         self.save_requested = False
-        self.current_step   = 0
-        self.start_time     = time.time()
+        self.current_step  = 0
+        self.start_time    = time.time()
 
-        # Stats (synced from callback)
-        self.episode_count  = 0
-        self.last_reward    = 0.0
-        self.best_reward    = float("-inf")
-
-        # PyBullet debug param IDs
-        self._slider_speed  = None
-        self._slider_limit  = None
-        self._btn_pause     = None
-        self._btn_save      = None
-        self._hud_ids: list = []
-        self._prev_pause_val = None
-        self._prev_save_val  = None
-        self._physics_client = None
+        # Stats (updated by callback)
+        self.episode_count = 0
+        self.last_reward   = 0.0
+        self.best_reward   = float("-inf")
 
         self._setup()
         self._setup_debug_ui()
@@ -76,20 +73,22 @@ class InteractiveTrainer:
 
     def _setup(self):
         print(f"\n{'='*60}")
-        print("PARKOUR - INTERACTIVE TRAINING")
+        print("CHASE - INTERACTIVE TRAINING")
         print(f"{'='*60}\n")
 
-        model_path = self.args.model or self.args.load_model
+        model_path = self.args.model
 
         print(f"Creating {self.args.n_envs} parallel training environments...")
-        vec_env      = DummyVecEnv([make_env("direct", self.args.seed) for _ in range(self.args.n_envs)])
-        self.vec_env = VecNormalize(vec_env, norm_obs=True, norm_reward=True, clip_obs=10.0)
+        vec_env       = DummyVecEnv([make_env("direct") for _ in range(self.args.n_envs)])
+        self.vec_env  = VecNormalize(vec_env, norm_obs=True, norm_reward=True, clip_obs=10.0)
 
-        # Separate visualization env
-        self.render_env = make_env("human", self.args.seed)()
+        # Separate env for visualization (GUI)
+        self.render_env = make_env("human")()
 
-        # Initialize render env now so we can get the physics client
+        # Grab the physics client ID from the render env so we can add debug widgets
+        # The client is created on first reset()
         obs, _ = self.render_env.reset()
+        # ChaseEnv wraps Monitor which wraps ChaseEnv; unwrap to get _client
         base_env = self.render_env
         while hasattr(base_env, "env"):
             base_env = base_env.env
@@ -140,56 +139,64 @@ class InteractiveTrainer:
         """Add sliders and buttons to the PyBullet debug window."""
         client = self._physics_client
 
-        self._slider_speed = p.addUserDebugParameter(
+        # Speed slider: 0.1 to 4.0, default 1.0
+        self._SLIDER_SPEED = p.addUserDebugParameter(
             "Speed", 0.1, 4.0, 1.0,
             physicsClientId=client)
 
+        # Timestep limit slider: 0 to 5_000_000, default = args.timesteps (or 0 if unlimited)
         default_limit = self.args.timesteps if self.args.timesteps > 0 else 0
-        self._slider_limit = p.addUserDebugParameter(
+        self._SLIDER_LIMIT = p.addUserDebugParameter(
             "Timestep Limit (0=unlimited)", 0, 5_000_000, default_limit,
             physicsClientId=client)
 
-        self._btn_pause = p.addUserDebugParameter(
+        # Buttons (implemented as sliders that go 0->1 - standard PyBullet trick)
+        self._BTN_PAUSE = p.addUserDebugParameter(
             "Pause / Resume", 1, 0, 1,
             physicsClientId=client)
 
-        self._btn_save = p.addUserDebugParameter(
+        self._BTN_SAVE = p.addUserDebugParameter(
             "Save Checkpoint", 1, 0, 1,
             physicsClientId=client)
 
-        self._prev_pause_val = p.readUserDebugParameter(self._btn_pause, physicsClientId=client)
-        self._prev_save_val  = p.readUserDebugParameter(self._btn_save,  physicsClientId=client)
+        # Store previous button values to detect clicks
+        self._prev_pause_val = p.readUserDebugParameter(self._BTN_PAUSE, physicsClientId=client)
+        self._prev_save_val  = p.readUserDebugParameter(self._BTN_SAVE,  physicsClientId=client)
+
+        self._HUD_IDS = []
 
     # ------------------------------------------------------------------
-    # UI polling
+    # UI polling helpers
     # ------------------------------------------------------------------
 
     def _read_ui(self):
-        """Read slider values and detect button clicks. Returns (speed, timestep_limit)."""
+        """Read slider values and detect button presses."""
         client = self._physics_client
         try:
-            speed = float(p.readUserDebugParameter(self._slider_speed, physicsClientId=client))
+            speed = float(p.readUserDebugParameter(self._SLIDER_SPEED, physicsClientId=client))
             speed = max(0.1, min(4.0, speed))
 
-            raw_limit     = float(p.readUserDebugParameter(self._slider_limit, physicsClientId=client))
+            raw_limit = float(p.readUserDebugParameter(self._SLIDER_LIMIT, physicsClientId=client))
             timestep_limit = int(raw_limit)
 
-            pause_val = p.readUserDebugParameter(self._btn_pause, physicsClientId=client)
+            # Pause button - detect flip
+            pause_val = p.readUserDebugParameter(self._BTN_PAUSE, physicsClientId=client)
             if pause_val != self._prev_pause_val:
                 self.paused = not self.paused
                 self._prev_pause_val = pause_val
 
-            save_val = p.readUserDebugParameter(self._btn_save, physicsClientId=client)
+            # Save button - detect flip
+            save_val  = p.readUserDebugParameter(self._BTN_SAVE, physicsClientId=client)
             if save_val != self._prev_save_val:
                 self.save_requested = True
-                self._prev_save_val = save_val
+                self._prev_save_val  = save_val
 
             return speed, timestep_limit
         except Exception:
             return 1.0, self.args.timesteps
 
     def _update_hud(self, speed: float, target: int):
-        """Refresh HUD text rendered inside the 3D scene."""
+        """Refresh HUD text in the 3D scene."""
         client   = self._physics_client
         elapsed  = time.time() - self.start_time
         h, m, s  = int(elapsed // 3600), int((elapsed % 3600) // 60), int(elapsed % 60)
@@ -206,24 +213,27 @@ class InteractiveTrainer:
             f"Time:    {h:02d}:{m:02d}:{s:02d}",
         ]
 
-        for tid in self._hud_ids:
+        # Remove old text objects
+        for tid in self._HUD_IDS:
             try:
                 p.removeUserDebugItem(tid, physicsClientId=client)
             except Exception:
                 pass
-        self._hud_ids = []
+        self._HUD_IDS = []
 
+        # Draw new text (stacked vertically above scene)
         for i, line in enumerate(lines):
+            y_pos = 10 - i * 1.2   # stack downward in scene coords
             try:
                 tid = p.addUserDebugText(
                     line,
-                    textPosition=[0, 8 - i * 1.1, 4.0 - i * 0.35],
+                    textPosition=[0, y_pos, 3.5 - i * 0.35],
                     textColorRGB=[1.0, 1.0, 0.0],
                     textSize=1.2,
                     lifeTime=0,
                     physicsClientId=client,
                 )
-                self._hud_ids.append(tid)
+                self._HUD_IDS.append(tid)
             except Exception:
                 pass
 
@@ -234,25 +244,26 @@ class InteractiveTrainer:
     def train(self, mlflow_callback: MLflowCallback):
         print("Starting training. Use the PyBullet window controls.\n")
 
-        steps_per_call  = self.args.n_steps * self.args.n_envs
-        last_render     = 0
-        last_save_time  = time.time()
-        last_hud_update = 0
+        steps_per_call   = self.args.n_steps * self.args.n_envs
+        last_render      = 0
+        last_save_time   = time.time()
+        last_hud_update  = 0
 
+        # Infinite loop unless a limit is set
         while self.running:
             speed, target_timesteps = self._read_ui()
 
-            # Sync stats from callback
+            # Sync callback stats
             self.episode_count = mlflow_callback.episode_count
             self.last_reward   = mlflow_callback.last_reward
             self.best_reward   = mlflow_callback.best_reward
 
-            # Timestep limit check
+            # Check timestep limit
             if target_timesteps > 0 and self.current_step >= target_timesteps:
                 print(f"\nTimestep limit reached ({target_timesteps:,}). Stopping.")
                 break
 
-            # HUD update ~2x/sec
+            # Update HUD ~2x/sec
             if time.time() - last_hud_update > 0.5:
                 self._update_hud(speed, target_timesteps)
                 last_hud_update = time.time()
@@ -261,6 +272,7 @@ class InteractiveTrainer:
                 time.sleep(0.1)
                 continue
 
+            # Determine how many rollout calls to do this tick
             iters = max(1, int(speed))
 
             for _ in range(iters):
@@ -275,6 +287,7 @@ class InteractiveTrainer:
                 )
                 self.current_step += steps_per_call
 
+                # Periodic render
                 if self.current_step - last_render > 500:
                     self._render()
                     last_render = self.current_step
@@ -284,11 +297,12 @@ class InteractiveTrainer:
                 self._save_checkpoint()
                 last_save_time = time.time()
 
+            # Handle manual save request
             if self.save_requested:
                 self._save_checkpoint()
                 self.save_requested = False
 
-            # Slow down training when speed < 1x
+            # When speed < 1, apply a sleep to slow things down
             if speed < 1.0:
                 time.sleep((1.0 / speed - 1.0) * 0.01)
 
@@ -300,6 +314,7 @@ class InteractiveTrainer:
     # ------------------------------------------------------------------
 
     def _render(self):
+        """Run a few steps in the render env to show the current policy."""
         try:
             obs, _ = self.render_env.reset()
             for _ in range(50):
@@ -311,15 +326,15 @@ class InteractiveTrainer:
             print(f"Render error: {e}")
 
     def _save_checkpoint(self):
-        name = f"ppo_parkour_{self.current_step:010d}"
-        path = os.path.join(self.args.model_dir, name)
+        checkpoint_name = f"ppo_chase_{self.current_step:010d}"
+        path = os.path.join(self.args.model_dir, checkpoint_name)
         self.model.save(path)
         vecnorm_path = os.path.join(self.args.model_dir, "vec_normalize.pkl")
         self.vec_env.save(vecnorm_path)
         print(f"\n>>> Checkpoint saved: {path}")
 
     def _save_final(self):
-        final_path   = os.path.join(self.args.model_dir, "ppo_parkour_final")
+        final_path   = os.path.join(self.args.model_dir, "ppo_chase_final")
         vecnorm_path = os.path.join(self.args.model_dir, "vec_normalize.pkl")
         self.model.save(final_path)
         self.vec_env.save(vecnorm_path)
@@ -341,25 +356,23 @@ class InteractiveTrainer:
 # ------------------------------------------------------------------
 
 def parse_args():
-    p_arg = argparse.ArgumentParser(description="Interactive training for Parkour with PyBullet UI")
+    p_arg = argparse.ArgumentParser(description="Interactive training for Chase with PyBullet UI")
 
-    p_arg.add_argument("--model",       type=str,   default=None,   help="Pretrained model (.zip)")
-    p_arg.add_argument("--load-model",  type=str,   default=None,   help="Alias for --model")
-    p_arg.add_argument("--timesteps",   type=int,   default=0,      help="Timestep limit (0 = unlimited)")
-    p_arg.add_argument("--lr",          type=float, default=float(os.getenv("LEARNING_RATE", 3e-4)))
-    p_arg.add_argument("--n-steps",     type=int,   default=int(os.getenv("N_STEPS", 2048)))
-    p_arg.add_argument("--batch-size",  type=int,   default=int(os.getenv("BATCH_SIZE", 64)))
-    p_arg.add_argument("--gamma",       type=float, default=float(os.getenv("GAMMA", 0.99)))
-    p_arg.add_argument("--n-epochs",    type=int,   default=int(os.getenv("N_EPOCHS", 10)))
-    p_arg.add_argument("--gae-lambda",  type=float, default=float(os.getenv("GAE_LAMBDA", 0.95)))
-    p_arg.add_argument("--clip-range",  type=float, default=float(os.getenv("CLIP_RANGE", 0.2)))
-    p_arg.add_argument("--ent-coef",    type=float, default=float(os.getenv("ENT_COEF", 0.01)))
-    p_arg.add_argument("--net-arch",    type=str,   default=os.getenv("NET_ARCH", "256,256"))
-    p_arg.add_argument("--n-envs",      type=int,   default=int(os.getenv("N_ENVS", 4)))
-    p_arg.add_argument("--model-dir",   type=str,   default="models")
-    p_arg.add_argument("--seed",        type=int,   default=None)
+    p_arg.add_argument("--model",        type=str,   default=None,   help="Pretrained model to load (.zip)")
+    p_arg.add_argument("--timesteps",    type=int,   default=0,      help="Timestep limit (0 = unlimited)")
+    p_arg.add_argument("--lr",           type=float, default=float(os.getenv("LEARNING_RATE", 3e-4)))
+    p_arg.add_argument("--n-steps",      type=int,   default=int(os.getenv("N_STEPS", 2048)))
+    p_arg.add_argument("--batch-size",   type=int,   default=int(os.getenv("BATCH_SIZE", 64)))
+    p_arg.add_argument("--gamma",        type=float, default=float(os.getenv("GAMMA", 0.99)))
+    p_arg.add_argument("--n-epochs",     type=int,   default=int(os.getenv("N_EPOCHS", 10)))
+    p_arg.add_argument("--gae-lambda",   type=float, default=float(os.getenv("GAE_LAMBDA", 0.95)))
+    p_arg.add_argument("--clip-range",   type=float, default=float(os.getenv("CLIP_RANGE", 0.2)))
+    p_arg.add_argument("--ent-coef",     type=float, default=float(os.getenv("ENT_COEF", 0.01)))
+    p_arg.add_argument("--net-arch",     type=str,   default=os.getenv("NET_ARCH", "256,256"))
+    p_arg.add_argument("--n-envs",       type=int,   default=int(os.getenv("N_ENVS", 4)))
+    p_arg.add_argument("--model-dir",    type=str,   default="models")
     p_arg.add_argument("--checkpoint-freq", type=int, default=int(os.getenv("CHECKPOINT_FREQ", 50_000)))
-    p_arg.add_argument("--experiment-name", type=str, default=os.getenv("EXPERIMENT_NAME", "parkour_ppo"))
+    p_arg.add_argument("--experiment-name", type=str, default=os.getenv("EXPERIMENT_NAME", "chase_ppo"))
     p_arg.add_argument("--tracking-uri",    type=str, default=os.getenv("MLFLOW_TRACKING_URI", "mlruns"))
 
     return p_arg.parse_args()
@@ -372,9 +385,6 @@ def parse_args():
 def main():
     args = parse_args()
 
-    if args.seed is None:
-        args.seed = np.random.randint(0, 10000)
-
     mlflow.set_tracking_uri(args.tracking_uri)
     mlflow.set_experiment(args.experiment_name)
 
@@ -384,18 +394,17 @@ def main():
         print(f"MLflow run id: {run.info.run_id}")
 
         params = {
-            "algorithm":      "PPO",
-            "learning_rate":  args.lr,
-            "n_steps":        args.n_steps,
-            "batch_size":     args.batch_size,
-            "gamma":          args.gamma,
-            "n_epochs":       args.n_epochs,
-            "gae_lambda":     args.gae_lambda,
-            "clip_range":     args.clip_range,
-            "ent_coef":       args.ent_coef,
-            "net_arch":       args.net_arch,
-            "n_envs":         args.n_envs,
-            "seed":           args.seed,
+            "algorithm":   "PPO",
+            "learning_rate": args.lr,
+            "n_steps":     args.n_steps,
+            "batch_size":  args.batch_size,
+            "gamma":       args.gamma,
+            "n_epochs":    args.n_epochs,
+            "gae_lambda":  args.gae_lambda,
+            "clip_range":  args.clip_range,
+            "ent_coef":    args.ent_coef,
+            "net_arch":    args.net_arch,
+            "n_envs":      args.n_envs,
             "timestep_limit": args.timesteps if args.timesteps > 0 else "unlimited",
         }
         mlflow.log_params(params)

@@ -11,3 +11,4 @@ mlruns/
 dist/
 build/
 .pytest_cache/
+*.zip

@@ -462,7 +462,13 @@ class ParkourEnv(gym.Env):
         - The torso (base link = -1) or any upper-body link touching ANY surface = fallen.
         - Thighs/shins touching the ground also count as fallen.
         - Only foot links are allowed to touch the ground normally.
+        - Also returns True if agent falls into the void (Z < -2).
         """
+        # Check if fallen into void
+        pos, _ = p.getBasePositionAndOrientation(self._agent_id, physicsClientId=self._client)
+        if pos[2] < -2.0:  # fell off the map
+            return True
+        
         allowed_links = set(self._foot_link_ids.values())  # feet are OK contacts
         contacts = p.getContactPoints(bodyA=self._agent_id,
                                        physicsClientId=self._client)

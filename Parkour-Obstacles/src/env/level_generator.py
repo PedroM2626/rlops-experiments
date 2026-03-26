@@ -74,14 +74,15 @@ class LevelGenerator:
         cur_x = start_l
         cur_z = start_z
 
-        # section type weights
+        # section type weights - easier sections more frequent
         types = self.rng.choice(
-            ["flat", "flat", "raised", "dropped", "narrow", "ramp", "stepping_stones", "complex_slope", "moving"],
+            ["flat", "flat", "flat", "raised", "raised", "dropped", "dropped", 
+             "narrow", "ramp", "stairs", "stepping_stones", "moving", "moving"],
             size=self.num_sections)
 
         for stype in types:
-            # Gap between platforms (always ≤ 1.6 m so the agent can jump reliably)
-            gap = float(self.rng.uniform(0.6, 1.6))
+            # Gap between platforms - much smaller for beginner agent
+            gap = float(self.rng.uniform(0.1, 0.5))
             cur_x += gap
 
             # 20% chance of an "icy" platform (low friction)
@@ -98,9 +99,9 @@ class LevelGenerator:
                 cur_x += l
 
             elif stype == "raised":
-                dz = float(self.rng.uniform(0.4, 1.2))
+                dz = float(self.rng.uniform(0.2, 0.5))
                 cur_z += dz
-                l = float(self.rng.uniform(2.5, 5.0))
+                l = float(self.rng.uniform(2.0, 4.0))
                 w = float(self.rng.uniform(2.0, 3.5))
                 ids.append(self._box(
                     cx=cur_x + l / 2, cy=0.0, top_z=cur_z,
@@ -109,7 +110,7 @@ class LevelGenerator:
                 cur_x += l
 
             elif stype == "dropped":
-                dz = float(self.rng.uniform(0.3, 0.9))
+                dz = float(self.rng.uniform(0.15, 0.4))
                 cur_z = max(0.0, cur_z - dz)
                 l = float(self.rng.uniform(3.0, 6.0))
                 w = float(self.rng.uniform(2.0, 4.0))
@@ -120,9 +121,9 @@ class LevelGenerator:
                 cur_x += l
 
             elif stype == "narrow":
-                l = float(self.rng.uniform(3.0, 5.0))
-                w = float(self.rng.uniform(0.6, 1.1))
-                cy = float(self.rng.uniform(-0.4, 0.4))
+                l = float(self.rng.uniform(2.5, 4.0))
+                w = float(self.rng.uniform(1.0, 1.5))
+                cy = float(self.rng.uniform(-0.3, 0.3))
                 c_narrow = color if is_icy else COL_NARROW
                 ids.append(self._box(
                     cx=cur_x + l / 2, cy=cy, top_z=cur_z,
@@ -131,22 +132,36 @@ class LevelGenerator:
                 cur_x += l
 
             elif stype == "ramp":
-                angle = float(self.rng.uniform(12, 25))
-                l     = float(self.rng.uniform(3.0, 5.0))
+                angle = float(self.rng.uniform(8, 15))
+                l     = float(self.rng.uniform(2.0, 4.0))
                 dz    = l * math.tan(math.radians(angle))
                 ids += self._ramp(start_x=cur_x, start_z=cur_z,
                                   length=l, angle_deg=angle, is_icy=is_icy)
                 cur_x += l
                 cur_z += dz
 
+            elif stype == "stairs":
+                # Small steps going up
+                n_steps = int(self.rng.integers(3, 6))
+                step_height = float(self.rng.uniform(0.1, 0.2))
+                step_length = float(self.rng.uniform(0.4, 0.7))
+                step_width = float(self.rng.uniform(2.0, 3.0))
+                for i in range(n_steps):
+                    ids.append(self._box(
+                        cx=cur_x + step_length / 2, cy=0.0, top_z=cur_z,
+                        half_x=step_length / 2, half_y=step_width / 2, half_z=PLAT_H,
+                        color=[0.6, 0.5, 0.4, 1.0], is_icy=False))
+                    cur_x += step_length
+                    cur_z += step_height
+
             elif stype == "stepping_stones":
-                # Sequence of 3-4 small blocks
+                # Sequence of small blocks - easier gaps
                 n_stones = int(self.rng.integers(3, 5))
                 for i in range(n_stones):
-                    stone_l = float(self.rng.uniform(0.8, 1.5))
-                    stone_w = float(self.rng.uniform(1.0, 2.0))
+                    stone_l = float(self.rng.uniform(0.8, 1.2))
+                    stone_w = float(self.rng.uniform(1.2, 2.0))
                     # Offset cy slightly to make it zigzag
-                    cy = float(self.rng.uniform(-0.8, 0.8))
+                    cy = float(self.rng.uniform(-0.5, 0.5))
                     
                     ids.append(self._box(
                         cx=cur_x + stone_l / 2, cy=cy, top_z=cur_z,
@@ -155,13 +170,13 @@ class LevelGenerator:
                     
                     cur_x += stone_l
                     if i < n_stones - 1:
-                        # small gap between stones
-                        cur_x += float(self.rng.uniform(0.6, 1.2))
+                        # tiny gap between stones
+                        cur_x += float(self.rng.uniform(0.15, 0.4))
             
             elif stype == "complex_slope":
-                # Steep ramp up, small flat top, gap, platform
-                angle = float(self.rng.uniform(20, 35))
-                l_ramp = float(self.rng.uniform(3.0, 4.5))
+                # Easier ramp up, small flat top, gap, platform
+                angle = float(self.rng.uniform(10, 18))
+                l_ramp = float(self.rng.uniform(2.0, 3.5))
                 dz = l_ramp * math.tan(math.radians(angle))
                 
                 ids += self._ramp(start_x=cur_x, start_z=cur_z,
@@ -184,8 +199,8 @@ class LevelGenerator:
                 cur_x += l_land
 
             elif stype == "moving":
-                # Platform that moves left/right or up/down
-                l = float(self.rng.uniform(2.5, 4.0))
+                # Platform that moves left/right or up/down - easier settings
+                l = float(self.rng.uniform(2.5, 3.5))
                 w = float(self.rng.uniform(2.0, 3.0))
                 cx = cur_x + l / 2
                 body_id = self._box(
@@ -195,8 +210,8 @@ class LevelGenerator:
                 ids.append(body_id)
                 # Store movement metadata as user data in PyBullet
                 axis = "Y" if self.rng.random() < 0.5 else "Z"
-                amp = float(self.rng.uniform(1.0, 2.5))
-                speed = float(self.rng.uniform(1.0, 2.5))
+                amp = float(self.rng.uniform(0.5, 1.5))  # smaller movement
+                speed = float(self.rng.uniform(0.8, 1.5))  # slower
                 # Format: Axis, Amplitude, Speed, StartX, StartY, StartZ
                 meta = f"{axis},{amp},{speed},{cx},0.0,{cur_z - PLAT_H}"
                 p.addUserData(body_id, "mover", meta, physicsClientId=self._client)

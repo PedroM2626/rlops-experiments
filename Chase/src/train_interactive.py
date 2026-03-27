@@ -281,13 +281,14 @@ class InteractiveTrainer:
                 pass
         self._HUD_IDS = []
 
-        # Draw new text (stacked vertically above scene)
+        # Draw new text (stacked vertically above agent)
+        agent_pos, _ = p.getBasePositionAndOrientation(self.render_env.unwrapped._agent_id, physicsClientId=client)
+        
         for i, line in enumerate(lines):
-            y_pos = 10 - i * 1.2   # stack downward in scene coords
             try:
                 tid = p.addUserDebugText(
                     line,
-                    textPosition=[0, y_pos, 3.5 - i * 0.35],
+                    textPosition=[agent_pos[0], agent_pos[1], 2.5 - i * 0.25],
                     textColorRGB=[1.0, 1.0, 0.0],
                     textSize=1.2,
                     lifeTime=0,

@@ -79,6 +79,10 @@ class ChaseEnv(gym.Env):
         self._joint_limits = []
         self._joint_torques = []
         self._foot_link_ids = {}
+        self._chaser_joint_indices = []
+        self._chaser_joint_limits = []
+        self._chaser_joint_torques = []
+        self._chaser_joint_map = {}
         self._spawn_pos = np.zeros(3, dtype=np.float32)
         self._step_count = 0
         self._grace_steps = 500
@@ -300,21 +304,62 @@ class ChaseEnv(gym.Env):
                              physicsClientId=self._client)
     
     def _create_chaser(self):
-        """Create the floating capsule that chases the agent."""
-        # Capsule visual
-        capsule_len = 1.5
-        capsule_radius = 0.5
+        """Create the humanoid chaser."""
+        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        urdf_path = os.path.join(base_dir, "assets", "humanoid.urdf")
         
-        vis = p.createVisualShape(
-            p.GEOM_CAPSULE, radius=capsule_radius, length=capsule_len,
-            rgbaColor=[1.0, 0.0, 0.3, 0.8],  # Red/pink
+        agent_pos, _ = p.getBasePositionAndOrientation(self._agent_id, physicsClientId=self._client)
+        spawn_x = agent_pos[0] + self.rng.uniform(5, 8) * self.rng.choice([-1, 1])
+        spawn_y = agent_pos[1] + self.rng.uniform(5, 8) * self.rng.choice([-1, 1])
+        
+        self._chaser_id = p.loadURDF(
+            urdf_path,
+            basePosition=[spawn_x, spawn_y, 1.4],
+            baseOrientation=[0, 0, 0, 1],
+            useFixedBase=False,  # Respect gravity
+            flags=p.URDF_USE_SELF_COLLISION_EXCLUDE_ALL_PARENTS,
             physicsClientId=self._client)
         
-        self._chaser_id = p.createMultiBody(
-            baseMass=0,  # Static (we move it manually)
-            baseVisualShapeIndex=vis,
-            basePosition=[0, 0, 1.0],
-            physicsClientId=self._client)
+        # Change color to red/pink to distinguish from player
+        p.changeVisualShape(self._chaser_id, -1, rgbaColor=[1.0, 0.2, 0.3, 1.0], physicsClientId=self._client)
+        num_joints = p.getNumJoints(self._chaser_id, physicsClientId=self._client)
+        for j in range(num_joints):
+            p.changeVisualShape(self._chaser_id, j, rgbaColor=[1.0, 0.2, 0.3, 1.0], physicsClientId=self._client)
+
+        joint_names = [
+            "left_shoulder", "right_shoulder",
+            "left_elbow", "right_elbow", 
+            "left_hip", "right_hip",
+            "left_knee", "right_knee",
+            "left_ankle", "right_ankle"
+        ]
+        
+        self._chaser_joint_indices = []
+        self._chaser_joint_limits = []
+        self._chaser_joint_torques = []
+        self._chaser_joint_map = {}
+        
+        for i in range(num_joints):
+            info = p.getJointInfo(self._chaser_id, i, physicsClientId=self._client)
+            name = info[1].decode()
+            
+            if name in joint_names:
+                self._chaser_joint_indices.append(i)
+                self._chaser_joint_limits.append((info[8], info[9]))
+                self._chaser_joint_torques.append(info[10])
+                self._chaser_joint_map[name] = i
+        
+        # Keep joints neutral at spawn
+        for ji in self._chaser_joint_indices:
+            p.resetJointState(self._chaser_id, ji, targetValue=0.0, physicsClientId=self._client)
+            
+        # Optional dynamics tune for chaser to not slide endlessly
+        for ji in range(-1, num_joints):
+            p.changeDynamics(self._chaser_id, ji,
+                             lateralFriction=1.0,
+                             linearDamping=0.05,
+                             angularDamping=0.1,
+                             physicsClientId=self._client)
     
     def step(self, action: np.ndarray) -> Tuple[np.ndarray, float, bool, bool, Dict]:
         """Execute one step."""
@@ -372,40 +417,78 @@ class ChaseEnv(gym.Env):
                 physicsClientId=self._client)
     
     def _update_chaser(self):
-        """Move chaser toward agent."""
-        # Increase speed over time
+        """Move chaser toward agent using a rule-based walking controller."""
+        # Increase speed slightly over time
         self._chaser_speed = min(
-            self._chaser_speed + self.CHASER_ACCEL,
-            self.CHASER_SPEED_MAX
+            self._chaser_speed + self.CHASER_ACCEL * 0.05, # Slower accel since humanoid
+            self.CHASER_SPEED_MAX * 0.5 # Max speed capped for physical humanoid
         )
         
-        # Get positions
-        agent_pos, _ = p.getBasePositionAndOrientation(
-            self._agent_id, physicsClientId=self._client)
-        chaser_pos, _ = p.getBasePositionAndOrientation(
-            self._chaser_id, physicsClientId=self._client)
+        agent_pos, _ = p.getBasePositionAndOrientation(self._agent_id, physicsClientId=self._client)
+        chaser_pos, chaser_orn = p.getBasePositionAndOrientation(self._chaser_id, physicsClientId=self._client)
+        chaser_vel, _ = p.getBaseVelocity(self._chaser_id, physicsClientId=self._client)
         
-        # Direction to agent
         dx = agent_pos[0] - chaser_pos[0]
         dy = agent_pos[1] - chaser_pos[1]
-        dz = (agent_pos[2] + 1.0) - chaser_pos[2]  # Aim slightly above agent
         
-        dist = math.sqrt(dx*dx + dy*dy + dz*dz)
+        dist = math.sqrt(dx*dx + dy*dy)
         if dist > 0.01:
-            dx, dy, dz = dx/dist, dy/dist, dz/dist
+            dx, dy = dx/dist, dy/dist
+        else:
+            dx, dy = 1.0, 0.0
+            
+        # 1. Face the agent and stay upright (force roll/pitch to 0)
+        target_yaw = math.atan2(dy, dx)
+        new_orn = p.getQuaternionFromEuler([0, 0, target_yaw])
+        p.resetBasePositionAndOrientation(self._chaser_id, chaser_pos, new_orn, physicsClientId=self._client)
         
-        # Move chaser
-        speed = self._chaser_speed * self.TIMESTEP
-        new_x = chaser_pos[0] + dx * speed
-        new_y = chaser_pos[1] + dy * speed
-        new_z = chaser_pos[2] + dz * speed
+        # 2. Command velocity (pushing the base horizontally)
+        vz = chaser_vel[2] # KEEP GRAVITY
         
-        # Keep chaser at a minimum height
-        new_z = max(new_z, 0.8)
+        # Don't push if caught to avoid pushing agent endlessly
+        chase_speed = self._chaser_speed if dist > 1.0 else 0.0
+        p.resetBaseVelocity(self._chaser_id, linearVelocity=[dx * chase_speed, dy * chase_speed, vz], angularVelocity=[0,0,0], physicsClientId=self._client)
         
-        p.resetBasePositionAndOrientation(
-            self._chaser_id, [new_x, new_y, new_z], [0, 0, 0, 1],
-            physicsClientId=self._client)
+        # 3. Simulate walking animation via joints
+        phase = self._step_count * 0.1 * chase_speed
+        
+        hip_swing = 0.5  # radians
+        knee_bend = 0.5
+        
+        left_hip_angle = math.sin(phase) * hip_swing
+        left_knee_angle = abs(math.sin(phase)) * knee_bend
+        
+        right_hip_angle = math.sin(phase + math.pi) * hip_swing
+        right_knee_angle = abs(math.sin(phase + math.pi)) * knee_bend
+        
+        left_shoulder_angle = -left_hip_angle * 0.5
+        right_shoulder_angle = -right_hip_angle * 0.5
+        
+        target_angles = {
+            "left_hip": left_hip_angle,
+            "right_hip": right_hip_angle,
+            "left_knee": left_knee_angle,
+            "right_knee": right_knee_angle,
+            "left_shoulder": left_shoulder_angle,
+            "right_shoulder": right_shoulder_angle,
+            "left_elbow": 0.0,
+            "right_elbow": 0.0,
+            "left_ankle": 0.0,
+            "right_ankle": 0.0
+        }
+        
+        for j_name, target_angle in target_angles.items():
+            if j_name in self._chaser_joint_map:
+                ji = self._chaser_joint_map[j_name]
+                idx = self._chaser_joint_indices.index(ji)
+                max_force = self._chaser_joint_torques[idx]
+                p.setJointMotorControl2(
+                    self._chaser_id, ji,
+                    controlMode=p.POSITION_CONTROL,
+                    targetPosition=target_angle,
+                    force=max_force,
+                    maxVelocity=10.0,
+                    physicsClientId=self._client)
     
     def _is_caught(self) -> bool:
         """Check if chaser caught the agent."""

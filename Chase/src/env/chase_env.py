@@ -115,14 +115,12 @@ class ChaseEnv(gym.Env):
     
     def reset(self, seed: int = None, options: dict = None) -> Tuple[np.ndarray, dict]:
         """Reset the environment."""
-        print(f"DEBUG: ChaseEnv.reset called. render_mode={self.render_mode}")
         if seed is not None:
             self.seed = seed
             self.rng = random.Random(seed)
         
         setup_arena = False
         if self._client is None:
-            print(f"DEBUG: Connecting client (GUI={self.render_mode=='human'})")
             if self.render_mode == "human":
                 self._client = p.connect(p.GUI)
                 p.configureDebugVisualizer(p.COV_ENABLE_GUI, 1, physicsClientId=self._client)
@@ -131,27 +129,20 @@ class ChaseEnv(gym.Env):
             setup_arena = True
             p.setAdditionalSearchPath(pybullet_data.getDataPath(), physicsClientId=self._client)
         
-        print(f"DEBUG: Setting gravity and timestep")
         p.setGravity(0, 0, -9.81, physicsClientId=self._client)
         p.setTimeStep(self.TIMESTEP, physicsClientId=self._client)
         
         if setup_arena:
-            print("DEBUG: Loading arena...")
             p.loadURDF("plane.urdf", physicsClientId=self._client)
             self._create_arena()
             
-        print("DEBUG: Removing old bodies...")
         if self._agent_id is not None:
             p.removeBody(self._agent_id, physicsClientId=self._client)
         if self._chaser_id is not None:
             p.removeBody(self._chaser_id, physicsClientId=self._client)
             
-        print("DEBUG: Creating agent...")
         self._create_agent()
-        print("DEBUG: Creating chaser...")
         self._create_chaser()
-        
-        print("DEBUG: Resetting state...")
         # Reset state
         self._step_count = 0
         self._grace_steps = 100  # Don't detect fall for first 100 steps
@@ -647,8 +638,11 @@ class ChaseEnv(gym.Env):
             
             result = p.rayTest(ray_from, ray_to, physicsClientId=self._client)
             
-            if result[0][0] == 0:  # Hit something (plane has ID 0)
-                hit_dist = result[0][2]
+            # PyBullet rayTest returns: (body_id, link_index, hit_fraction, hit_position, hit_normal)
+            # hit_fraction is in [0, 1], where 0 is ray_from and 1 is ray_to
+            if result and result[0][0] != -1:  # -1 means no hit
+                hit_fraction = result[0][2]
+                hit_dist = hit_fraction * self.RAY_MAX_DIST
             else:
                 hit_dist = self.RAY_MAX_DIST
             

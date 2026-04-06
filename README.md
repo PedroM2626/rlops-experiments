@@ -1,12 +1,15 @@
-# ML-Games: Reinforcement Learning Environments
+# ML-Games: 2D/3D ML Experiment Engine
 
-Two 3D physics-based RL environments using PyBullet and PPO (Stable Baselines3).
+An experimentation engine for 2D and 3D ML game projects, with a shared PPO core,
+live control dashboard, hot-reloadable reward shaping, and real-time viewport previews.
 
 | Component | Technology |
 |-----------|-----------|
 | 3D physics simulation | PyBullet |
+| 2D sandbox simulation | NumPy + Gymnasium |
 | RL algorithm | PPO (Stable Baselines3) |
 | Experiment tracking | MLflow |
+| Live dashboard | Streamlit |
 | Containerisation | Docker / Docker Compose |
 
 ## Games
@@ -16,6 +19,9 @@ A humanoid agent must evade a floating capsule that chases it at increasing spee
 
 ### Parkour Obstacles
 A humanoid agent must navigate procedurally generated platforms, gaps, ramps, and ledges to reach a goal zone.
+
+### Arena 2D
+A lightweight top-down sandbox for rapid PPO iteration, reward shaping, and dashboard smoke tests.
 
 ## Project Structure
 
@@ -48,6 +54,13 @@ ML-Games/
 └── README.md
 ```
 
+New engine pieces:
+- `ml_games_engine/runner.py`: unified runtime with hot-reloadable control/state files
+- `ml_games_engine/scenarios.py`: registry for the built-in 2D and 3D scenarios
+- `ml_games_engine/brains.py`: live viewport brain switcher
+- `ml_games_engine/envs/arena2d_env.py`: built-in 2D sandbox
+- `streamlit_app.py`: dashboard for hyperparameters, reward shaping, metrics, and control
+
 ## Quick Start
 
 ### 1. Install
@@ -69,7 +82,28 @@ cp .env.example .env
 # Edit .env to adjust hyperparameters or MLflow URI
 ```
 
-### 3. Interactive Training (recommended)
+### 3. Engine Dashboard (recommended)
+
+Start the unified dashboard:
+
+```bash
+streamlit run streamlit_app.py
+```
+
+From the dashboard you can:
+- choose a 2D or 3D scenario before hitting play
+- set PPO hyperparameters
+- pause and resume training
+- hot-reload reward weights without closing the run
+- switch the live viewport brain between the in-training policy, a random baseline, or a PPO checkpoint
+- inspect episode reward and training loss curves in real time
+
+Notes:
+- 3D scenarios open a separate PyBullet window for the viewport.
+- The 2D scenario streams frames directly into the dashboard.
+- Runtime state is written to `runtime/` so the UI and training core stay decoupled.
+
+### 4. Legacy Interactive Training
 
 Both games have an interactive training script that opens a PyBullet window with **live controls embedded directly in the simulation window**:
 
@@ -108,7 +142,7 @@ The top of the scene shows a yellow HUD with:
 - Speed multiplier
 - Elapsed wall-clock time
 
-### 4. Batch Training
+### 5. Batch Training
 
 ```bash
 # Chase
@@ -120,7 +154,7 @@ cd Parkour-Obstacles
 python src/train.py --timesteps 1000000
 ```
 
-### 5. Watch the Agent
+### 6. Watch the Agent
 
 ```bash
 # Chase

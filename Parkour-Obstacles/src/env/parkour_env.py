@@ -105,10 +105,16 @@ class ParkourEnv(gym.Env):
     RAY_PITCHES = [15, 30, 45, 60, 75]   # degrees *below* horizontal
     RAY_MAX_DIST = 5.0
 
-    def __init__(self, render_mode: str = "direct", level_seed: Optional[int] = None):
+    def __init__(
+        self,
+        render_mode: str = "direct",
+        level_seed: Optional[int] = None,
+        reward_config: Optional[dict] = None,
+    ):
         super().__init__()
         self.render_mode = render_mode
         self.level_seed  = level_seed
+        self.reward_config = reward_config if reward_config is not None else {}
 
         # ---- Spaces ----
         obs_low  = np.full(OBS_DIM, -np.inf, dtype=np.float32)
@@ -518,6 +524,7 @@ class ParkourEnv(gym.Env):
     # -----------------------------------------------------------------------
 
     def _compute_reward(self, action: np.ndarray):
+        reward_cfg = self.reward_config
         pos, orn = p.getBasePositionAndOrientation(self._agent_id,
                                                     physicsClientId=self._client)
         vel, _   = p.getBaseVelocity(self._agent_id, physicsClientId=self._client)
@@ -530,39 +537,39 @@ class ParkourEnv(gym.Env):
         truncated  = False
 
         # --- Base time penalty ---
-        reward = self.STEP_PENALTY
+        reward = float(reward_cfg.get("step_penalty", self.STEP_PENALTY))
 
         # --- Forward progress ---
         delta = self._prev_dist_to_goal - dist
-        reward += delta * self.PROGRESS_SCALE
+        reward += delta * float(reward_cfg.get("progress_scale", self.PROGRESS_SCALE))
         self._prev_dist_to_goal = dist
 
         # --- Forward speed reward (only if making progress) ---
         forward_vel = max(0.0, float(vel[0]))
         if delta > 0.01:  # only reward speed when getting closer to goal
-            reward += forward_vel * self.SPEED_SCALE
+            reward += forward_vel * float(reward_cfg.get("speed_scale", self.SPEED_SCALE))
 
         # --- Posture reward (penalise leaning) ---
         roll, pitch = euler[0], euler[1]
-        reward -= (abs(roll) + abs(pitch)) * self.UPRIGHT_SCALE
+        reward -= (abs(roll) + abs(pitch)) * float(reward_cfg.get("upright_scale", self.UPRIGHT_SCALE))
 
         # --- Lateral stability penalties ---
         vy = float(vel[1])
         y_drift = float(pos[1]) - self._spawn_y
-        reward -= abs(vy) * self.LATERAL_VEL_SCALE
-        reward -= abs(y_drift) * self.LATERAL_POS_SCALE
+        reward -= abs(vy) * float(reward_cfg.get("lateral_vel_scale", self.LATERAL_VEL_SCALE))
+        reward -= abs(y_drift) * float(reward_cfg.get("lateral_pos_scale", self.LATERAL_POS_SCALE))
 
         # --- Energy penalty ---
-        reward -= float(np.sum(action ** 2)) * self.ENERGY_SCALE
+        reward -= float(np.sum(action ** 2)) * float(reward_cfg.get("energy_scale", self.ENERGY_SCALE))
 
         # --- Goal reached ---
         if dist < 1.5:
-            reward += self.GOAL_REWARD
+            reward += float(reward_cfg.get("goal_reward", self.GOAL_REWARD))
             terminated = True
 
         # --- Fallen: torso or non-foot links contact any surface ---
         if self._is_fallen():
-            reward += self.FALL_PENALTY
+            reward += float(reward_cfg.get("fall_penalty", self.FALL_PENALTY))
             terminated = True
 
         # --- Timeout ---

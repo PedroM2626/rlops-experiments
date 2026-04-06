@@ -65,12 +65,13 @@ class ChaseEnv(gym.Env):
     # Fall threshold
     FALL_Z = 0.25
     
-    def __init__(self, render_mode: str = "direct", seed: int = 42):
+    def __init__(self, render_mode: str = "direct", seed: int = 42, reward_config: Dict[str, float] | None = None):
         super().__init__()
         
         self.render_mode = render_mode
         self.seed = seed
         self.rng = random.Random(seed)
+        self.reward_config = reward_config if reward_config is not None else {}
         
         self._client = None
         self._agent_id = None
@@ -518,27 +519,29 @@ class ChaseEnv(gym.Env):
     def _compute_reward(self, action: np.ndarray) -> float:
         """Compute reward."""
         reward = 0.0
+        reward_cfg = self.reward_config
         
         # Survival bonus
-        reward += self.SURVIVAL_BONUS
+        reward += float(reward_cfg.get("survival_bonus", self.SURVIVAL_BONUS))
         
         # Distance to chaser
         dist = self._get_chaser_distance()
         
         # Penalty for being close
-        if dist < 3.0:
-            reward -= self.CHASER_CLOSE_PENALTY * (3.0 - dist)
+        close_dist = float(reward_cfg.get("close_penalty_distance", 3.0))
+        if dist < close_dist:
+            reward -= float(reward_cfg.get("close_penalty_scale", self.CHASER_CLOSE_PENALTY)) * (close_dist - dist)
         
         # Reward for increasing distance
         if self._prev_dist_to_chaser is not None:
             delta = dist - self._prev_dist_to_chaser
-            reward += delta * self.PROGRESS_SCALE
+            reward += delta * float(reward_cfg.get("progress_scale", self.PROGRESS_SCALE))
             
             # Speed bonus when moving away
             if delta > 0.1:
                 vel, _ = p.getBaseVelocity(self._agent_id, physicsClientId=self._client)
                 forward_speed = max(0, vel[0])
-                reward += forward_speed * self.SPEED_SCALE
+                reward += forward_speed * float(reward_cfg.get("speed_scale", self.SPEED_SCALE))
         
         self._prev_dist_to_chaser = dist
         
@@ -546,14 +549,14 @@ class ChaseEnv(gym.Env):
         _, orn = p.getBasePositionAndOrientation(self._agent_id, physicsClientId=self._client)
         euler = p.getEulerFromQuaternion(orn)
         roll, pitch = euler[0], euler[1]
-        reward -= (abs(roll) + abs(pitch)) * self.UPRIGHT_SCALE
+        reward -= (abs(roll) + abs(pitch)) * float(reward_cfg.get("upright_scale", self.UPRIGHT_SCALE))
         
         # Energy penalty
-        reward -= float(np.sum(action ** 2)) * self.ENERGY_SCALE
+        reward -= float(np.sum(action ** 2)) * float(reward_cfg.get("energy_scale", self.ENERGY_SCALE))
         
         # Caught penalty
         if self._is_caught():
-            reward -= 50.0
+            reward -= float(reward_cfg.get("caught_penalty", 50.0))
         
         return reward
     

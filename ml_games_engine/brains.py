@@ -49,6 +49,15 @@ class PilotBrain:
         return None
 
 
+class DisabledBrain(PilotBrain):
+    """Preview-off brain used when the viewport should stay idle."""
+
+    label = "disabled"
+
+    def predict(self, obs: np.ndarray, deterministic: bool = True) -> np.ndarray:
+        raise RuntimeError("Viewport preview is disabled.")
+
+
 class LivePolicyBrain(PilotBrain):
     """Proxy brain that mirrors the actively trained PPO model."""
 
@@ -120,6 +129,8 @@ def build_pilot_brain(
     """Create the pilot brain requested by the dashboard."""
     if selection.name == "live_policy":
         return LivePolicyBrain(model_getter, vecnorm_getter)
+    if selection.name == "disabled":
+        return DisabledBrain()
     if selection.name == "random":
         return RandomBrain(action_space)
     if selection.name == "checkpoint_ppo":

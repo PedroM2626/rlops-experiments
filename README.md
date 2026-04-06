@@ -58,6 +58,7 @@ New engine pieces:
 - `ml_games_engine/runner.py`: unified runtime with hot-reloadable control/state files
 - `ml_games_engine/scenarios.py`: registry for the built-in 2D and 3D scenarios
 - `ml_games_engine/brains.py`: live viewport brain switcher
+- `ml_games_engine/catalog.py`: automatic discovery of checkpoints, vecnormalizers, and saved runs
 - `ml_games_engine/envs/arena2d_env.py`: built-in 2D sandbox
 - `streamlit_app.py`: dashboard for hyperparameters, reward shaping, metrics, and control
 
@@ -92,16 +93,21 @@ streamlit run streamlit_app.py
 
 From the dashboard you can:
 - choose a 2D or 3D scenario before hitting play
+- browse discovered checkpoints and VecNormalize files without typing paths
 - set PPO hyperparameters
+- inspect world and physics settings such as gravity, timestep, frame skip, and camera setup
 - pause and resume training
 - hot-reload reward weights without closing the run
+- hot-reload physics and world settings while the run is alive
 - switch the live viewport brain between the in-training policy, a random baseline, or a PPO checkpoint
+- disable the viewport brain entirely when you only want raw training throughput
 - inspect episode reward and training loss curves in real time
+- open a saved-runs tab that reads archived configs, state history, metrics, charts, checkpoints, and preview snapshots
 
 Notes:
-- 3D scenarios open a separate PyBullet window for the viewport.
+- 3D scenarios open a separate PyBullet window for the viewport, with the default debug panes and shadow noise disabled.
 - The 2D scenario streams frames directly into the dashboard.
-- Runtime state is written to `runtime/` so the UI and training core stay decoupled.
+- Runtime state is written to `runtime/`, and each run is archived under `runtime/runs/<run_id>/`.
 
 ### 4. Legacy Interactive Training
 

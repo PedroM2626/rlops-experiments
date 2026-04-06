@@ -110,11 +110,13 @@ class ParkourEnv(gym.Env):
         render_mode: str = "direct",
         level_seed: Optional[int] = None,
         reward_config: Optional[dict] = None,
+        world_config: Optional[dict] = None,
     ):
         super().__init__()
         self.render_mode = render_mode
         self.level_seed  = level_seed
         self.reward_config = reward_config if reward_config is not None else {}
+        self.world_config = world_config if world_config is not None else {}
 
         # ---- Spaces ----
         obs_low  = np.full(OBS_DIM, -np.inf, dtype=np.float32)
@@ -151,6 +153,57 @@ class ParkourEnv(gym.Env):
         # URDF path (relative to project root, resolved at load time)
         self._urdf_path = os.path.join(
             os.path.dirname(__file__), "..", "..", "assets", "humanoid.urdf")
+        self._gravity_z = self.GRAVITY
+        self._time_step = self.TIME_STEP
+        self._frame_skip = self.FRAME_SKIP
+        self._physics_hz = self.PHYSICS_HZ
+        self._camera_distance = 6.0
+        self._camera_yaw = 45.0
+        self._camera_pitch = -20.0
+        self._show_gui_panels = False
+        self._show_shadows = False
+        self._apply_world_config()
+
+    def _apply_world_config(self):
+        """Refresh runtime-adjustable world parameters."""
+        self._gravity_z = float(self.world_config.get("gravity_z", self.GRAVITY))
+        self._time_step = float(self.world_config.get("time_step", self.TIME_STEP))
+        self._frame_skip = max(1, int(self.world_config.get("frame_skip", self.FRAME_SKIP)))
+        self._physics_hz = 1.0 / (self._time_step * self._frame_skip)
+        self._camera_distance = float(self.world_config.get("camera_distance", 6.0))
+        self._camera_yaw = float(self.world_config.get("camera_yaw", 45.0))
+        self._camera_pitch = float(self.world_config.get("camera_pitch", -20.0))
+        self._show_gui_panels = bool(self.world_config.get("show_gui_panels", False))
+        self._show_shadows = bool(self.world_config.get("show_shadows", False))
+
+    def set_runtime_config(self, reward_config: Optional[dict] = None, world_config: Optional[dict] = None):
+        """Apply hot-reloadable reward and world settings."""
+        if reward_config is not None:
+            self.reward_config = reward_config
+        if world_config is not None:
+            self.world_config = world_config
+            self._apply_world_config()
+
+        if self._client is not None:
+            p.setGravity(0, 0, self._gravity_z, physicsClientId=self._client)
+            p.setTimeStep(self._time_step, physicsClientId=self._client)
+            if self.render_mode == "human":
+                self._configure_visualizer()
+        return True
+
+    def _configure_visualizer(self):
+        """Reduce viewport noise and disable extra preview panes."""
+        client = self._client
+        p.configureDebugVisualizer(p.COV_ENABLE_GUI, int(self._show_gui_panels), physicsClientId=client)
+        p.configureDebugVisualizer(p.COV_ENABLE_SHADOWS, int(self._show_shadows), physicsClientId=client)
+        for attr in (
+            "COV_ENABLE_RGB_BUFFER_PREVIEW",
+            "COV_ENABLE_DEPTH_BUFFER_PREVIEW",
+            "COV_ENABLE_SEGMENTATION_MARK_PREVIEW",
+        ):
+            flag = getattr(p, attr, None)
+            if flag is not None:
+                p.configureDebugVisualizer(flag, 0, physicsClientId=client)
 
     # -----------------------------------------------------------------------
     # Gym interface
@@ -162,11 +215,13 @@ class ParkourEnv(gym.Env):
         if self._client is None:
             if self.render_mode == "human":
                 self._client = p.connect(p.GUI)
-                p.configureDebugVisualizer(p.COV_ENABLE_GUI, 1, physicsClientId=self._client)
-                p.configureDebugVisualizer(p.COV_ENABLE_SHADOWS, 1, physicsClientId=self._client)
+                self._configure_visualizer()
             else:
                 self._client = p.connect(p.DIRECT)
             p.setAdditionalSearchPath(pybullet_data.getDataPath(), physicsClientId=self._client)
+        
+        if self.render_mode == "human":
+            p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, 0, physicsClientId=self._client)
         
         self._setup_world()
 
@@ -185,7 +240,7 @@ class ParkourEnv(gym.Env):
         self._apply_lateral_spring()   # soft Y-centering force
         self._update_moving_platforms()
 
-        for _ in range(self.FRAME_SKIP):
+        for _ in range(self._frame_skip):
             p.stepSimulation(physicsClientId=self._client)
 
         self._step_count += 1
@@ -195,9 +250,9 @@ class ParkourEnv(gym.Env):
         if self.render_mode == "human":
             pos = self._get_torso_pos()
             p.resetDebugVisualizerCamera(
-                cameraDistance=6,
-                cameraYaw=45,
-                cameraPitch=-20,
+                cameraDistance=self._camera_distance,
+                cameraYaw=self._camera_yaw,
+                cameraPitch=self._camera_pitch,
                 cameraTargetPosition=pos.tolist(),
                 physicsClientId=self._client)
 
@@ -221,8 +276,7 @@ class ParkourEnv(gym.Env):
     def _init_physics(self):
         if self.render_mode == "human":
             self._client = p.connect(p.GUI)
-            p.configureDebugVisualizer(p.COV_ENABLE_GUI,     1, physicsClientId=self._client)
-            p.configureDebugVisualizer(p.COV_ENABLE_SHADOWS, 1, physicsClientId=self._client)
+            self._configure_visualizer()
         else:
             self._client = p.connect(p.DIRECT)
 
@@ -231,8 +285,10 @@ class ParkourEnv(gym.Env):
         # NOTE: _setup_world is called from reset(), not here
 
     def _setup_world(self):
-        p.setGravity(0, 0, self.GRAVITY, physicsClientId=self._client)
-        p.setTimeStep(self.TIME_STEP, physicsClientId=self._client)
+        p.resetSimulation(physicsClientId=self._client)
+        p.setAdditionalSearchPath(pybullet_data.getDataPath(), physicsClientId=self._client)
+        p.setGravity(0, 0, self._gravity_z, physicsClientId=self._client)
+        p.setTimeStep(self._time_step, physicsClientId=self._client)
 
         seed = self.level_seed if self.level_seed is not None else int(
             self.np_random.integers(0, 9999))
@@ -256,7 +312,9 @@ class ParkourEnv(gym.Env):
 
         if self.render_mode == "human":
             p.resetDebugVisualizerCamera(
-                cameraDistance=6, cameraYaw=30, cameraPitch=-20,
+                cameraDistance=self._camera_distance,
+                cameraYaw=self._camera_yaw,
+                cameraPitch=self._camera_pitch,
                 cameraTargetPosition=spawn_pos.tolist(),
                 physicsClientId=self._client)
 
@@ -271,6 +329,8 @@ class ParkourEnv(gym.Env):
 
         for _ in range(20):
             p.stepSimulation(physicsClientId=self._client)
+        if self.render_mode == "human":
+            p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, 1, physicsClientId=self._client)
 
     def _build_joint_map(self):
         """Map joint names from _JOINT_CFG to PyBullet joint indices."""
@@ -340,7 +400,7 @@ class ParkourEnv(gym.Env):
     # -----------------------------------------------------------------------
 
     def _update_moving_platforms(self):
-        time_sec = self._step_count * (1.0 / self.PHYSICS_HZ)
+        time_sec = self._step_count * (1.0 / self._physics_hz)
         for body_id in self._level_ids:
             try:
                 ud = p.getUserData(body_id, "mover", physicsClientId=self._client)

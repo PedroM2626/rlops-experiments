@@ -5,11 +5,12 @@ from __future__ import annotations
 import copy
 import json
 import os
+import re
 import tempfile
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, Iterable, List
 
 
 def utc_now_iso() -> str:
@@ -45,6 +46,39 @@ def write_json(path: Path, payload: Dict[str, Any]) -> None:
             os.remove(tmp_path)
 
 
+def append_jsonl(path: Path, payload: Dict[str, Any]) -> None:
+    """Append a single JSON object to a JSONL file."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a", encoding="utf-8") as handle:
+        handle.write(json.dumps(payload, sort_keys=True))
+        handle.write("\n")
+
+
+def read_jsonl(path: Path) -> List[Dict[str, Any]]:
+    """Read JSONL content, skipping malformed lines defensively."""
+    if not path.exists():
+        return []
+
+    rows: List[Dict[str, Any]] = []
+    with path.open("r", encoding="utf-8-sig") as handle:
+        for line in handle:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                rows.append(json.loads(line))
+            except json.JSONDecodeError:
+                continue
+    return rows
+
+
+def sanitize_slug(value: str) -> str:
+    """Convert arbitrary labels into filesystem-friendly slugs."""
+    slug = re.sub(r"[^a-zA-Z0-9._-]+", "-", value.strip())
+    slug = slug.strip("-._")
+    return slug or "run"
+
+
 @dataclass(frozen=True)
 class RuntimePaths:
     """Runtime file contract shared by the runner and the dashboard."""
@@ -54,6 +88,7 @@ class RuntimePaths:
     metrics: Path
     frame: Path
     artifacts_dir: Path
+    runs_dir: Path
 
     @classmethod
     def from_control_path(cls, control_path: str | Path) -> "RuntimePaths":
@@ -65,4 +100,5 @@ class RuntimePaths:
             metrics=runtime_dir / "metrics.json",
             frame=runtime_dir / "latest_frame.npy",
             artifacts_dir=runtime_dir / "artifacts",
+            runs_dir=runtime_dir / "runs",
         )

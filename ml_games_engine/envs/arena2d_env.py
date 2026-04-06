@@ -30,10 +30,20 @@ class Arena2DEnv(gym.Env):
     BOUNDARY_PENALTY = 0.2
     CHASER_SPEED = 0.55
 
-    def __init__(self, render_mode: str = "direct", reward_config: Dict[str, float] | None = None):
+    def __init__(
+        self,
+        render_mode: str = "direct",
+        reward_config: Dict[str, float] | None = None,
+        world_config: Dict[str, float] | None = None,
+    ):
         super().__init__()
         self.render_mode = render_mode
         self.reward_config = reward_config if reward_config is not None else {}
+        self.world_config = world_config if world_config is not None else {}
+        self.world_size = float(self.world_config.get("world_size", self.WORLD_SIZE))
+        self.max_speed = self.MAX_SPEED
+        self.max_steps = int(self.world_config.get("max_steps", self.MAX_STEPS))
+        self.dt = float(self.world_config.get("dt", self.DT))
 
         self.action_space = gym.spaces.Box(
             low=-1.0,
@@ -55,6 +65,20 @@ class Arena2DEnv(gym.Env):
         self._step_count = 0
         self._prev_goal_dist = 0.0
 
+    def set_runtime_config(
+        self,
+        reward_config: Dict[str, float] | None = None,
+        world_config: Dict[str, float] | None = None,
+    ) -> bool:
+        if reward_config is not None:
+            self.reward_config = reward_config
+        if world_config is not None:
+            self.world_config = world_config
+            self.world_size = float(self.world_config.get("world_size", self.WORLD_SIZE))
+            self.max_steps = int(self.world_config.get("max_steps", self.MAX_STEPS))
+            self.dt = float(self.world_config.get("dt", self.DT))
+        return True
+
     def reset(self, seed: int | None = None, options: dict | None = None) -> Tuple[np.ndarray, dict]:
         super().reset(seed=seed)
         rng = self.np_random
@@ -72,10 +96,10 @@ class Arena2DEnv(gym.Env):
         action = np.clip(np.asarray(action, dtype=np.float32), -1.0, 1.0)
 
         accel = action * 0.32
-        self._agent_vel = np.clip(self._agent_vel + accel, -self.MAX_SPEED, self.MAX_SPEED)
-        self._agent_pos = self._agent_pos + self._agent_vel * self.DT
+        self._agent_vel = np.clip(self._agent_vel + accel, -self.max_speed, self.max_speed)
+        self._agent_pos = self._agent_pos + self._agent_vel * self.dt
 
-        clipped = np.clip(self._agent_pos, -self.WORLD_SIZE / 2, self.WORLD_SIZE / 2)
+        clipped = np.clip(self._agent_pos, -self.world_size / 2, self.world_size / 2)
         boundary_hits = int(not np.allclose(clipped, self._agent_pos))
         self._agent_pos = clipped.astype(np.float32)
 
@@ -100,7 +124,7 @@ class Arena2DEnv(gym.Env):
         reward -= boundary_hits * self._reward("boundary_penalty", self.BOUNDARY_PENALTY)
 
         terminated = False
-        truncated = self._step_count >= self.MAX_STEPS
+        truncated = self._step_count >= self.max_steps
         self._prev_goal_dist = goal_dist
 
         if goal_dist <= self.GOAL_RADIUS:
@@ -123,18 +147,18 @@ class Arena2DEnv(gym.Env):
         return float(self.reward_config.get(key, fallback))
 
     def _normalize(self, vec: np.ndarray) -> np.ndarray:
-        return np.clip(vec / (self.WORLD_SIZE / 2), -1.0, 1.0)
+        return np.clip(vec / (self.world_size / 2), -1.0, 1.0)
 
     def _get_obs(self) -> np.ndarray:
         goal_delta = self._goal_pos - self._agent_pos
         chaser_delta = self._chaser_pos - self._agent_pos
-        time_left = 1.0 - (self._step_count / self.MAX_STEPS)
-        dist_norm = np.clip(np.linalg.norm(goal_delta) / self.WORLD_SIZE, 0.0, 1.0)
+        time_left = 1.0 - (self._step_count / self.max_steps)
+        dist_norm = np.clip(np.linalg.norm(goal_delta) / self.world_size, 0.0, 1.0)
 
         return np.concatenate(
             [
                 self._normalize(self._agent_pos),
-                np.clip(self._agent_vel / self.MAX_SPEED, -1.0, 1.0),
+                np.clip(self._agent_vel / self.max_speed, -1.0, 1.0),
                 self._normalize(goal_delta),
                 self._normalize(chaser_delta),
                 np.array([time_left, dist_norm], dtype=np.float32),
@@ -156,9 +180,9 @@ class Arena2DEnv(gym.Env):
         return frame
 
     def _draw_entity(self, frame: np.ndarray, pos: np.ndarray, radius: int, color: np.ndarray) -> None:
-        half = self.WORLD_SIZE / 2
-        x = int(((float(pos[0]) + half) / self.WORLD_SIZE) * (frame.shape[1] - 1))
-        y = int(((half - float(pos[1])) / self.WORLD_SIZE) * (frame.shape[0] - 1))
+        half = self.world_size / 2
+        x = int(((float(pos[0]) + half) / self.world_size) * (frame.shape[1] - 1))
+        y = int(((half - float(pos[1])) / self.world_size) * (frame.shape[0] - 1))
 
         yy, xx = np.ogrid[: frame.shape[0], : frame.shape[1]]
         mask = (xx - x) ** 2 + (yy - y) ** 2 <= radius ** 2

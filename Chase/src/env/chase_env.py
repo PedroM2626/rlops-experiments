@@ -65,13 +65,20 @@ class ChaseEnv(gym.Env):
     # Fall threshold
     FALL_Z = 0.25
     
-    def __init__(self, render_mode: str = "direct", seed: int = 42, reward_config: Dict[str, float] | None = None):
+    def __init__(
+        self,
+        render_mode: str = "direct",
+        seed: int = 42,
+        reward_config: Dict[str, float] | None = None,
+        world_config: Dict[str, float] | None = None,
+    ):
         super().__init__()
         
         self.render_mode = render_mode
         self.seed = seed
         self.rng = random.Random(seed)
         self.reward_config = reward_config if reward_config is not None else {}
+        self.world_config = world_config if world_config is not None else {}
         
         self._client = None
         self._agent_id = None
@@ -91,8 +98,54 @@ class ChaseEnv(gym.Env):
         self._prev_dist_to_chaser = None
         self._cam_dist = 8.0
         self._cam_yaw = 50.0
+        self._cam_pitch = -20.0
+        self._gravity_z = -9.81
+        self._time_step = self.TIMESTEP
+        self._show_gui_panels = False
+        self._show_shadows = False
+        
+        self._apply_world_config()
         
         self._setup_spaces()
+
+    def _apply_world_config(self):
+        """Refresh runtime-adjustable world parameters."""
+        self._gravity_z = float(self.world_config.get("gravity_z", -9.81))
+        self._time_step = float(self.world_config.get("time_step", self.TIMESTEP))
+        self._cam_dist = float(self.world_config.get("camera_distance", 8.0))
+        self._cam_yaw = float(self.world_config.get("camera_yaw", 50.0))
+        self._cam_pitch = float(self.world_config.get("camera_pitch", -20.0))
+        self._show_gui_panels = bool(self.world_config.get("show_gui_panels", False))
+        self._show_shadows = bool(self.world_config.get("show_shadows", False))
+
+    def set_runtime_config(self, reward_config: Dict[str, float] | None = None, world_config: Dict[str, float] | None = None):
+        """Apply hot-reloadable reward and world parameters."""
+        if reward_config is not None:
+            self.reward_config = reward_config
+        if world_config is not None:
+            self.world_config = world_config
+            self._apply_world_config()
+
+        if self._client is not None:
+            p.setGravity(0, 0, self._gravity_z, physicsClientId=self._client)
+            p.setTimeStep(self._time_step, physicsClientId=self._client)
+            if self.render_mode == "human":
+                self._configure_visualizer()
+        return True
+
+    def _configure_visualizer(self):
+        """Reduce viewport noise and disable unneeded debug panes."""
+        client = self._client
+        p.configureDebugVisualizer(p.COV_ENABLE_GUI, int(self._show_gui_panels), physicsClientId=client)
+        p.configureDebugVisualizer(p.COV_ENABLE_SHADOWS, int(self._show_shadows), physicsClientId=client)
+        for attr in (
+            "COV_ENABLE_RGB_BUFFER_PREVIEW",
+            "COV_ENABLE_DEPTH_BUFFER_PREVIEW",
+            "COV_ENABLE_SEGMENTATION_MARK_PREVIEW",
+        ):
+            flag = getattr(p, attr, None)
+            if flag is not None:
+                p.configureDebugVisualizer(flag, 0, physicsClientId=client)
     
     def _setup_spaces(self):
         """Setup gym spaces."""
@@ -124,17 +177,18 @@ class ChaseEnv(gym.Env):
         if self._client is None:
             if self.render_mode == "human":
                 self._client = p.connect(p.GUI)
-                p.configureDebugVisualizer(p.COV_ENABLE_GUI, 1, physicsClientId=self._client)
+                self._configure_visualizer()
             else:
                 self._client = p.connect(p.DIRECT)
             setup_arena = True
             p.setAdditionalSearchPath(pybullet_data.getDataPath(), physicsClientId=self._client)
         
-        p.setGravity(0, 0, -9.81, physicsClientId=self._client)
-        p.setTimeStep(self.TIMESTEP, physicsClientId=self._client)
+        p.setGravity(0, 0, self._gravity_z, physicsClientId=self._client)
+        p.setTimeStep(self._time_step, physicsClientId=self._client)
+        if self.render_mode == "human":
+            p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, 0, physicsClientId=self._client)
         
         if setup_arena:
-            p.loadURDF("plane.urdf", physicsClientId=self._client)
             self._create_arena()
             
         if self._agent_id is not None:
@@ -158,9 +212,10 @@ class ChaseEnv(gym.Env):
             p.resetDebugVisualizerCamera(
                 cameraDistance=self._cam_dist,
                 cameraYaw=self._cam_yaw,
-                cameraPitch=-20,
+                cameraPitch=self._cam_pitch,
                 cameraTargetPosition=[0, 0, 1],
                 physicsClientId=self._client)
+            p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, 1, physicsClientId=self._client)
         
         return self._get_obs(), {}
     
@@ -661,7 +716,7 @@ class ChaseEnv(gym.Env):
         p.resetDebugVisualizerCamera(
             cameraDistance=self._cam_dist,
             cameraYaw=self._cam_yaw,
-            cameraPitch=-20,
+            cameraPitch=self._cam_pitch,
             cameraTargetPosition=[agent_pos[0], agent_pos[1], 1.0],
             physicsClientId=self._client)
     

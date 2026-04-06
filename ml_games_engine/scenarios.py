@@ -44,10 +44,13 @@ class ScenarioSpec:
     experiment_name: str
     default_training: dict
     default_reward: dict
+    default_world: dict
+    info: dict
+    model_roots: tuple[str, ...]
     make_env: Callable[..., object]
 
 
-def _make_chase_env(*, render_mode: str, reward_config: dict, seed: int | None):
+def _make_chase_env(*, render_mode: str, reward_config: dict, world_config: dict, seed: int | None):
     project_dir = ROOT_DIR / "Chase"
     module = _load_module(
         "ml_games_engine.chase_env_module",
@@ -55,21 +58,31 @@ def _make_chase_env(*, render_mode: str, reward_config: dict, seed: int | None):
         extra_sys_path=project_dir,
     )
     env_seed = 42 if seed is None else seed
-    return module.ChaseEnv(render_mode=render_mode, seed=env_seed, reward_config=reward_config)
+    return module.ChaseEnv(
+        render_mode=render_mode,
+        seed=env_seed,
+        reward_config=reward_config,
+        world_config=world_config,
+    )
 
 
-def _make_parkour_env(*, render_mode: str, reward_config: dict, seed: int | None):
+def _make_parkour_env(*, render_mode: str, reward_config: dict, world_config: dict, seed: int | None):
     project_dir = ROOT_DIR / "Parkour-Obstacles"
     module = _load_module(
         "ml_games_engine.parkour_env_module",
         project_dir / "src" / "env" / "parkour_env.py",
         extra_sys_path=project_dir,
     )
-    return module.ParkourEnv(render_mode=render_mode, level_seed=seed, reward_config=reward_config)
+    return module.ParkourEnv(
+        render_mode=render_mode,
+        level_seed=seed,
+        reward_config=reward_config,
+        world_config=world_config,
+    )
 
 
-def _make_arena2d_env(*, render_mode: str, reward_config: dict, seed: int | None):
-    return Arena2DEnv(render_mode=render_mode, reward_config=reward_config)
+def _make_arena2d_env(*, render_mode: str, reward_config: dict, world_config: dict, seed: int | None):
+    return Arena2DEnv(render_mode=render_mode, reward_config=reward_config, world_config=world_config)
 
 
 SCENARIOS = {
@@ -108,6 +121,17 @@ SCENARIOS = {
             "boundary_penalty": 0.2,
             "chaser_speed": 0.55,
         },
+        default_world={
+            "world_size": 20.0,
+            "dt": 0.18,
+            "max_steps": 600,
+        },
+        info={
+            "action_dim": 2,
+            "observation_dim": 10,
+            "notes": "2D sandbox rapido para testes de shaping, catalogo de artefatos e smoke runs.",
+        },
+        model_roots=("runtime/runs", "runtime/artifacts/arena2d"),
         make_env=_make_arena2d_env,
     ),
     "chase": ScenarioSpec(
@@ -144,6 +168,23 @@ SCENARIOS = {
             "energy_scale": 0.001,
             "caught_penalty": 50.0,
         },
+        default_world={
+            "gravity_z": -9.81,
+            "time_step": 1.0 / 120.0,
+            "camera_distance": 8.0,
+            "camera_yaw": 50.0,
+            "camera_pitch": -20.0,
+            "show_gui_panels": False,
+            "show_shadows": False,
+        },
+        info={
+            "action_dim": 10,
+            "observation_dim": 42,
+            "physics_hz": 120,
+            "max_steps": 3000,
+            "notes": "Chase 3D com camera simplificada, um unico piso e viewport PyBullet mais limpo.",
+        },
+        model_roots=("runtime/runs", "runtime/artifacts/chase", "Chase/models", "Chase/models_smoke", "Chase/models_6m"),
         make_env=_make_chase_env,
     ),
     "parkour": ScenarioSpec(
@@ -181,6 +222,24 @@ SCENARIOS = {
             "goal_reward": 150.0,
             "fall_penalty": -5.0,
         },
+        default_world={
+            "gravity_z": -9.81,
+            "time_step": 1.0 / 480.0,
+            "frame_skip": 8,
+            "camera_distance": 6.0,
+            "camera_yaw": 45.0,
+            "camera_pitch": -20.0,
+            "show_gui_panels": False,
+            "show_shadows": False,
+        },
+        info={
+            "action_dim": 10,
+            "observation_dim": 44,
+            "physics_hz": 60,
+            "max_steps": 2000,
+            "notes": "Parkour 3D com reset limpo do mundo, plataformas procedurais e metadados completos de fisica.",
+        },
+        model_roots=("runtime/runs", "runtime/artifacts/parkour", "Parkour-Obstacles/models"),
         make_env=_make_parkour_env,
     ),
 }

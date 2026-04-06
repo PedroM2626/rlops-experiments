@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import argparse
 import os
+import platform
+import sys
 import time
 from collections import deque
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, Iterable
 
 import mlflow
 import numpy as np
@@ -18,8 +20,183 @@ from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 
 from ml_games_engine.brains import BrainSelection, PilotBrain, build_pilot_brain
-from ml_games_engine.control import RuntimePaths, load_json, utc_now_iso, write_json
+from ml_games_engine.control import (
+    RuntimePaths,
+    append_jsonl,
+    load_json,
+    sanitize_slug,
+    utc_now_iso,
+    write_json,
+)
 from ml_games_engine.scenarios import get_scenario
+
+try:
+    import matplotlib.pyplot as plt
+except Exception:  # pragma: no cover - optional dependency safety
+    plt = None
+
+
+class RunArchive:
+    """Persist complete run history, summaries, and chart exports."""
+
+    def __init__(
+        self,
+        *,
+        paths: RuntimePaths,
+        run_id: str,
+        control: dict,
+        scenario,
+        training_cfg: dict,
+        reward_cfg: dict,
+        world_cfg: dict,
+    ):
+        self.paths = paths
+        self.run_id = run_id
+        self.run_dir = paths.runs_dir / run_id
+        self.models_dir = self.run_dir / "models"
+        self.charts_dir = self.run_dir / "charts"
+        self.previews_dir = self.run_dir / "previews"
+
+        self.manifest_path = self.run_dir / "manifest.json"
+        self.summary_path = self.run_dir / "summary.json"
+        self.state_latest_path = self.run_dir / "state_latest.json"
+        self.metrics_latest_path = self.run_dir / "metrics_latest.json"
+        self.control_latest_path = self.run_dir / "control_latest.json"
+        self.control_history_path = self.run_dir / "control_history.jsonl"
+        self.state_history_path = self.run_dir / "state_history.jsonl"
+        self.events_path = self.run_dir / "events.jsonl"
+        self.episode_history_path = self.run_dir / "episode_history.jsonl"
+        self.train_history_path = self.run_dir / "train_history.jsonl"
+
+        self.run_dir.mkdir(parents=True, exist_ok=True)
+        self.models_dir.mkdir(parents=True, exist_ok=True)
+        self.charts_dir.mkdir(parents=True, exist_ok=True)
+        self.previews_dir.mkdir(parents=True, exist_ok=True)
+
+        self.last_chart_export = 0.0
+        self.last_export_counts = (-1, -1)
+
+        manifest = {
+            "run_id": run_id,
+            "created_at": utc_now_iso(),
+            "scenario": {
+                "scenario_id": scenario.scenario_id,
+                "label": scenario.label,
+                "dimension": scenario.dimension,
+                "viewport": scenario.viewport,
+                "description": scenario.description,
+                "info": scenario.info,
+            },
+            "training": training_cfg,
+            "reward": reward_cfg,
+            "world": world_cfg,
+            "paths": {
+                "run_dir": str(self.run_dir.resolve()),
+                "models_dir": str(self.models_dir.resolve()),
+                "charts_dir": str(self.charts_dir.resolve()),
+            },
+            "system": {
+                "python": sys.version,
+                "platform": platform.platform(),
+                "cwd": os.getcwd(),
+                "torch": torch.__version__,
+                "mlflow": mlflow.__version__,
+                "cuda_available": torch.cuda.is_available(),
+            },
+            "initial_control": control,
+        }
+        write_json(self.manifest_path, manifest)
+        self.snapshot_control(control, reason="run_start")
+
+    def snapshot_control(self, control: dict, *, reason: str) -> None:
+        write_json(self.control_latest_path, control)
+        append_jsonl(
+            self.control_history_path,
+            {
+                "timestamp": utc_now_iso(),
+                "reason": reason,
+                "payload": control,
+            },
+        )
+
+    def update_manifest(self, extra: dict) -> None:
+        manifest = load_json(self.manifest_path, default={})
+        manifest.update(extra)
+        write_json(self.manifest_path, manifest)
+
+    def log_event(self, message: str) -> None:
+        append_jsonl(
+            self.events_path,
+            {
+                "timestamp": utc_now_iso(),
+                "message": message,
+            },
+        )
+
+    def log_episode_metric(self, point: dict) -> None:
+        append_jsonl(self.episode_history_path, point)
+
+    def log_train_metric(self, point: dict) -> None:
+        append_jsonl(self.train_history_path, point)
+
+    def write_state(self, payload: dict) -> None:
+        write_json(self.state_latest_path, payload)
+        append_jsonl(self.state_history_path, payload)
+
+    def write_metrics_latest(self, history: list[dict]) -> None:
+        write_json(self.metrics_latest_path, {"history": history})
+
+    def write_summary(self, payload: dict) -> None:
+        write_json(self.summary_path, payload)
+
+    def write_frame(self, frame: np.ndarray) -> None:
+        np.save(self.previews_dir / "latest_frame.npy", frame)
+        if plt is not None:
+            plt.imsave(self.previews_dir / "latest_frame.png", frame)
+
+    def export_charts(self, episode_rows: list[dict], train_rows: list[dict], *, force: bool = False) -> None:
+        if plt is None:
+            return
+
+        counts = (len(episode_rows), len(train_rows))
+        now = time.time()
+        if not force and counts == self.last_export_counts and (now - self.last_chart_export) < 2.0:
+            return
+        if not force and counts == self.last_export_counts:
+            return
+
+        self.last_export_counts = counts
+        self.last_chart_export = now
+
+        if episode_rows:
+            steps = [row["step"] for row in episode_rows]
+            rewards = [row["reward"] for row in episode_rows]
+            fig, ax = plt.subplots(figsize=(9, 4))
+            ax.plot(steps, rewards, color="#2E8B57", linewidth=2)
+            ax.set_title("Episode Reward")
+            ax.set_xlabel("Step")
+            ax.set_ylabel("Reward")
+            ax.grid(alpha=0.3)
+            fig.tight_layout()
+            fig.savefig(self.charts_dir / "episode_reward.png", dpi=140)
+            plt.close(fig)
+
+        if train_rows:
+            fig, ax = plt.subplots(figsize=(9, 4))
+            steps = [row["step"] for row in train_rows]
+            if any(row.get("loss") is not None for row in train_rows):
+                ax.plot(steps, [row.get("loss") for row in train_rows], label="loss", linewidth=2)
+            if any(row.get("value_loss") is not None for row in train_rows):
+                ax.plot(steps, [row.get("value_loss") for row in train_rows], label="value_loss", linewidth=1.5)
+            if any(row.get("approx_kl") is not None for row in train_rows):
+                ax.plot(steps, [row.get("approx_kl") for row in train_rows], label="approx_kl", linewidth=1.5)
+            ax.set_title("Training Metrics")
+            ax.set_xlabel("Step")
+            ax.grid(alpha=0.3)
+            ax.legend()
+            fig.tight_layout()
+            fig.savefig(self.charts_dir / "training_metrics.png", dpi=140)
+            plt.close(fig)
 
 
 class EngineCallback(BaseCallback):
@@ -77,6 +254,7 @@ class EngineRuntime:
     def __init__(self, paths: RuntimePaths):
         self.paths = paths
         self.paths.artifacts_dir.mkdir(parents=True, exist_ok=True)
+        self.paths.runs_dir.mkdir(parents=True, exist_ok=True)
         self.control = load_json(paths.control, default={})
         if not self.control:
             raise RuntimeError(f"Control file is missing or invalid: {paths.control}")
@@ -86,10 +264,24 @@ class EngineRuntime:
         self.training_cfg.update(self.control.get("training", {}))
         self.reward_cfg = dict(self.scenario.default_reward)
         self.reward_cfg.update(self.control.get("reward", {}).get("values", {}))
+        self.world_cfg = dict(self.scenario.default_world)
+        self.world_cfg.update(self.control.get("world", {}).get("values", {}))
+        runtime_cfg = self.control.get("runtime", {})
         self.reward_version = int(self.control.get("reward", {}).get("version", 0))
+        self.world_version = int(self.control.get("world", {}).get("version", 0))
         self.pilot_version = int(self.control.get("pilot", {}).get("version", 0))
-        self.save_version = int(self.control.get("runtime", {}).get("save_version", 0))
+        self.save_version = int(runtime_cfg.get("save_version", 0))
         self.control_mtime = self.paths.control.stat().st_mtime if self.paths.control.exists() else 0.0
+        self.run_id = sanitize_slug(runtime_cfg.get("run_id", f"{self.scenario.scenario_id}_{utc_now_iso()}"))
+        self.archive = RunArchive(
+            paths=self.paths,
+            run_id=self.run_id,
+            control=self.control,
+            scenario=self.scenario,
+            training_cfg=self.training_cfg,
+            reward_cfg=self.reward_cfg,
+            world_cfg=self.world_cfg,
+        )
 
         self.current_step = 0
         self.episode_count = 0
@@ -103,28 +295,43 @@ class EngineRuntime:
         self.last_approx_kl = None
         self.last_train_snapshot = None
         self.running = True
-        self.paused = bool(self.control.get("runtime", {}).get("paused", False))
-        self.speed = float(self.control.get("runtime", {}).get("speed", 1.0))
+        self.paused = bool(runtime_cfg.get("paused", False))
+        self.speed = float(runtime_cfg.get("speed", 1.0))
         self.timestep_limit = int(self.training_cfg.get("timesteps", 0))
         self.last_checkpoint_step = 0
-        self.events = deque(maxlen=16)
-        self.metrics = deque(maxlen=600)
+        self.events = deque(maxlen=32)
+        self.metrics_recent = deque(maxlen=600)
+        self.episode_history: list[dict] = []
+        self.train_history: list[dict] = []
         self.state_status = "initializing"
         self.started_at = utc_now_iso()
         self.last_state_write = 0.0
+        self.last_preview_time = 0.0
+        self.preview_interval = 1.0 / (12.0 if self.scenario.dimension == "3D" else 15.0)
+        self.final_model_saved = False
+        self.last_checkpoint_path = None
+        self._started_ts = time.time()
 
-        self.model_dir = self.paths.artifacts_dir / self.scenario.scenario_id
-        self.model_dir.mkdir(parents=True, exist_ok=True)
+        self.model_dir = self.archive.models_dir
 
         self.vec_env = None
         self.model = None
         self.render_env = None
         self.render_obs = None
         self.pilot_brain: PilotBrain | None = None
+        self.device_name = "unknown"
+        self.mlflow_run = None
 
         self._setup_mlflow()
         self._setup_envs_and_model()
+        self._broadcast_runtime_config()
         self._apply_pilot_selection()
+        self.archive.update_manifest(
+            {
+                "device": self.device_name,
+                "mlflow_run_id": self.mlflow_run.info.run_id if self.mlflow_run else None,
+            }
+        )
         self.append_event(f"Runner started for {self.scenario.label}.")
 
     def _setup_mlflow(self) -> None:
@@ -132,25 +339,41 @@ class EngineRuntime:
         experiment_name = self.control.get("experiment_name", self.scenario.experiment_name)
         mlflow.set_tracking_uri(tracking_uri)
         mlflow.set_experiment(experiment_name)
-        self.mlflow_run = mlflow.start_run(run_name=f"{self.scenario.scenario_id}_{int(time.time())}")
+        self.mlflow_run = mlflow.start_run(run_name=self.run_id)
         params = {
             "scenario_id": self.scenario.scenario_id,
             "dimension": self.scenario.dimension,
             "viewport": self.scenario.viewport,
+            "run_id": self.run_id,
         }
-        for key, value in self.training_cfg.items():
-            if value is None:
-                continue
-            params[key] = value
+        for prefix, values in (
+            ("train", self.training_cfg),
+            ("reward", self.reward_cfg),
+            ("world", self.world_cfg),
+        ):
+            for key, value in values.items():
+                if value is None:
+                    continue
+                params[f"{prefix}.{key}"] = value
         mlflow.log_params(params)
 
     def _make_env(self, render_mode: str, *, seed: int | None):
         env = self.scenario.make_env(
             render_mode=render_mode,
             reward_config=self.reward_cfg,
+            world_config=self.world_cfg,
             seed=seed,
         )
         return Monitor(env)
+
+    def _infer_vecnorm_path(self, model_path: str | None, explicit_path: str | None) -> str | None:
+        if explicit_path and os.path.exists(explicit_path):
+            return explicit_path
+        if model_path:
+            sibling = Path(model_path).with_name("vec_normalize.pkl")
+            if sibling.exists():
+                return str(sibling.resolve())
+        return None
 
     def _setup_envs_and_model(self) -> None:
         n_envs = int(self.training_cfg["n_envs"])
@@ -162,10 +385,11 @@ class EngineRuntime:
 
         base_vec_env = DummyVecEnv(env_fns)
         load_model_path = self.training_cfg.get("model_path")
-        load_vecnorm_path = self.training_cfg.get("vecnorm_path")
+        load_vecnorm_path = self._infer_vecnorm_path(load_model_path, self.training_cfg.get("vecnorm_path"))
 
-        if load_vecnorm_path and os.path.exists(load_vecnorm_path):
+        if load_vecnorm_path:
             self.vec_env = VecNormalize.load(load_vecnorm_path, base_vec_env)
+            self.append_event(f"Loaded VecNormalize from {load_vecnorm_path}.")
         else:
             self.vec_env = VecNormalize(base_vec_env, norm_obs=True, norm_reward=True, clip_obs=10.0)
 
@@ -194,14 +418,36 @@ class EngineRuntime:
                 verbose=0,
                 device="auto",
             )
+        self.device_name = str(next(self.model.policy.parameters()).device)
+        mlflow.log_param("device", self.device_name)
 
         render_mode = "rgb_array" if self.scenario.dimension == "2D" else "human"
         self.render_env = self.scenario.make_env(
             render_mode=render_mode,
             reward_config=self.reward_cfg,
+            world_config=self.world_cfg,
             seed=seed,
         )
         self.render_obs, _ = self.render_env.reset()
+
+    def _iter_base_envs(self) -> Iterable[object]:
+        if self.vec_env is not None:
+            base_vec = getattr(self.vec_env, "venv", self.vec_env)
+            for env in getattr(base_vec, "envs", []):
+                base = env
+                while hasattr(base, "env"):
+                    base = base.env
+                yield base
+        if self.render_env is not None:
+            base = self.render_env
+            while hasattr(base, "env"):
+                base = base.env
+            yield base
+
+    def _broadcast_runtime_config(self) -> None:
+        for env in self._iter_base_envs():
+            if hasattr(env, "set_runtime_config"):
+                env.set_runtime_config(reward_config=self.reward_cfg, world_config=self.world_cfg)
 
     def sync_control(self) -> None:
         if not self.paths.control.exists():
@@ -213,6 +459,7 @@ class EngineRuntime:
 
         self.control_mtime = current_mtime
         self.control = load_json(self.paths.control, default=self.control)
+        self.archive.snapshot_control(self.control, reason="control_update")
 
         runtime_cfg = self.control.get("runtime", {})
         self.paused = bool(runtime_cfg.get("paused", False))
@@ -223,13 +470,24 @@ class EngineRuntime:
         self.timestep_limit = requested_limit
 
         reward_meta = self.control.get("reward", {})
+        world_meta = self.control.get("world", {})
         reward_version = int(reward_meta.get("version", self.reward_version))
+        world_version = int(world_meta.get("version", self.world_version))
         if reward_version != self.reward_version:
             self.reward_cfg.clear()
             self.reward_cfg.update(self.scenario.default_reward)
             self.reward_cfg.update(reward_meta.get("values", {}))
             self.reward_version = reward_version
+            self._broadcast_runtime_config()
             self.append_event("Reward shaping updated live.")
+
+        if world_version != self.world_version:
+            self.world_cfg.clear()
+            self.world_cfg.update(self.scenario.default_world)
+            self.world_cfg.update(world_meta.get("values", {}))
+            self.world_version = world_version
+            self._broadcast_runtime_config()
+            self.append_event("World and physics settings updated live.")
 
         pilot_meta = self.control.get("pilot", {})
         pilot_version = int(pilot_meta.get("version", self.pilot_version))
@@ -246,11 +504,7 @@ class EngineRuntime:
     def _pilot_selection(self) -> BrainSelection:
         pilot_cfg = self.control.get("pilot", {})
         checkpoint_path = pilot_cfg.get("checkpoint_path") or None
-        vecnorm_path = pilot_cfg.get("vecnorm_path") or None
-        if checkpoint_path and not vecnorm_path:
-            sibling = Path(checkpoint_path).with_name("vec_normalize.pkl")
-            if sibling.exists():
-                vecnorm_path = str(sibling)
+        vecnorm_path = self._infer_vecnorm_path(checkpoint_path, pilot_cfg.get("vecnorm_path") or None)
         return BrainSelection(
             name=pilot_cfg.get("name", "live_policy"),
             checkpoint_path=checkpoint_path,
@@ -300,7 +554,9 @@ class EngineRuntime:
                 "length": length,
                 "timestamp": utc_now_iso(),
             }
-            self.metrics.append(point)
+            self.metrics_recent.append(point)
+            self.episode_history.append(point)
+            self.archive.log_episode_metric(point)
             mlflow.log_metrics(
                 {
                     "episode_reward": reward,
@@ -353,7 +609,9 @@ class EngineRuntime:
             "approx_kl": self.last_approx_kl,
             "timestamp": utc_now_iso(),
         }
-        self.metrics.append(point)
+        self.metrics_recent.append(point)
+        self.train_history.append(point)
+        self.archive.log_train_metric(point)
 
         train_metrics = {key.replace("train/", ""): value for key, value in logger_values.items() if key.startswith("train/")}
         safe_metrics = {k: float(v) for k, v in train_metrics.items() if isinstance(v, (int, float, np.floating))}
@@ -373,6 +631,7 @@ class EngineRuntime:
         self.model.save(str(model_path))
         self.vec_env.save(str(vecnorm_path))
         self.last_checkpoint_step = self.current_step
+        self.last_checkpoint_path = str(model_path.resolve()) + ".zip"
         self.append_event(f"Checkpoint saved to {model_path}.zip")
 
     def save_final_model(self) -> None:
@@ -380,11 +639,19 @@ class EngineRuntime:
         vecnorm_path = self.model_dir / "vec_normalize.pkl"
         self.model.save(str(final_path))
         self.vec_env.save(str(vecnorm_path))
+        self.final_model_saved = True
+        self.last_checkpoint_path = str(final_path.resolve()) + ".zip"
         self.append_event(f"Final model saved to {final_path}.zip")
 
     def render_preview(self) -> None:
         if self.pilot_brain is None or self.render_env is None:
             return
+        if self.control.get("pilot", {}).get("name") == "disabled":
+            return
+        if time.time() - self.last_preview_time < self.preview_interval:
+            return
+
+        self.last_preview_time = time.time()
 
         try:
             action = self.pilot_brain.predict(self.render_obs, deterministic=True)
@@ -395,11 +662,64 @@ class EngineRuntime:
             if self.scenario.dimension == "2D":
                 frame = self.render_env.render()
                 np.save(self.paths.frame, frame)
+                self.archive.write_frame(frame)
+        except RuntimeError as exc:
+            if "disabled" not in str(exc).lower():
+                self.append_event(f"Viewport preview warning: {exc}")
         except Exception as exc:
             self.append_event(f"Viewport preview warning: {exc}")
 
     def append_event(self, message: str) -> None:
-        self.events.appendleft(f"[{utc_now_iso()}] {message}")
+        stamped = f"[{utc_now_iso()}] {message}"
+        self.events.appendleft(stamped)
+        self.archive.log_event(message)
+
+    def _state_payload(self) -> dict:
+        wall_seconds = max(0.0, time.time() - self._started_ts)
+        return {
+            "run_id": self.run_id,
+            "scenario_id": self.scenario.scenario_id,
+            "scenario_label": self.scenario.label,
+            "scenario_info": self.scenario.info,
+            "dimension": self.scenario.dimension,
+            "viewport": self.scenario.viewport,
+            "status": self.state_status,
+            "started_at": self.started_at,
+            "updated_at": utc_now_iso(),
+            "pid": os.getpid(),
+            "mlflow_run_id": self.mlflow_run.info.run_id if self.mlflow_run else None,
+            "step": self.current_step,
+            "timestep_limit": self.timestep_limit,
+            "episodes": self.episode_count,
+            "last_reward": self.last_reward,
+            "best_reward": None if self.best_reward == float("-inf") else self.best_reward,
+            "last_episode_length": self.last_episode_length,
+            "speed": self.speed,
+            "paused": self.paused,
+            "reward_version_applied": self.reward_version,
+            "world_version_applied": self.world_version,
+            "pilot_version_applied": self.pilot_version,
+            "pilot_name": self.control.get("pilot", {}).get("name", "live_policy"),
+            "training": self.training_cfg,
+            "reward": self.reward_cfg,
+            "world": self.world_cfg,
+            "loss": self.last_loss,
+            "value_loss": self.last_value_loss,
+            "policy_loss": self.last_policy_loss,
+            "entropy_loss": self.last_entropy_loss,
+            "approx_kl": self.last_approx_kl,
+            "device": self.device_name,
+            "wall_time_seconds": wall_seconds,
+            "events": list(self.events),
+            "artifacts": {
+                "run_dir": str(self.archive.run_dir.resolve()),
+                "model_dir": str(self.model_dir.resolve()),
+                "charts_dir": str(self.archive.charts_dir.resolve()),
+                "frame_path": str(self.paths.frame.resolve()),
+                "metrics_path": str(self.paths.metrics.resolve()),
+                "latest_checkpoint": self.last_checkpoint_path,
+            },
+        }
 
     def write_state(self, force: bool = False) -> None:
         now = time.time()
@@ -412,48 +732,53 @@ class EngineRuntime:
             if not self.running:
                 self.state_status = "stopping"
 
-        state_payload = {
-            "scenario_id": self.scenario.scenario_id,
-            "scenario_label": self.scenario.label,
-            "dimension": self.scenario.dimension,
-            "viewport": self.scenario.viewport,
+        state_payload = self._state_payload()
+        write_json(self.paths.state, state_payload)
+        write_json(self.paths.metrics, {"history": list(self.metrics_recent)})
+        self.archive.write_state(state_payload)
+        self.archive.write_metrics_latest(list(self.metrics_recent))
+        self.archive.export_charts(self.episode_history, self.train_history)
+
+    def _write_summary(self) -> None:
+        summary = {
+            "run_id": self.run_id,
             "status": self.state_status,
             "started_at": self.started_at,
-            "updated_at": utc_now_iso(),
-            "pid": os.getpid(),
-            "step": self.current_step,
-            "timestep_limit": self.timestep_limit,
+            "finished_at": utc_now_iso(),
+            "scenario_id": self.scenario.scenario_id,
+            "steps": self.current_step,
             "episodes": self.episode_count,
-            "last_reward": self.last_reward,
             "best_reward": None if self.best_reward == float("-inf") else self.best_reward,
+            "last_reward": self.last_reward,
             "last_episode_length": self.last_episode_length,
-            "speed": self.speed,
-            "paused": self.paused,
-            "reward_version_applied": self.reward_version,
-            "pilot_version_applied": self.pilot_version,
-            "pilot_name": self.control.get("pilot", {}).get("name", "live_policy"),
-            "training": self.training_cfg,
-            "reward": self.reward_cfg,
             "loss": self.last_loss,
             "value_loss": self.last_value_loss,
             "policy_loss": self.last_policy_loss,
-            "entropy_loss": self.last_entropy_loss,
             "approx_kl": self.last_approx_kl,
-            "events": list(self.events),
-            "artifacts": {
-                "model_dir": str(self.model_dir),
-                "frame_path": str(self.paths.frame),
-                "metrics_path": str(self.paths.metrics),
+            "device": self.device_name,
+            "training": self.training_cfg,
+            "reward": self.reward_cfg,
+            "world": self.world_cfg,
+            "paths": {
+                "run_dir": str(self.archive.run_dir.resolve()),
+                "models_dir": str(self.model_dir.resolve()),
+                "episode_history": str(self.archive.episode_history_path.resolve()),
+                "train_history": str(self.archive.train_history_path.resolve()),
+                "state_history": str(self.archive.state_history_path.resolve()),
+                "charts_dir": str(self.archive.charts_dir.resolve()),
             },
         }
-        write_json(self.paths.state, state_payload)
-        write_json(self.paths.metrics, {"history": list(self.metrics)})
+        self.archive.write_summary(summary)
+        self.archive.export_charts(self.episode_history, self.train_history, force=True)
 
     def close(self) -> None:
         try:
             self.running = False
+            if self.model is not None and not self.final_model_saved:
+                self.save_final_model()
             self.state_status = "stopped"
             self.write_state(force=True)
+            self._write_summary()
         except Exception:
             pass
 

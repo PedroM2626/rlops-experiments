@@ -128,6 +128,18 @@ step = 1.0
 value = 28.0
 size_flags_horizontal = 3
 
+[node name="ArenasRow" type="HBoxContainer" parent="ControlsPanel/Content/ControlsVBox"]
+
+[node name="Label" type="Label" parent="ControlsPanel/Content/ControlsVBox/ArenasRow"]
+text = "Arenas"
+
+[node name="ArenasSpin" type="SpinBox" parent="ControlsPanel/Content/ControlsVBox/ArenasRow"]
+min_value = 1.0
+max_value = 32.0
+step = 1.0
+value = 4.0
+size_flags_horizontal = 3
+
 [node name="EpisodeRow" type="HBoxContainer" parent="ControlsPanel/Content/ControlsVBox"]
 
 [node name="Label" type="Label" parent="ControlsPanel/Content/ControlsVBox/EpisodeRow"]

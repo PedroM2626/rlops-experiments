@@ -23,9 +23,9 @@ class EnvConfig:
     jump_velocity: float = 6.2
     max_fall_speed: float = 32.0
 
-    pursuer_accel: float = 22.0
-    pursuer_drag: float = 0.22
-    pursuer_max_speed: float = 10.0
+    pursuer_accel: float = 15.0
+    pursuer_drag: float = 0.26
+    pursuer_max_speed: float = 7.2
     pursuer_hover_height: float = 1.0
     pursuer_vertical_stabilizer: float = 12.0
 

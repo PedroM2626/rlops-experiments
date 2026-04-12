@@ -3,13 +3,13 @@
 importer="scene"
 importer_version=1
 type="PackedScene"
-uid="uid://bi8ripyh2pbok"
-path="res://.godot/imported/RobotKyle.fbx-4c8732094227b17cd723d5b91f5e6d01.scn"
+uid="uid://c27btyy0optj4"
+path="res://.godot/imported/A_DLC_OldEndo_IdleA.fbx-74ea8c38bbd8d0bc1717d7fbc093d001.scn"
 
 [deps]
 
-source_file="res://Models/RobotKyle.fbx"
-dest_files=["res://.godot/imported/RobotKyle.fbx-4c8732094227b17cd723d5b91f5e6d01.scn"]
+source_file="res://Models/Mimic/source/A_DLC_OldEndo_IdleA.fbx"
+dest_files=["res://.godot/imported/A_DLC_OldEndo_IdleA.fbx-74ea8c38bbd8d0bc1717d7fbc093d001.scn"]
 
 [params]
 

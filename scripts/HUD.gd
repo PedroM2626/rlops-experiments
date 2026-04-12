@@ -14,6 +14,7 @@ signal onnx_usage_toggled(enabled: bool)
 @onready var reuse_check: CheckButton = $ControlsPanel/Content/ControlsVBox/ReuseCheckpointCheck
 @onready var generations_spin: SpinBox = $ControlsPanel/Content/ControlsVBox/GenerationsRow/GenerationsSpin
 @onready var population_spin: SpinBox = $ControlsPanel/Content/ControlsVBox/PopulationRow/PopulationSpin
+@onready var arenas_spin: SpinBox = $ControlsPanel/Content/ControlsVBox/ArenasRow/ArenasSpin
 @onready var episode_spin: SpinBox = $ControlsPanel/Content/ControlsVBox/EpisodeRow/EpisodeSpin
 @onready var seed_spin: SpinBox = $ControlsPanel/Content/ControlsVBox/SeedRow/SeedSpin
 @onready var start_training_button: Button = $ControlsPanel/Content/ControlsVBox/StartTrainingButton
@@ -74,6 +75,7 @@ func update_training_stats(training_data: Dictionary, training_active: bool, mod
     text += "Melhor fitness: %s\n" % _fmt(training_data.get("best_reward", 0.0), 3)
     text += "Reward atual: %s\n" % _fmt(training_data.get("current_reward", 0.0), 3)
     text += "Populacao: %d\n" % int(training_data.get("population", 0))
+    text += "Arenas paralelas: %d\n" % int(training_data.get("arenas", 1))
     text += "Tempo episodio treino: %s s\n" % _fmt(training_data.get("episode_seconds", 0.0), 2)
     text += "Checkpoint reusado: %s\n" % ("sim" if bool(training_data.get("reused_checkpoint", false)) else "nao")
     text += "ONNX salvo: %s\n" % str(training_data.get("onnx_path", "pendente"))
@@ -95,6 +97,7 @@ func _on_start_training_pressed() -> void:
     var config := {
         "generations": int(generations_spin.value),
         "population": int(population_spin.value),
+        "arenas": int(arenas_spin.value),
         "episode_seconds": float(episode_spin.value),
         "seed": int(seed_spin.value),
         "reuse_checkpoint": reuse_check.button_pressed

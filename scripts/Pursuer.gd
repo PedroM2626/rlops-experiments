@@ -1,11 +1,11 @@
 extends RigidBody3D
 class_name PursuerCapsule
 
-@export var chase_force: float = 45.0
-@export var max_speed: float = 10.0
+@export var chase_force: float = 32.0
+@export var max_speed: float = 7.2
 @export var vertical_stabilizer: float = 20.0
 @export var hover_height: float = 1.0
-@export var drag: float = 0.14
+@export var drag: float = 0.18
 
 var target: Node3D = null
 var recent_distance: float = INF

@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import argparse
+import concurrent.futures
 import json
+import multiprocessing as mp
 import time
 import traceback
 from pathlib import Path
@@ -11,6 +13,8 @@ import torch
 
 from game_env import OBS_SIZE, SurvivalTrainingEnv
 from policy import PolicyNetwork, flatten_parameters, infer_action, set_parameters_from_flat
+
+_WORKER_MODEL: PolicyNetwork | None = None
 
 
 def str_to_bool(value: str) -> bool:
@@ -29,6 +33,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--hidden-size", type=int, default=96)
     parser.add_argument("--seed", type=int, default=7)
     parser.add_argument("--reuse", type=str, default="true")
+    parser.add_argument("--arenas", type=int, default=4)
     return parser.parse_args()
 
 
@@ -77,6 +82,32 @@ def evaluate_candidate(
     return float(np.mean(rewards)), float(np.mean(distances))
 
 
+def _init_worker(hidden_size: int) -> None:
+    global _WORKER_MODEL
+    torch.set_num_threads(1)
+    _WORKER_MODEL = PolicyNetwork(obs_size=OBS_SIZE, hidden_size=hidden_size)
+    _WORKER_MODEL.eval()
+
+
+def _evaluate_candidate_worker(candidate_vector: np.ndarray, seeds: list[int], episode_seconds: float) -> tuple[float, float]:
+    global _WORKER_MODEL
+    if _WORKER_MODEL is None:
+        raise RuntimeError("Worker model was not initialized")
+
+    candidate_tensor = torch.from_numpy(candidate_vector).float()
+    set_parameters_from_flat(_WORKER_MODEL, candidate_tensor)
+
+    rewards = []
+    distances = []
+    for seed in seeds:
+        env = SurvivalTrainingEnv(episode_seconds=episode_seconds, seed=int(seed))
+        reward, info = run_episode(env, _WORKER_MODEL)
+        rewards.append(reward)
+        distances.append(float(info.get("distance", 0.0)))
+
+    return float(np.mean(rewards)), float(np.mean(distances))
+
+
 def main(args: argparse.Namespace) -> None:
     torch.set_num_threads(1)
 
@@ -114,6 +145,7 @@ def main(args: argparse.Namespace) -> None:
 
     rng = np.random.default_rng(args.seed)
     started_at = time.time()
+    arenas = max(1, int(args.arenas))
 
     running_status = {
         "state": "running",
@@ -122,6 +154,7 @@ def main(args: argparse.Namespace) -> None:
         "current_reward": best_reward,
         "population": args.population,
         "episode_seconds": args.episode_seconds,
+        "arenas": arenas,
         "reused_checkpoint": reused_checkpoint,
         "onnx_path": str(onnx_path),
         "checkpoint_path": str(checkpoint_path),
@@ -129,74 +162,103 @@ def main(args: argparse.Namespace) -> None:
     }
     write_json_atomic(status_path, running_status)
 
-    for generation_offset in range(args.generations):
-        generation = start_generation + generation_offset
+    mp_context = mp.get_context("spawn")
+    with concurrent.futures.ProcessPoolExecutor(
+        max_workers=arenas,
+        mp_context=mp_context,
+        initializer=_init_worker,
+        initargs=(args.hidden_size,),
+    ) as executor:
+        for generation_offset in range(args.generations):
+            generation = start_generation + generation_offset
 
-        evaluation_seeds = rng.integers(
-            low=0,
-            high=1_000_000,
-            size=max(args.eval_episodes, 1),
-            dtype=np.int64,
-        )
+            evaluation_seeds = rng.integers(
+                low=0,
+                high=1_000_000,
+                size=max(args.eval_episodes, 1),
+                dtype=np.int64,
+            )
+            evaluation_seeds_list = [int(seed) for seed in evaluation_seeds.tolist()]
 
-        noise = rng.standard_normal((args.population, params.numel())).astype(np.float32)
-        rewards = np.zeros(args.population, dtype=np.float32)
+            noise = rng.standard_normal((args.population, params.numel())).astype(np.float32)
+            rewards = np.zeros(args.population, dtype=np.float32)
 
-        for i in range(args.population):
-            candidate = params + torch.from_numpy(noise[i]) * args.sigma
-            reward, _ = evaluate_candidate(model, candidate, evaluation_seeds, args.episode_seconds)
-            rewards[i] = reward
+            params_np = params.detach().cpu().numpy().astype(np.float32)
+            candidate_vectors = params_np[None, :] + noise * np.float32(args.sigma)
 
-            if reward > best_reward:
-                best_reward = float(reward)
-                best_params = candidate.detach().clone()
+            futures = [
+                executor.submit(
+                    _evaluate_candidate_worker,
+                    candidate_vectors[i],
+                    evaluation_seeds_list,
+                    float(args.episode_seconds),
+                )
+                for i in range(args.population)
+            ]
 
-        std = float(rewards.std())
-        if std < 1e-8:
-            normalized = rewards - rewards.mean()
-        else:
-            normalized = (rewards - rewards.mean()) / (std + 1e-8)
+            for i, future in enumerate(futures):
+                reward, _ = future.result()
+                rewards[i] = reward
 
-        gradient = (noise.T @ normalized) / float(args.population)
-        params = params + torch.from_numpy(gradient).float() * (args.learning_rate / max(args.sigma, 1e-8))
+                if reward > best_reward:
+                    best_reward = float(reward)
+                    best_params = torch.from_numpy(candidate_vectors[i].copy())
 
-        current_reward, current_distance = evaluate_candidate(model, params, evaluation_seeds, args.episode_seconds)
-        if current_reward > best_reward:
-            best_reward = float(current_reward)
-            best_params = params.detach().clone()
+            std = float(rewards.std())
+            if std < 1e-8:
+                normalized = rewards - rewards.mean()
+            else:
+                normalized = (rewards - rewards.mean()) / (std + 1e-8)
 
-        generation_status = {
-            "state": "running",
-            "generation": generation,
-            "generation_in_run": generation_offset + 1,
-            "best_reward": best_reward,
-            "current_reward": float(current_reward),
-            "distance": float(current_distance),
-            "population": args.population,
-            "episode_seconds": args.episode_seconds,
-            "reused_checkpoint": reused_checkpoint,
-            "onnx_path": str(onnx_path),
-            "checkpoint_path": str(checkpoint_path),
-            "updated_at": time.strftime("%Y-%m-%d %H:%M:%S"),
-        }
-        write_json_atomic(status_path, generation_status)
-        append_history(history_path, generation_status)
+            gradient = (noise.T @ normalized) / float(args.population)
+            params = params + torch.from_numpy(gradient).float() * (args.learning_rate / max(args.sigma, 1e-8))
 
-        set_parameters_from_flat(model, best_params)
-        torch.save(
-            {
-                "state_dict": model.state_dict(),
-                "best_reward": best_reward,
+            params_eval = params.detach().cpu().numpy().astype(np.float32)
+            current_reward, current_distance = executor.submit(
+                _evaluate_candidate_worker,
+                params_eval,
+                evaluation_seeds_list,
+                float(args.episode_seconds),
+            ).result()
+
+            if current_reward > best_reward:
+                best_reward = float(current_reward)
+                best_params = params.detach().clone()
+
+            generation_status = {
+                "state": "running",
                 "generation": generation,
-                "obs_size": OBS_SIZE,
-                "action_size": 8,
-                "hidden_size": args.hidden_size,
-                "updated_at": time.time(),
-            },
-            checkpoint_path,
-        )
+                "generation_in_run": generation_offset + 1,
+                "best_reward": best_reward,
+                "current_reward": float(current_reward),
+                "distance": float(current_distance),
+                "population": args.population,
+                "episode_seconds": args.episode_seconds,
+                "arenas": arenas,
+                "reused_checkpoint": reused_checkpoint,
+                "onnx_path": str(onnx_path),
+                "checkpoint_path": str(checkpoint_path),
+                "updated_at": time.strftime("%Y-%m-%d %H:%M:%S"),
+            }
+            write_json_atomic(status_path, generation_status)
+            append_history(history_path, generation_status)
 
-        set_parameters_from_flat(model, params)
+            set_parameters_from_flat(model, best_params)
+            torch.save(
+                {
+                    "state_dict": model.state_dict(),
+                    "best_reward": best_reward,
+                    "generation": generation,
+                    "obs_size": OBS_SIZE,
+                    "action_size": 8,
+                    "hidden_size": args.hidden_size,
+                    "arenas": arenas,
+                    "updated_at": time.time(),
+                },
+                checkpoint_path,
+            )
+
+            set_parameters_from_flat(model, params)
 
     set_parameters_from_flat(model, best_params)
     model.eval()
@@ -219,6 +281,7 @@ def main(args: argparse.Namespace) -> None:
         "current_reward": best_reward,
         "population": args.population,
         "episode_seconds": args.episode_seconds,
+        "arenas": arenas,
         "reused_checkpoint": reused_checkpoint,
         "onnx_path": str(onnx_path),
         "checkpoint_path": str(checkpoint_path),

@@ -1,0 +1,89 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/ParkourCompetition.gd" id="1"]
+
+[sub_resource type="Environment" id="Env"]
+background_mode = 2
+background_color = Color(0.7, 0.85, 0.95, 1)
+ambient_light_source = 3
+ambient_light_color = Color(0.78, 0.78, 0.78, 1)
+ambient_light_energy = 1.0
+
+[sub_resource type="StyleBoxFlat" id="HudPanel"]
+bg_color = Color(0.08, 0.1, 0.12, 0.88)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.45, 0.48, 0.56, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[node name="ParkourCompetition" type="Node3D"]
+script = ExtResource("1")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Env")
+
+[node name="Sun" type="DirectionalLight3D" parent="."]
+rotation_degrees = Vector3(-46, -28, 0)
+light_energy = 2.2
+shadow_enabled = true
+
+[node name="Agents" type="Node3D" parent="."]
+
+[node name="CameraRig" type="Node3D" parent="."]
+position = Vector3(0, 12, -16)
+
+[node name="Camera3D" type="Camera3D" parent="CameraRig"]
+current = true
+fov = 68.0
+far = 500.0
+
+[node name="CanvasLayer" type="CanvasLayer" parent="."]
+
+[node name="HUD" type="Control" parent="CanvasLayer"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Panel" type="PanelContainer" parent="CanvasLayer/HUD"]
+offset_left = 16.0
+offset_top = 16.0
+offset_right = 520.0
+offset_bottom = 430.0
+theme_override_styles/panel = SubResource("HudPanel")
+
+[node name="VBox" type="VBoxContainer" parent="CanvasLayer/HUD/Panel"]
+theme_override_constants/separation = 8
+
+[node name="Title" type="Label" parent="CanvasLayer/HUD/Panel/VBox"]
+text = "Experimento: Competicao de IAs no Parkour"
+
+[node name="Generation" type="Label" parent="CanvasLayer/HUD/Panel/VBox"]
+text = "Geracao: 0"
+
+[node name="Timer" type="Label" parent="CanvasLayer/HUD/Panel/VBox"]
+text = "Tempo da rodada: 0"
+
+[node name="Buttons" type="HBoxContainer" parent="CanvasLayer/HUD/Panel/VBox"]
+
+[node name="TrainButton" type="Button" parent="CanvasLayer/HUD/Panel/VBox/Buttons"]
+text = "Treinar proxima geracao"
+
+[node name="ResetButton" type="Button" parent="CanvasLayer/HUD/Panel/VBox/Buttons"]
+text = "Resetar politicas"
+
+[node name="SaveInfo" type="Label" parent="CanvasLayer/HUD/Panel/VBox"]
+text = "Saves: user://parkour_competition"
+autowrap_mode = 3
+
+[node name="Ranking" type="RichTextLabel" parent="CanvasLayer/HUD/Panel/VBox"]
+custom_minimum_size = Vector2(0, 260)
+fit_content = true
+scroll_active = false
+text = "Ranking"

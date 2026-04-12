@@ -159,28 +159,28 @@ material_override = SubResource("BodyMat")
 
 [node name="HeadJoint" type="PinJoint3D" parent="Agent"]
 position = Vector3(0, 1.78, 0)
-node_a = NodePath("../Agent/Torso")
-node_b = NodePath("../Agent/Head")
+node_a = NodePath("../Torso")
+node_b = NodePath("../Head")
 
 [node name="LeftHipJoint" type="PinJoint3D" parent="Agent"]
 position = Vector3(-0.23, 1.12, 0)
-node_a = NodePath("../Agent/Torso")
-node_b = NodePath("../Agent/LeftThigh")
+node_a = NodePath("../Torso")
+node_b = NodePath("../LeftThigh")
 
 [node name="RightHipJoint" type="PinJoint3D" parent="Agent"]
 position = Vector3(0.23, 1.12, 0)
-node_a = NodePath("../Agent/Torso")
-node_b = NodePath("../Agent/RightThigh")
+node_a = NodePath("../Torso")
+node_b = NodePath("../RightThigh")
 
 [node name="LeftKneeJoint" type="PinJoint3D" parent="Agent"]
 position = Vector3(-0.23, 0.62, 0)
-node_a = NodePath("../Agent/LeftThigh")
-node_b = NodePath("../Agent/LeftShin")
+node_a = NodePath("../LeftThigh")
+node_b = NodePath("../LeftShin")
 
 [node name="RightKneeJoint" type="PinJoint3D" parent="Agent"]
 position = Vector3(0.23, 0.62, 0)
-node_a = NodePath("../Agent/RightThigh")
-node_b = NodePath("../Agent/RightShin")
+node_a = NodePath("../RightThigh")
+node_b = NodePath("../RightShin")
 
 [node name="CameraRig" type="Node3D" parent="."]
 position = Vector3(0, 4.8, 7.5)

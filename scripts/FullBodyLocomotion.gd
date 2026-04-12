@@ -16,6 +16,8 @@ extends Node3D
 @onready var info_label: Label = $CanvasLayer/InfoLabel
 
 var _time: float = 0.0
+var _camera_offset: Vector3 = Vector3(0.0, 4.8, 7.5)
+var _respawn_cooldown: float = 0.0
 
 
 func _ready() -> void:
@@ -24,6 +26,13 @@ func _ready() -> void:
 
 
 func _physics_process(delta: float) -> void:
+	if _respawn_cooldown > 0.0:
+		_respawn_cooldown = maxf(_respawn_cooldown - delta, 0.0)
+
+	if _needs_respawn():
+		reset_pose()
+		_respawn_cooldown = 0.35
+
 	_time += delta
 	_apply_balance()
 	_apply_gait_forces()
@@ -33,12 +42,16 @@ func _physics_process(delta: float) -> void:
 
 
 func _apply_balance() -> void:
+	if _respawn_cooldown > 0.0:
+		return
 	var up := torso.global_basis.y.normalized()
 	var axis := up.cross(Vector3.UP)
 	torso.apply_torque(axis * balance_torque)
 
 
 func _apply_gait_forces() -> void:
+	if _respawn_cooldown > 0.0:
+		return
 	var cycle := _time * TAU * step_frequency
 	var left_phase := sin(cycle)
 	var right_phase := sin(cycle + PI)
@@ -57,17 +70,64 @@ func _apply_gait_forces() -> void:
 
 
 func _apply_damping() -> void:
+	if _respawn_cooldown > 0.0:
+		return
 	for body in [torso, head, left_thigh, right_thigh, left_shin, right_shin]:
 		body.apply_central_force(-body.linear_velocity * damping_force)
 		body.apply_torque(-body.angular_velocity * damping_force * 0.6)
 
 
 func _update_camera(delta: float) -> void:
-	var desired := torso.global_position + Vector3(0.0, 4.8, 7.5)
+	var torso_target := torso.global_position
+	if not _is_finite_vector3(torso_target):
+		torso_target = Vector3(0.0, 1.35, 0.0)
+	if torso_target.y < 0.45:
+		torso_target.y = 0.45
+
+	var desired := torso_target + _camera_offset
+	desired.y = maxf(desired.y, 3.2)
+	desired.z = maxf(desired.z, 4.5)
+
 	cam_pivot.global_position = cam_pivot.global_position.lerp(desired, clampf(delta * 2.8, 0.0, 1.0))
-	cam_pivot.look_at(torso.global_position + Vector3(0.0, 0.7, 0.0), Vector3.UP)
+	cam_pivot.look_at(torso_target + Vector3(0.0, 0.8, 0.0), Vector3.UP)
+
+	if cam_pivot.global_position.y < 2.6:
+		cam_pivot.global_position.y = 2.6
 
 
 func _update_info() -> void:
-	var speed := Vector2(torso.linear_velocity.x, torso.linear_velocity.z).length()
+	var speed: float = Vector2(torso.linear_velocity.x, torso.linear_velocity.z).length()
+	if not is_finite(speed):
+		speed = 0.0
 	info_label.text = "Full-body physics locomotion\nVelocidade: %s m/s\nDica: ajuste step_frequency e drive_force no Inspector" % String.num(speed, 2)
+
+
+func reset_pose() -> void:
+	_time = 0.0
+	torso.global_position = Vector3(0.0, 1.35, 0.0)
+	head.global_position = Vector3(0.0, 2.0, 0.0)
+	left_thigh.global_position = Vector3(-0.23, 0.92, 0.0)
+	right_thigh.global_position = Vector3(0.23, 0.92, 0.0)
+	left_shin.global_position = Vector3(-0.23, 0.37, 0.0)
+	right_shin.global_position = Vector3(0.23, 0.37, 0.0)
+	for body in [torso, head, left_thigh, right_thigh, left_shin, right_shin]:
+		body.linear_velocity = Vector3.ZERO
+		body.angular_velocity = Vector3.ZERO
+
+
+func _needs_respawn() -> bool:
+	for body in [torso, head, left_thigh, right_thigh, left_shin, right_shin]:
+		if not _is_finite_vector3(body.global_position) or not _is_finite_vector3(body.linear_velocity):
+			return true
+
+	if torso.global_position.y < -3.0:
+		return true
+
+	if head.global_position.y < -3.0:
+		return true
+
+	return false
+
+
+func _is_finite_vector3(value: Vector3) -> bool:
+	return is_finite(value.x) and is_finite(value.y) and is_finite(value.z)

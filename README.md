@@ -19,6 +19,7 @@ Projeto de jogo 3D em Godot onde um agente humanoide precisa sobreviver o maximo
 ## Estrutura principal
 
 - Cena principal: res://scenes/Main.tscn
+- Cena de locomocao fisica full-body: res://scenes/FullBodyLocomotion.tscn
 - Agente: res://scenes/HumanoidAgent.tscn
 - Perseguidor: res://scenes/Pursuer.tscn
 - HUD: res://scenes/HUD.tscn
@@ -42,6 +43,14 @@ pip install -r ml/requirements.txt
 2. Rode a cena principal (ja configurada como main scene).
 3. Se existir ONNX em ml/models/agent_policy.onnx e o toggle ONNX estiver ativo, o jogo tenta iniciar o servidor de inferencia automaticamente.
 4. Se nao existir ONNX, o agente usa politica heuristica ate voce treinar.
+
+## Cena separada: full-body physics locomotion
+
+Para testar a versao avancada sem quebrar o fluxo principal, abra e rode:
+
+- res://scenes/FullBodyLocomotion.tscn
+
+Essa cena usa um agente articulado por RigidBody3D + juntas (PinJoint3D) para locomocao fisica de corpo inteiro.
 
 ## Como treinar
 

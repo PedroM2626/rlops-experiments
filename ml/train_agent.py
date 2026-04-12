@@ -271,6 +271,7 @@ def main(args: argparse.Namespace) -> None:
         input_names=["obs"],
         output_names=["action"],
         dynamic_axes={"obs": {0: "batch"}, "action": {0: "batch"}},
+        dynamo=False,
         opset_version=17,
     )
 

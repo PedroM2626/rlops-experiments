@@ -4,6 +4,8 @@ extends Node3D
 @export var capture_distance: float = 1.4
 @export var min_spawn_radius: float = 9.0
 @export var max_spawn_radius: float = 14.0
+@export var arena_radius: float = 30.0
+@export var ragdoll_seconds_on_failure: float = 1.1
 @export var auto_start_onnx_server: bool = true
 @export var use_onnx_policy: bool = true
 
@@ -21,6 +23,8 @@ var last_episode_duration: float = 0.0
 var last_result: String = "Aguardando"
 var current_action: PackedFloat32Array = PackedFloat32Array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
 var current_distance: float = 0.0
+var _episode_end_pending: bool = false
+var _episode_end_timer: float = 0.0
 
 
 func _ready() -> void:
@@ -47,6 +51,14 @@ func _ready() -> void:
 
 
 func _physics_process(delta: float) -> void:
+	if _episode_end_pending:
+		_episode_end_timer -= delta
+		if _episode_end_timer <= 0.0:
+			_end_episode_now()
+		_update_camera(delta)
+		_update_hud()
+		return
+
 	episode_elapsed += delta
 
 	var observation := agent.get_observation(
@@ -58,6 +70,7 @@ func _physics_process(delta: float) -> void:
 
 	current_action = _choose_action(observation)
 	agent.apply_action(current_action)
+	_keep_entities_in_arena()
 
 	current_distance = agent.global_position.distance_to(pursuer.global_position)
 
@@ -81,26 +94,38 @@ func _heuristic_action(observation: PackedFloat32Array) -> PackedFloat32Array:
 	var distance: float = maxf(_obs_value(observation, 9), 0.001)
 	var on_floor: bool = _obs_value(observation, 10) > 0.5
 
-	var away := Vector2(-dx, -dz)
-	if away.length() > 0.001:
-		away = away.normalized()
+	var time := Time.get_ticks_msec() * 0.001
+	var desired_dir := Vector2(cos(time * 0.35), sin(time * 0.35)).normalized()
+
+	var threat_dir := Vector2(dx, dz)
+	if threat_dir.length() > 0.001:
+		threat_dir = threat_dir.normalized()
+
+	# Prioriza locomocao em um trajeto circular; apenas faz evasao quando perseguido de perto.
+	var movement_dir := desired_dir
+	if distance < 4.0:
+		movement_dir = (desired_dir - threat_dir * 0.6).normalized()
 
 	var jump := 1.0 if distance < 3.8 and on_floor else -1.0
-	var time := Time.get_ticks_msec() * 0.001
+	var gait := sin(time * 6.2)
 
 	return PackedFloat32Array([
-		away.x,
-		away.y,
+		movement_dir.x,
+		movement_dir.y,
 		jump,
-		sin(time * 0.8),
-		sin(time * 2.2),
-		cos(time * 2.4),
-		sin(time * 2.0),
-		cos(time * 2.0)
+		sin(time * 0.75),
+		gait,
+		-gait,
+		-gait,
+		gait
 	])
 
 
 func _should_end_episode() -> bool:
+	if _planar_length(agent.global_position) > arena_radius + 1.5:
+		last_result = "Saiu do limite da arena"
+		return true
+
 	if current_distance <= capture_distance:
 		last_result = "Capturado pela capsula"
 		return true
@@ -117,9 +142,17 @@ func _should_end_episode() -> bool:
 
 
 func _end_episode() -> void:
+	_episode_end_pending = true
+	_episode_end_timer = ragdoll_seconds_on_failure
+	agent.set_ragdoll_enabled(true)
+
+
+func _end_episode_now() -> void:
 	last_episode_duration = episode_elapsed
 	best_survival = max(best_survival, last_episode_duration)
 	total_episodes += 1
+	_episode_end_pending = false
+	_episode_end_timer = 0.0
 	_reset_episode()
 
 
@@ -127,6 +160,7 @@ func _reset_episode() -> void:
 	episode_elapsed = 0.0
 	last_result = "Episodio em andamento"
 	current_action = PackedFloat32Array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+	agent.set_ragdoll_enabled(false)
 
 	var agent_spawn := Vector3(0.0, 1.2, 0.0)
 	var angle := randf_range(0.0, TAU)
@@ -230,3 +264,30 @@ func _obs_value(observation: PackedFloat32Array, index: int) -> float:
 	if index < observation.size():
 		return observation[index]
 	return 0.0
+
+
+func _keep_entities_in_arena() -> void:
+	var agent_planar := Vector2(agent.global_position.x, agent.global_position.z)
+	var pursuer_planar := Vector2(pursuer.global_position.x, pursuer.global_position.z)
+
+	if agent_planar.length() > arena_radius:
+		agent_planar = agent_planar.normalized() * arena_radius
+		var p := agent.global_position
+		p.x = agent_planar.x
+		p.z = agent_planar.y
+		agent.global_position = p
+		agent.velocity.x *= -0.25
+		agent.velocity.z *= -0.25
+
+	if pursuer_planar.length() > arena_radius:
+		pursuer_planar = pursuer_planar.normalized() * arena_radius
+		var pp := pursuer.global_position
+		pp.x = pursuer_planar.x
+		pp.z = pursuer_planar.y
+		pursuer.global_position = pp
+		pursuer.linear_velocity.x *= -0.25
+		pursuer.linear_velocity.z *= -0.25
+
+
+func _planar_length(pos: Vector3) -> float:
+	return Vector2(pos.x, pos.z).length()

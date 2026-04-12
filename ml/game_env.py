@@ -43,6 +43,7 @@ class SurvivalTrainingEnv:
 
         self.pursuer_pos = np.zeros(3, dtype=np.float32)
         self.pursuer_vel = np.zeros(3, dtype=np.float32)
+        self.walk_target_dir = np.array([1.0, 0.0], dtype=np.float32)
 
         self.reset()
 
@@ -62,6 +63,7 @@ class SurvivalTrainingEnv:
             dtype=np.float32,
         )
         self.pursuer_vel.fill(0.0)
+        self.walk_target_dir = np.array([1.0, 0.0], dtype=np.float32)
 
         return self._observation()
 
@@ -127,14 +129,27 @@ class SurvivalTrainingEnv:
 
         self.time += cfg.dt
 
+        target_angle = self.time * 0.35
+        self.walk_target_dir = np.array([math.cos(target_angle), math.sin(target_angle)], dtype=np.float32)
+
         distance = float(np.linalg.norm(self.pursuer_pos - self.agent_pos))
         captured = distance <= cfg.capture_distance
         timeout = self.time >= cfg.episode_seconds
         done = captured or timeout
 
-        reward = cfg.dt
-        reward += min(distance, 20.0) * 0.012
-        reward -= float(np.mean(np.square(action[3:]))) * 0.01
+        planar_velocity = self.agent_vel[[0, 2]]
+        planar_speed = float(np.linalg.norm(planar_velocity))
+        walk_progress = 0.0
+        if planar_speed > 1e-6:
+            walk_progress = float(np.dot(planar_velocity / planar_speed, self.walk_target_dir))
+
+        reward = cfg.dt * 0.35
+        reward += planar_speed * 0.06
+        reward += walk_progress * 0.14
+        reward += (1.0 if self.agent_on_floor else -0.1) * 0.05
+        reward += min(distance, 12.0) * 0.003
+        reward -= float(np.mean(np.square(action[3:]))) * 0.006
+        reward -= abs(float(action[6] + action[7])) * 0.01
 
         if captured:
             reward -= 5.0

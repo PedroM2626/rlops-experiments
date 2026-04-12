@@ -1,4 +1,4 @@
-[gd_scene load_steps=15 format=3]
+[gd_scene load_steps=16 format=3]
 
 [ext_resource type="Script" path="res://scripts/HumanoidAgent.gd" id="1"]
 
@@ -12,6 +12,9 @@ radius = 0.19
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_leg"]
 radius = 0.16
 height = 0.62
+
+[sub_resource type="SphereShape3D" id="SphereShape3D_arm"]
+radius = 0.14
 
 [sub_resource type="CapsuleMesh" id="CapsuleMesh_torso"]
 radius = 0.32
@@ -51,6 +54,14 @@ shape = SubResource("CapsuleShape3D_body")
 [node name="HeadCollision" type="CollisionShape3D" parent="."]
 position = Vector3(0, 1.9, 0)
 shape = SubResource("SphereShape3D_head")
+
+[node name="LeftArmCollision" type="CollisionShape3D" parent="."]
+position = Vector3(-0.35, 1.45, 0)
+shape = SubResource("SphereShape3D_arm")
+
+[node name="RightArmCollision" type="CollisionShape3D" parent="."]
+position = Vector3(0.35, 1.45, 0)
+shape = SubResource("SphereShape3D_arm")
 
 [node name="LeftLegCollision" type="CollisionShape3D" parent="."]
 position = Vector3(-0.18, 0.45, 0)

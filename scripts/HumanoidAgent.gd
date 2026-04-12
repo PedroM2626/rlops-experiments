@@ -10,6 +10,8 @@ const OBS_SIZE := 15
 @export var jump_velocity: float = 6.2
 @export var max_fall_speed: float = 32.0
 @export var body_turn_speed: float = 8.0
+@export var use_leg_driven_locomotion: bool = true
+@export var min_stride_factor: float = 0.12
 @export var model_scene_path: String = "res://Models/Mimic/mimic.tscn"
 @export var model_scale: Vector3 = Vector3.ONE
 @export var model_base_offset: Vector3 = Vector3.ZERO
@@ -25,6 +27,7 @@ const MODEL_CANDIDATE_PATHS := [
 ]
 
 const BONE_GROUPS := {
+	"torso": ["spine", "chest", "hips", "pelvis", "mixamorig:Hips"],
 	"head": ["head", "Head", "mixamorig:Head", "neck"],
 	"left_arm": ["upperarm_l", "UpperArm_L", "LeftArm", "mixamorig:LeftArm", "leftarm", "arm_l", "shoulder_l"],
 	"right_arm": ["upperarm_r", "UpperArm_R", "RightArm", "mixamorig:RightArm", "rightarm", "arm_r", "shoulder_r"],
@@ -56,6 +59,8 @@ const MIMIC_TEXTURE_PATHS := {
 @onready var right_leg_mesh: MeshInstance3D = $VisualRoot/RightLegPivot/RightLeg
 @onready var torso_collision: CollisionShape3D = $CollisionShape3D
 @onready var head_collision: CollisionShape3D = $HeadCollision
+@onready var left_arm_collision: CollisionShape3D = $LeftArmCollision
+@onready var right_arm_collision: CollisionShape3D = $RightArmCollision
 @onready var left_leg_collision: CollisionShape3D = $LeftLegCollision
 @onready var right_leg_collision: CollisionShape3D = $RightLegCollision
 
@@ -65,6 +70,7 @@ var _model_root: Node3D = null
 var _skeleton: Skeleton3D = null
 var _ragdoll_simulator: PhysicalBoneSimulator3D = null
 var _bone_indices: Dictionary = {
+	"torso": -1,
 	"head": -1,
 	"left_arm": -1,
 	"right_arm": -1,
@@ -158,7 +164,16 @@ func get_last_action() -> PackedFloat32Array:
 
 func _apply_action_to_motion(delta: float) -> void:
 	var move_input := Vector2(_pending_action[0], _pending_action[1]).clamp(Vector2(-1.0, -1.0), Vector2(1.0, 1.0))
-	var desired_velocity := Vector3(move_input.x, 0.0, move_input.y) * move_speed
+	var desired_velocity := Vector3(move_input.x, 0.0, move_input.y)
+	if desired_velocity.length() > 0.001:
+		desired_velocity = desired_velocity.normalized()
+
+	var stride_factor: float = 1.0
+	if use_leg_driven_locomotion:
+		var stride_signal: float = absf(_pending_action[6] - _pending_action[7])
+		stride_factor = clampf(stride_signal, min_stride_factor, 1.0)
+
+	desired_velocity *= move_speed * stride_factor
 
 	velocity.x = move_toward(velocity.x, desired_velocity.x, move_accel * delta)
 	velocity.z = move_toward(velocity.z, desired_velocity.z, move_accel * delta)
@@ -399,6 +414,8 @@ func _update_segmented_colliders(delta: float) -> void:
 	if right_leg_collision != null:
 		right_leg_collision.position = right_leg_collision.position.lerp(right_leg_target, clampf(delta * 10.0, 0.0, 1.0))
 
+	_sync_colliders_to_rig(delta)
+
 
 func _find_bone_index_fuzzy(aliases: Array) -> int:
 	if _skeleton == null:
@@ -439,6 +456,41 @@ func _find_bone_index_fuzzy(aliases: Array) -> int:
 
 func _normalize_bone_name(name: String) -> String:
 	return name.to_lower().replace("mixamorig:", "").replace("_", "").replace("-", "").strip_edges()
+
+
+func _sync_colliders_to_rig(delta: float) -> void:
+	var torso_target := _get_group_world_position("torso", global_position + Vector3(0.0, 1.0, 0.0))
+	var head_target := _get_group_world_position("head", global_position + Vector3(0.0, 1.85, 0.0))
+	var left_arm_target := _get_group_world_position("left_arm", global_position + Vector3(-0.35, 1.45, 0.0))
+	var right_arm_target := _get_group_world_position("right_arm", global_position + Vector3(0.35, 1.45, 0.0))
+	var left_leg_target := _get_group_world_position("left_leg", global_position + Vector3(-0.18, 0.45, 0.0))
+	var right_leg_target := _get_group_world_position("right_leg", global_position + Vector3(0.18, 0.45, 0.0))
+
+	if torso_collision != null:
+		torso_collision.global_position = torso_collision.global_position.lerp(torso_target, clampf(delta * 16.0, 0.0, 1.0))
+	if head_collision != null:
+		head_collision.global_position = head_collision.global_position.lerp(head_target, clampf(delta * 16.0, 0.0, 1.0))
+	if left_arm_collision != null:
+		left_arm_collision.global_position = left_arm_collision.global_position.lerp(left_arm_target, clampf(delta * 16.0, 0.0, 1.0))
+	if right_arm_collision != null:
+		right_arm_collision.global_position = right_arm_collision.global_position.lerp(right_arm_target, clampf(delta * 16.0, 0.0, 1.0))
+	if left_leg_collision != null:
+		left_leg_collision.global_position = left_leg_collision.global_position.lerp(left_leg_target, clampf(delta * 16.0, 0.0, 1.0))
+	if right_leg_collision != null:
+		right_leg_collision.global_position = right_leg_collision.global_position.lerp(right_leg_target, clampf(delta * 16.0, 0.0, 1.0))
+
+
+func _get_group_world_position(group_name: String, fallback: Vector3) -> Vector3:
+	if _skeleton == null:
+		return fallback
+
+	var idx: int = int(_bone_indices.get(group_name, -1))
+	if idx < 0:
+		return fallback
+
+	var pose: Transform3D = _skeleton.get_bone_global_pose_no_override(idx)
+	var world_pose: Transform3D = _skeleton.global_transform * pose
+	return world_pose.origin
 
 
 func _disable_model_animations(root: Node) -> void:

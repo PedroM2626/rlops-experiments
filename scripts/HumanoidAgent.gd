@@ -78,6 +78,14 @@ var _bone_indices: Dictionary = {
 	"right_leg": -1
 }
 var _rest_bone_rotations: Dictionary = {}
+var _part_nodes: Dictionary = {
+	"head": null,
+	"left_arm": null,
+	"right_arm": null,
+	"left_leg": null,
+	"right_leg": null
+}
+var _rest_node_rotations: Dictionary = {}
 var _ragdoll_active: bool = false
 
 
@@ -211,6 +219,12 @@ func _animate_body_parts(delta: float) -> void:
 	_apply_bone_pose("left_leg", left_leg_target, delta * 10.0)
 	_apply_bone_pose("right_leg", right_leg_target, delta * 10.0)
 
+	_apply_node_part_pose("head", head_target, delta * 9.0)
+	_apply_node_part_pose("left_arm", left_arm_target, delta * 10.0)
+	_apply_node_part_pose("right_arm", right_arm_target, delta * 10.0)
+	_apply_node_part_pose("left_leg", left_leg_target, delta * 10.0)
+	_apply_node_part_pose("right_leg", right_leg_target, delta * 10.0)
+
 
 func _spawn_imported_model() -> void:
 	if not use_imported_model:
@@ -240,6 +254,7 @@ func _spawn_imported_model() -> void:
 		_set_fallback_rig_visible(not hide_fallback_rig_when_model_loaded)
 		_cache_skeleton_and_ragdoll_nodes()
 		_map_body_bones()
+		_map_part_nodes_fallback()
 		return
 
 	if resource is Mesh:
@@ -305,7 +320,7 @@ func _map_body_bones() -> void:
 
 	for key in BONE_GROUPS.keys():
 		var aliases: Array = BONE_GROUPS[key]
-		var bone_index: int = _find_bone_index_fuzzy(aliases)
+		var bone_index: int = _find_bone_index_fuzzy(key, aliases)
 		_bone_indices[key] = bone_index
 		if bone_index >= 0:
 			_rest_bone_rotations[key] = _skeleton.get_bone_pose_rotation(bone_index)
@@ -326,6 +341,26 @@ func _apply_bone_pose(group_name: String, x_rotation: float, weight: float) -> v
 	var target: Quaternion = (rest_rotation as Quaternion) * Quaternion.from_euler(Vector3(x_rotation, 0.0, 0.0))
 	var t: float = clampf(weight, 0.0, 1.0)
 	_skeleton.set_bone_pose_rotation(bone_idx, current.slerp(target, t))
+
+
+func _apply_node_part_pose(group_name: String, x_rotation: float, weight: float) -> void:
+	if _ragdoll_active:
+		return
+
+	if int(_bone_indices.get(group_name, -1)) >= 0:
+		return
+
+	var node_variant: Variant = _part_nodes.get(group_name, null)
+	if node_variant == null:
+		return
+
+	var node := node_variant as Node3D
+	if node == null:
+		return
+
+	var rest_rotation: Vector3 = _rest_node_rotations.get(group_name, Vector3.ZERO) as Vector3
+	var target_rotation: Vector3 = rest_rotation + Vector3(x_rotation, 0.0, 0.0)
+	node.rotation = node.rotation.lerp(target_rotation, clampf(weight, 0.0, 1.0))
 
 
 func _find_first_node_of_type(root: Node, class_name_hint: String) -> Node:
@@ -397,6 +432,61 @@ func _collect_mesh_instances(root: Node) -> Array:
 	return out
 
 
+func _collect_node3d(root: Node) -> Array:
+	var out: Array = []
+	if root == null:
+		return out
+
+	if root is Node3D:
+		out.append(root)
+
+	for child in root.get_children():
+		var child_node := child as Node
+		if child_node == null:
+			continue
+		out.append_array(_collect_node3d(child_node))
+
+	return out
+
+
+func _map_part_nodes_fallback() -> void:
+	if _model_root == null:
+		return
+
+	_rest_node_rotations.clear()
+	for key in ["head", "left_arm", "right_arm", "left_leg", "right_leg"]:
+		var node := _find_best_node_for_group(key)
+		_part_nodes[key] = node
+		if node != null:
+			_rest_node_rotations[key] = (node as Node3D).rotation
+
+
+func _find_best_node_for_group(group_name: String) -> Node3D:
+	var candidates := _collect_node3d(_model_root)
+	var best_node: Node3D = null
+	var best_score: int = -99999
+
+	for entry in candidates:
+		var node := entry as Node3D
+		if node == null:
+			continue
+		if node == _model_root:
+			continue
+
+		var normalized_name := _normalize_bone_name(node.name)
+		var score: int = _score_bone_for_group(group_name, normalized_name)
+		if normalized_name.contains("mesh"):
+			score += 1
+
+		if score > best_score:
+			best_score = score
+			best_node = node
+
+	if best_score < 4:
+		return null
+	return best_node
+
+
 func _update_segmented_colliders(delta: float) -> void:
 	# Multi-part hitbox approximation keeps feet/head out of the floor while preserving CharacterBody stability.
 	if torso_collision != null:
@@ -417,7 +507,7 @@ func _update_segmented_colliders(delta: float) -> void:
 	_sync_colliders_to_rig(delta)
 
 
-func _find_bone_index_fuzzy(aliases: Array) -> int:
+func _find_bone_index_fuzzy(group_name: String, aliases: Array) -> int:
 	if _skeleton == null:
 		return -1
 
@@ -431,10 +521,10 @@ func _find_bone_index_fuzzy(aliases: Array) -> int:
 		normalized_aliases.append(_normalize_bone_name(str(alias)))
 
 	var best_idx: int = -1
-	var best_score: int = -1
+	var best_score: int = -100000
 	for i in range(_skeleton.get_bone_count()):
 		var bone_name := _normalize_bone_name(_skeleton.get_bone_name(i))
-		var score: int = 0
+		var score: int = _score_bone_for_group(group_name, bone_name)
 		for alias in normalized_aliases:
 			if alias.is_empty():
 				continue
@@ -456,6 +546,56 @@ func _find_bone_index_fuzzy(aliases: Array) -> int:
 
 func _normalize_bone_name(name: String) -> String:
 	return name.to_lower().replace("mixamorig:", "").replace("_", "").replace("-", "").strip_edges()
+
+
+func _score_bone_for_group(group_name: String, bone_name: String) -> int:
+	var score := 0
+	var has_left := bone_name.contains("left") or bone_name.contains(" l") or bone_name.contains("_l") or bone_name.ends_with("l")
+	var has_right := bone_name.contains("right") or bone_name.contains(" r") or bone_name.contains("_r") or bone_name.ends_with("r")
+
+	if group_name == "head":
+		if bone_name.contains("head"):
+			score += 10
+		if bone_name.contains("neck"):
+			score += 6
+	elif group_name == "torso":
+		if bone_name.contains("spine") or bone_name.contains("chest"):
+			score += 9
+		if bone_name.contains("hip") or bone_name.contains("pelvis") or bone_name.contains("root"):
+			score += 7
+	elif group_name == "left_arm":
+		if bone_name.contains("arm") or bone_name.contains("shoulder") or bone_name.contains("clav"):
+			score += 8
+		if has_left:
+			score += 5
+		if has_right:
+			score -= 6
+	elif group_name == "right_arm":
+		if bone_name.contains("arm") or bone_name.contains("shoulder") or bone_name.contains("clav"):
+			score += 8
+		if has_right:
+			score += 5
+		if has_left:
+			score -= 6
+	elif group_name == "left_leg":
+		if bone_name.contains("leg") or bone_name.contains("thigh") or bone_name.contains("calf") or bone_name.contains("shin"):
+			score += 8
+		if has_left:
+			score += 5
+		if has_right:
+			score -= 6
+	elif group_name == "right_leg":
+		if bone_name.contains("leg") or bone_name.contains("thigh") or bone_name.contains("calf") or bone_name.contains("shin"):
+			score += 8
+		if has_right:
+			score += 5
+		if has_left:
+			score -= 6
+
+	if bone_name.contains("bip"):
+		score += 2
+
+	return score
 
 
 func _sync_colliders_to_rig(delta: float) -> void:

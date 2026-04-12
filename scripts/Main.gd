@@ -70,7 +70,6 @@ func _physics_process(delta: float) -> void:
 
 	current_action = _choose_action(observation)
 	agent.apply_action(current_action)
-	_keep_entities_in_arena()
 
 	current_distance = agent.global_position.distance_to(pursuer.global_position)
 
@@ -264,29 +263,6 @@ func _obs_value(observation: PackedFloat32Array, index: int) -> float:
 	if index < observation.size():
 		return observation[index]
 	return 0.0
-
-
-func _keep_entities_in_arena() -> void:
-	var agent_planar := Vector2(agent.global_position.x, agent.global_position.z)
-	var pursuer_planar := Vector2(pursuer.global_position.x, pursuer.global_position.z)
-
-	if agent_planar.length() > arena_radius:
-		agent_planar = agent_planar.normalized() * arena_radius
-		var p := agent.global_position
-		p.x = agent_planar.x
-		p.z = agent_planar.y
-		agent.global_position = p
-		agent.velocity.x *= -0.25
-		agent.velocity.z *= -0.25
-
-	if pursuer_planar.length() > arena_radius:
-		pursuer_planar = pursuer_planar.normalized() * arena_radius
-		var pp := pursuer.global_position
-		pp.x = pursuer_planar.x
-		pp.z = pursuer_planar.y
-		pursuer.global_position = pp
-		pursuer.linear_velocity.x *= -0.25
-		pursuer.linear_velocity.z *= -0.25
 
 
 func _planar_length(pos: Vector3) -> float:

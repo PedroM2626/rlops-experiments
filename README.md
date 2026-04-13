@@ -24,6 +24,9 @@ A humanoid agent must navigate procedurally generated platforms, gaps, ramps, an
 ### Arena 2D
 A lightweight top-down sandbox for rapid PPO iteration, reward shaping, and dashboard smoke tests.
 
+### Competitive Mario
+Multiple Mario agents are trained independently with different hyperparameter profiles (speedster, careful, balanced, explorer) and then compete on the same procedurally generated side-scrolling level. Rankings are based on flag completion rate, distance traveled, score, and time.
+
 ## Project Structure
 
 ```
@@ -47,6 +50,19 @@ ML-Games/
 │   │   ├── train_interactive.py       # Interactive training with in-window controls
 │   │   └── play.py                    # Watch the trained agent
 │   └── models/                        # Saved checkpoints
+│
+├── Competitive-Mario/
+│   ├── src/
+│   │   ├── env/
+│   │   │   ├── mario_env.py           # Custom Mario Gymnasium environment
+│   │   │   └── level_generator.py     # Procedural level builder
+│   │   ├── agent/callbacks.py         # MLflow + SB3 callback
+│   │   ├── train.py                   # Individual agent training
+│   │   ├── compete.py                 # Competition / ranking engine
+│   │   └── watch_race.py              # Multi-agent Pygame race viewer
+│   ├── configs/agents.yaml            # Agent hyperparameter profiles
+│   ├── models/                        # Saved checkpoints per agent
+│   └── results/                       # Competition rankings and charts
 │
 ├── Dockerfile
 ├── docker-compose.yml

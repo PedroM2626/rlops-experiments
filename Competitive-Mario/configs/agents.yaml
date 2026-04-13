@@ -1,0 +1,59 @@
+# -----------------------------------------------------------------------
+# Competitive Mario -- Agent Profiles
+#
+# Each agent has its own set of hyperparameters that shape its play style.
+# The configuration keys map directly to CLI arguments in train.py.
+# -----------------------------------------------------------------------
+
+agents:
+
+  mario_speedster:
+    # Aggressive, high learning rate, lower discount to focus on
+    # short-term speed. Explores more via higher entropy.
+    lr: 0.0005
+    gamma: 0.95
+    ent_coef: 0.02
+    n_steps: 1024
+    batch_size: 64
+    n_epochs: 8
+    clip_range: 0.2
+    gae_lambda: 0.9
+    timesteps: 500000
+
+  mario_careful:
+    # Conservative, low learning rate, high discount for long-term
+    # planning. Less exploration.
+    lr: 0.0001
+    gamma: 0.999
+    ent_coef: 0.005
+    n_steps: 4096
+    batch_size: 128
+    n_epochs: 15
+    clip_range: 0.15
+    gae_lambda: 0.98
+    timesteps: 750000
+
+  mario_balanced:
+    # Middle ground between speed and caution.
+    lr: 0.0003
+    gamma: 0.99
+    ent_coef: 0.01
+    n_steps: 2048
+    batch_size: 64
+    n_epochs: 10
+    clip_range: 0.2
+    gae_lambda: 0.95
+    timesteps: 500000
+
+  mario_explorer:
+    # High entropy to encourage exploration of the level.
+    # May find alternative paths / secret areas.
+    lr: 0.0003
+    gamma: 0.98
+    ent_coef: 0.05
+    n_steps: 2048
+    batch_size: 64
+    n_epochs: 10
+    clip_range: 0.25
+    gae_lambda: 0.95
+    timesteps: 500000

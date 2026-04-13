@@ -27,3 +27,20 @@ services:
     command: >
       sh -c "pip install --quiet mlflow &&
              mlflow ui --host 0.0.0.0 --port 5000 --backend-store-uri /app/mlruns"
+
+  competitive-mario:
+    build:
+      context: ./Competitive-Mario
+      dockerfile: Dockerfile
+    volumes:
+      - ./Competitive-Mario/models:/app/models
+      - ./Competitive-Mario/mlruns:/app/mlruns
+      - ./Competitive-Mario/results:/app/results
+    env_file:
+      - .env
+    command: >
+      sh -c "python src/train.py --agent-name mario_speedster --config configs/agents.yaml &&
+             python src/train.py --agent-name mario_careful --config configs/agents.yaml &&
+             python src/train.py --agent-name mario_balanced --config configs/agents.yaml &&
+             python src/train.py --agent-name mario_explorer --config configs/agents.yaml &&
+             python src/compete.py"

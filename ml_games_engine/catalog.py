@@ -41,6 +41,25 @@ class VecNormAsset:
         return asdict(self)
 
 
+@dataclass(frozen=True)
+class EngineExportAsset:
+    """Discovered engine-ready ONNX bundle exported from a saved run."""
+
+    label: str
+    path: str
+    manifest_path: str
+    validation_path: str | None
+    scenario_id: str
+    run_id: str
+    updated_at: float
+    observation_dim: int | None
+    action_dim: int | None
+    within_tolerance: bool | None
+
+    def as_dict(self) -> Dict[str, object]:
+        return asdict(self)
+
+
 def _candidate_roots(spec: ScenarioSpec) -> List[Path]:
     roots = []
     for relative in spec.model_roots:
@@ -145,4 +164,47 @@ def discover_saved_runs() -> List[dict]:
                 "latest_state": latest_state,
             }
         )
+    return rows
+
+
+def discover_engine_exports(scenario_id: str | None = None) -> List[EngineExportAsset]:
+    """Return saved ONNX export bundles, newest first."""
+    runs_dir = ROOT_DIR / "runtime" / "runs"
+    if not runs_dir.exists():
+        return []
+
+    rows: List[EngineExportAsset] = []
+    for run_dir in runs_dir.iterdir():
+        if not run_dir.is_dir():
+            continue
+
+        export_dir = run_dir / "engine_export"
+        manifest_path = export_dir / "manifest.json"
+        if not manifest_path.exists():
+            continue
+
+        manifest = load_json(manifest_path, default={})
+        export_scenario_id = manifest.get("scenario", {}).get("scenario_id")
+        if scenario_id and export_scenario_id != scenario_id:
+            continue
+
+        validation_path = export_dir / "validation.json"
+        validation = load_json(validation_path, default={}) if validation_path.exists() else {}
+        contract = manifest.get("contract", {})
+        rows.append(
+            EngineExportAsset(
+                label=f"{run_dir.name} | {manifest.get('scenario', {}).get('label', export_scenario_id or 'unknown')}",
+                path=str(export_dir.resolve()),
+                manifest_path=str(manifest_path.resolve()),
+                validation_path=str(validation_path.resolve()) if validation_path.exists() else None,
+                scenario_id=export_scenario_id or "unknown",
+                run_id=run_dir.name,
+                updated_at=manifest_path.stat().st_mtime,
+                observation_dim=contract.get("observation_dim"),
+                action_dim=contract.get("action_dim"),
+                within_tolerance=validation.get("within_tolerance"),
+            )
+        )
+
+    rows.sort(key=lambda item: item.updated_at, reverse=True)
     return rows

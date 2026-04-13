@@ -10,6 +10,7 @@ live control dashboard, hot-reloadable reward shaping, and real-time viewport pr
 | RL algorithm | PPO (Stable Baselines3) |
 | Experiment tracking | MLflow |
 | Live dashboard | Streamlit |
+| Deployment/export | ONNX + ONNX Runtime |
 | Containerisation | Docker / Docker Compose |
 
 ## Games
@@ -59,6 +60,7 @@ New engine pieces:
 - `ml_games_engine/scenarios.py`: registry for the built-in 2D and 3D scenarios
 - `ml_games_engine/brains.py`: live viewport brain switcher
 - `ml_games_engine/catalog.py`: automatic discovery of checkpoints, vecnormalizers, and saved runs
+- `ml_games_engine/exporters.py`: ONNX exporter with standalone/runtime bundles for external engines
 - `ml_games_engine/envs/arena2d_env.py`: built-in 2D sandbox
 - `streamlit_app.py`: dashboard for hyperparameters, reward shaping, metrics, and control
 
@@ -103,11 +105,45 @@ From the dashboard you can:
 - disable the viewport brain entirely when you only want raw training throughput
 - inspect episode reward and training loss curves in real time
 - open a saved-runs tab that reads archived configs, state history, metrics, charts, checkpoints, and preview snapshots
+- get an automatic `engine_export/` bundle at the end of each run, ready for standalone use or integration into Unity, Godot, and Unreal
 
 Notes:
 - 3D scenarios open a separate PyBullet window for the viewport, with the default debug panes and shadow noise disabled.
 - The 2D scenario streams frames directly into the dashboard.
 - Runtime state is written to `runtime/`, and each run is archived under `runtime/runs/<run_id>/`.
+- Each archived run can include `runtime/runs/<run_id>/engine_export/` with `policy.onnx`, `manifest.json`, `validation.json`, sample observation data, and starter wrappers for Unity, Godot, Unreal, and Python.
+
+### 3.1. Exporting For Unity, Godot, Unreal, Or Standalone
+
+The engine now exports a deployment-friendly ONNX bundle so the trained AI can be reused:
+- inside this Python project with Stable Baselines3
+- as a pure ONNX Runtime policy without the training stack
+- inside Unity, Godot, or Unreal by recreating the same observation vector contract described in `manifest.json`
+
+Automatic flow:
+- every final run writes an ONNX export bundle into `runtime/runs/<run_id>/engine_export/`
+- the Streamlit dashboard exposes those bundles in the `Saved Runs` and `Assets` tabs
+- the exported ONNX already bakes in `VecNormalize` observation normalization when available
+
+Manual CLI export:
+
+```bash
+python -m ml_games_engine.exporters ^
+  --scenario arena2d ^
+  --model runtime/runs/<run_id>/models/ppo_arena2d_final.zip ^
+  --vecnorm runtime/runs/<run_id>/models/vec_normalize.pkl ^
+  --out runtime/runs/<run_id>/engine_export
+```
+
+Bundle contents:
+- `policy.onnx`: deterministic clipped inference graph
+- `manifest.json`: observation/action contract, bounds, and scenario metadata
+- `normalization.json`: exported normalization stats for auditing
+- `validation.json`: PyTorch vs ONNXRuntime parity check
+- `python/run_policy.py`: standalone ONNX Runtime example
+- `unity/MLGamesPolicyRunner.cs`: Unity integration starter
+- `godot/ml_games_policy_runner.gd`: Godot integration starter
+- `unreal/MLGamesPolicyRunner.h/.cpp`: Unreal integration starter
 
 ### 4. Legacy Interactive Training
 

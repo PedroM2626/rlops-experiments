@@ -12,7 +12,12 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 
-from ml_games_engine.catalog import discover_model_assets, discover_saved_runs, discover_vecnorm_assets
+from ml_games_engine.catalog import (
+    discover_engine_exports,
+    discover_model_assets,
+    discover_saved_runs,
+    discover_vecnorm_assets,
+)
 from ml_games_engine.control import RuntimePaths, load_json, read_jsonl, write_json
 from ml_games_engine.scenarios import SCENARIOS, get_scenario
 
@@ -44,6 +49,11 @@ def cached_vecnorm_assets(scenario_id: str) -> list[dict]:
 @st.cache_data(ttl=2)
 def cached_saved_runs() -> list[dict]:
     return discover_saved_runs()
+
+
+@st.cache_data(ttl=2)
+def cached_engine_exports(scenario_id: str) -> list[dict]:
+    return [asset.as_dict() for asset in discover_engine_exports(scenario_id)]
 
 
 def current_control() -> dict:
@@ -170,6 +180,21 @@ def format_run_label(run: dict) -> str:
     return f"{run['run_id']} | {scenario} | {status} | step {steps:,}"
 
 
+def bundle_file_rows(bundle_dir: Path) -> list[dict]:
+    if not bundle_dir.exists():
+        return []
+    rows = []
+    for path in sorted(bundle_dir.rglob("*"), key=lambda item: str(item)):
+        if path.is_file():
+            rows.append(
+                {
+                    "file": str(path.relative_to(bundle_dir)),
+                    "size_kb": round(path.stat().st_size / 1024.0, 2),
+                }
+            )
+    return rows
+
+
 st.set_page_config(page_title="ML Games Engine", layout="wide")
 ensure_defaults()
 
@@ -184,9 +209,10 @@ scenario = get_scenario(selected_scenario)
 
 model_assets = cached_model_assets(selected_scenario)
 vecnorm_assets = cached_vecnorm_assets(selected_scenario)
+engine_exports = cached_engine_exports(selected_scenario)
 
 st.title("ML Games Engine")
-st.caption("Core desacoplado + dashboard hot-reload com catalogo de checkpoints, fisica configuravel e historico completo de runs.")
+st.caption("Core desacoplado + dashboard hot-reload com catalogo de checkpoints, fisica configuravel, historico completo e exportacao ONNX para uso standalone, Unity, Godot ou Unreal.")
 
 st.sidebar.markdown(f"**Dimensao:** {scenario.dimension}")
 st.sidebar.markdown(f"**Viewport:** {scenario.viewport}")
@@ -217,6 +243,7 @@ with tab_experiment:
 
     with setup_left:
         st.subheader("Training Setup")
+        st.info("Cada run final exporta automaticamente um bundle ONNX com manifesto de contrato, normalizacao embutida e stubs para Unity, Godot, Unreal e runtime Python.")
         train_mode = st.radio(
             "Training source",
             ["Novo modelo", "Retomar checkpoint"],
@@ -519,13 +546,18 @@ with tab_saved:
         episode_history = read_jsonl(run_dir / "episode_history.jsonl")
         train_history = read_jsonl(run_dir / "train_history.jsonl")
         control_history = read_jsonl(run_dir / "control_history.jsonl")
+        export_dir = run_dir / "engine_export"
+        export_manifest = load_json(export_dir / "manifest.json", default={})
+        export_validation = load_json(export_dir / "validation.json", default={})
+        export_files = bundle_file_rows(export_dir)
 
-        saved_metrics = st.columns(5)
+        saved_metrics = st.columns(6)
         saved_metrics[0].metric("Run", selected_run["run_id"])
         saved_metrics[1].metric("Status", summary.get("status", latest_state.get("status", "unknown")))
         saved_metrics[2].metric("Steps", f"{int(summary.get('steps', latest_state.get('step', 0))):,}")
         saved_metrics[3].metric("Episodes", int(summary.get("episodes", latest_state.get("episodes", 0))))
         saved_metrics[4].metric("Best Reward", f"{float(summary.get('best_reward') or 0.0):.2f}")
+        saved_metrics[5].metric("Engine Export", "ready" if export_manifest else "missing")
 
         saved_left, saved_right = st.columns([1.2, 1.0])
         with saved_left:
@@ -561,6 +593,19 @@ with tab_saved:
             st.json(manifest, expanded=False)
             st.subheader("Summary")
             st.json(summary or latest_state, expanded=False)
+            st.subheader("Engine Export")
+            if export_manifest:
+                contract = export_manifest.get("contract", {})
+                engine_cols = st.columns(3)
+                engine_cols[0].metric("Obs Dim", contract.get("observation_dim", "-"))
+                engine_cols[1].metric("Action Dim", contract.get("action_dim", "-"))
+                engine_cols[2].metric("Validated", "yes" if export_validation.get("within_tolerance") else "no")
+                if export_files:
+                    st.dataframe(pd.DataFrame(export_files), use_container_width=True)
+                st.json(export_manifest, expanded=False)
+                st.json(export_validation, expanded=False)
+            else:
+                st.info("Este run ainda nao possui bundle ONNX exportado.")
             st.subheader("Control History")
             if control_history:
                 st.dataframe(pd.DataFrame(control_history).tail(50), use_container_width=True)
@@ -577,6 +622,29 @@ with tab_assets:
         st.dataframe(pd.DataFrame(vecnorm_assets), use_container_width=True)
     else:
         st.info("Nenhum VecNormalize catalogado para este scenario.")
+
+    st.subheader("Engine Export Catalog")
+    if engine_exports:
+        st.dataframe(pd.DataFrame(engine_exports), use_container_width=True)
+        selected_export_index = st.selectbox(
+            "Engine bundle",
+            options=list(range(len(engine_exports))),
+            format_func=lambda idx: engine_exports[idx]["label"],
+            key=f"engine_export_{selected_scenario}",
+        )
+        selected_export = engine_exports[selected_export_index]
+        export_manifest = load_json(Path(selected_export["manifest_path"]), default={})
+        export_validation = load_json(Path(selected_export["validation_path"]), default={}) if selected_export.get("validation_path") else {}
+        asset_left, asset_right = st.columns([1.1, 1.0])
+        with asset_left:
+            st.json(export_manifest, expanded=False)
+        with asset_right:
+            st.json(export_validation, expanded=False)
+            bundle_rows = bundle_file_rows(Path(selected_export["path"]))
+            if bundle_rows:
+                st.dataframe(pd.DataFrame(bundle_rows), use_container_width=True)
+    else:
+        st.info("Nenhum bundle ONNX catalogado para este scenario.")
 
 if "auto_refresh" not in locals():
     auto_refresh = True

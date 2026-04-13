@@ -28,6 +28,7 @@ from ml_games_engine.control import (
     utc_now_iso,
     write_json,
 )
+from ml_games_engine.exporters import export_engine_package
 from ml_games_engine.scenarios import get_scenario
 
 try:
@@ -56,6 +57,7 @@ class RunArchive:
         self.models_dir = self.run_dir / "models"
         self.charts_dir = self.run_dir / "charts"
         self.previews_dir = self.run_dir / "previews"
+        self.exports_dir = self.run_dir / "engine_export"
 
         self.manifest_path = self.run_dir / "manifest.json"
         self.summary_path = self.run_dir / "summary.json"
@@ -72,6 +74,7 @@ class RunArchive:
         self.models_dir.mkdir(parents=True, exist_ok=True)
         self.charts_dir.mkdir(parents=True, exist_ok=True)
         self.previews_dir.mkdir(parents=True, exist_ok=True)
+        self.exports_dir.mkdir(parents=True, exist_ok=True)
 
         self.last_chart_export = 0.0
         self.last_export_counts = (-1, -1)
@@ -94,6 +97,7 @@ class RunArchive:
                 "run_dir": str(self.run_dir.resolve()),
                 "models_dir": str(self.models_dir.resolve()),
                 "charts_dir": str(self.charts_dir.resolve()),
+                "exports_dir": str(self.exports_dir.resolve()),
             },
             "system": {
                 "python": sys.version,
@@ -310,6 +314,9 @@ class EngineRuntime:
         self.preview_interval = 1.0 / (12.0 if self.scenario.dimension == "3D" else 15.0)
         self.final_model_saved = False
         self.last_checkpoint_path = None
+        self.last_engine_export_manifest_path = None
+        self.last_engine_export_validation_path = None
+        self.last_engine_export_status = "pending"
         self._started_ts = time.time()
 
         self.model_dir = self.archive.models_dir
@@ -642,6 +649,41 @@ class EngineRuntime:
         self.final_model_saved = True
         self.last_checkpoint_path = str(final_path.resolve()) + ".zip"
         self.append_event(f"Final model saved to {final_path}.zip")
+        self.export_engine_bundle(
+            model_path=str(final_path.resolve()) + ".zip",
+            vecnorm_path=str(vecnorm_path.resolve()),
+        )
+
+    def export_engine_bundle(self, *, model_path: str, vecnorm_path: str | None) -> None:
+        try:
+            manifest = export_engine_package(
+                scenario_id=self.scenario.scenario_id,
+                model_path=model_path,
+                output_dir=self.archive.exports_dir,
+                vecnorm_path=vecnorm_path,
+                run_id=self.run_id,
+                reward_cfg=self.reward_cfg,
+                world_cfg=self.world_cfg,
+                seed=self.training_cfg.get("seed"),
+            )
+            self.last_engine_export_manifest_path = str((self.archive.exports_dir / "manifest.json").resolve())
+            self.last_engine_export_validation_path = str((self.archive.exports_dir / "validation.json").resolve())
+            self.last_engine_export_status = "ready"
+            self.archive.update_manifest(
+                {
+                    "engine_export": {
+                        "path": str(self.archive.exports_dir.resolve()),
+                        "manifest_path": self.last_engine_export_manifest_path,
+                        "validation_path": self.last_engine_export_validation_path,
+                        "contract": manifest.get("contract", {}),
+                        "compatibility": manifest.get("compatibility", {}),
+                    }
+                }
+            )
+            self.append_event(f"Engine export bundle saved to {self.archive.exports_dir}.")
+        except Exception as exc:
+            self.last_engine_export_status = f"error: {exc}"
+            self.append_event(f"Engine export warning: {exc}")
 
     def render_preview(self) -> None:
         if self.pilot_brain is None or self.render_env is None:
@@ -718,6 +760,10 @@ class EngineRuntime:
                 "frame_path": str(self.paths.frame.resolve()),
                 "metrics_path": str(self.paths.metrics.resolve()),
                 "latest_checkpoint": self.last_checkpoint_path,
+                "engine_export_dir": str(self.archive.exports_dir.resolve()),
+                "engine_export_manifest": self.last_engine_export_manifest_path,
+                "engine_export_validation": self.last_engine_export_validation_path,
+                "engine_export_status": self.last_engine_export_status,
             },
         }
 
@@ -766,7 +812,11 @@ class EngineRuntime:
                 "train_history": str(self.archive.train_history_path.resolve()),
                 "state_history": str(self.archive.state_history_path.resolve()),
                 "charts_dir": str(self.archive.charts_dir.resolve()),
+                "engine_export_dir": str(self.archive.exports_dir.resolve()),
+                "engine_export_manifest": self.last_engine_export_manifest_path,
+                "engine_export_validation": self.last_engine_export_validation_path,
             },
+            "engine_export_status": self.last_engine_export_status,
         }
         self.archive.write_summary(summary)
         self.archive.export_charts(self.episode_history, self.train_history, force=True)

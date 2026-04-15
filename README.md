@@ -20,6 +20,7 @@ Projeto de jogo 3D em Godot onde um agente humanoide precisa sobreviver o maximo
 
 - Cena principal: res://scenes/Main.tscn
 - Cena de locomocao fisica full-body: res://scenes/FullBodyLocomotion.tscn
+- Cena multiagent inspirada na Unity: res://scenes/RagdollTrainerMultiagent.tscn
 - Agente: res://scenes/HumanoidAgent.tscn
 - Perseguidor: res://scenes/Pursuer.tscn
 - HUD: res://scenes/HUD.tscn

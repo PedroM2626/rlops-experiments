@@ -41,7 +41,7 @@ grow_horizontal = 2
 grow_vertical = 2
 
 [node name="Panel" type="PanelContainer" parent="Center"]
-custom_minimum_size = Vector2(420, 374)
+custom_minimum_size = Vector2(420, 430)
 layout_mode = 2
 theme_override_styles/panel = SubResource("PanelStyle")
 
@@ -77,6 +77,11 @@ text = "Abrir FullBodyLocomotion"
 custom_minimum_size = Vector2(0, 44)
 layout_mode = 2
 text = "Abrir ParkourCompetition (Multi IA)"
+
+[node name="OpenRagdollButton" type="Button" parent="Center/Panel/VBox"]
+custom_minimum_size = Vector2(0, 44)
+layout_mode = 2
+text = "Abrir RagdollTrainer Multiagent"
 
 [node name="QuitButton" type="Button" parent="Center/Panel/VBox"]
 custom_minimum_size = Vector2(0, 40)

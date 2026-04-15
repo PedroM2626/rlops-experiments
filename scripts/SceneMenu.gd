@@ -3,18 +3,21 @@ extends Control
 @onready var open_main_button: Button = $Center/Panel/VBox/OpenMainButton
 @onready var open_fullbody_button: Button = $Center/Panel/VBox/OpenFullBodyButton
 @onready var open_parkour_button: Button = $Center/Panel/VBox/OpenParkourButton
+@onready var open_ragdoll_button: Button = $Center/Panel/VBox/OpenRagdollButton
 @onready var quit_button: Button = $Center/Panel/VBox/QuitButton
 @onready var status_label: Label = $Center/Panel/VBox/StatusLabel
 
 const MAIN_SCENE_PATH := "res://scenes/Main.tscn"
 const FULLBODY_SCENE_PATH := "res://scenes/FullBodyLocomotion.tscn"
 const PARKOUR_SCENE_PATH := "res://scenes/ParkourCompetition.tscn"
+const RAGDOLL_SCENE_PATH := "res://scenes/RagdollTrainerMultiagent.tscn"
 
 
 func _ready() -> void:
 	open_main_button.pressed.connect(_on_open_main_pressed)
 	open_fullbody_button.pressed.connect(_on_open_fullbody_pressed)
 	open_parkour_button.pressed.connect(_on_open_parkour_pressed)
+	open_ragdoll_button.pressed.connect(_on_open_ragdoll_pressed)
 	quit_button.pressed.connect(_on_quit_pressed)
 	status_label.text = "Escolha uma cena para iniciar"
 
@@ -29,6 +32,10 @@ func _on_open_fullbody_pressed() -> void:
 
 func _on_open_parkour_pressed() -> void:
 	_open_scene(PARKOUR_SCENE_PATH)
+
+
+func _on_open_ragdoll_pressed() -> void:
+	_open_scene(RAGDOLL_SCENE_PATH)
 
 
 func _on_quit_pressed() -> void:

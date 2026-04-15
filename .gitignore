@@ -10,3 +10,4 @@ ml/models/*.pt
 ml/models/*.onnx
 ml/models/training_status.json
 ml/models/training_history.jsonl
+ragdolltrainer-*

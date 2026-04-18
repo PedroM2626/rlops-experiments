@@ -3,13 +3,26 @@ extends CharacterBody3D
 @export var move_speed: float = 5.0
 @export var jump_velocity: float = 4.5
 @export var mouse_sensitivity: float = 0.002
+@export var max_health: float = 100.0
 
 var gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
+var current_health: float = max_health
 
 @onready var camera: Camera3D = $Camera3D
 
+signal health_changed(new_health: float)
+signal player_died
+
 func _ready():
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+
+func take_damage(damage: float):
+	current_health = max(current_health - damage, 0.0)
+	health_changed.emit(current_health)
+	
+	if current_health <= 0.0:
+		player_died.emit()
+		print("Player died!")
 
 func _input(event):
 	if event is InputEventMouseMotion:

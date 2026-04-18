@@ -153,14 +153,14 @@ func chase_behavior(delta):
 		
 		# Verificar se pode atacar
 		var distance_to_player = global_position.distance_to(player.global_position)
-		if distance_to_player < 2.0 and attack_timer <= 0:
+		if distance_to_player < 2.5 and attack_timer <= 0:
 			attack_player()
 		
 		# Gerenciar modo de perseguição baseado em stamina
 		if mode_switch_timer <= 0:
-			if current_chase_mode == ChaseMode.SPEED and current_stamina < 20.0:
+			if current_chase_mode == ChaseMode.SPEED and current_stamina < 15.0:
 				switch_chase_mode(ChaseMode.STRENGTH)
-			elif current_chase_mode == ChaseMode.STRENGTH and current_stamina > 50.0:
+			elif current_chase_mode == ChaseMode.STRENGTH and current_stamina > 60.0:
 				switch_chase_mode(ChaseMode.SPEED)
 		
 		# Drenar stamina durante perseguição
@@ -169,7 +169,7 @@ func chase_behavior(delta):
 		
 		# Escolher animação baseada no modo e stamina
 		if current_chase_mode == ChaseMode.SPEED:
-			if current_stamina > 30.0:
+			if current_stamina > 40.0:
 				play_animation("Mimic|Sprint_400")
 			else:
 				play_animation("Mimic|Fastwalk_225")
@@ -188,7 +188,7 @@ func move_towards_target(speed: float, delta: float):
 	
 	# Rotacionar para olhar na direção do movimento
 	if direction.length() > 0.01:
-		look_at(global_position + direction, Vector3.UP)
+		look_at(global_position - direction, Vector3.UP)
 	
 	if navigation_agent.avoidance_enabled:
 		navigation_agent.set_velocity(velocity)
@@ -202,35 +202,17 @@ func check_vision():
 	if not player:
 		return
 	
-	var direction_to_player = (player.global_position - global_position).normalized()
-	var forward_direction = -global_transform.basis.z.normalized()
-	var angle_to_player = forward_direction.angle_to(direction_to_player)
 	var distance_to_player = global_position.distance_to(player.global_position)
 	
-	# Verificar se o jogador está no campo de visão
-	if angle_to_player < deg_to_rad(vision_angle / 2) and distance_to_player < vision_range:
-		# Verificar se há linha de visão (raycast)
-		var space_state = get_world_3d().direct_space_state
-		var query = PhysicsRayQueryParameters3D.create(
-			global_position + Vector3.UP,
-			player.global_position + Vector3.UP,
-			1 << 0  # Collision layer
-		)
-		var result = space_state.intersect_ray(query)
-		
-		if result.is_empty() or result.collider == player:
-			# Jogador detectado, mudar para estado de perseguição
-			if current_state == State.PATROL:
-				current_state = State.CHASE_SPEED
-				current_chase_mode = ChaseMode.SPEED
-				update_light_color()
-		else:
-			# Jogador perdido, voltar para patrulha
-			if current_state != State.PATROL:
-				current_state = State.PATROL
-				update_light_color()
+	# Se o player está dentro do alcance da área de visão, detecta automaticamente
+	if distance_to_player < vision_range:
+		# Jogador detectado, mudar para estado de perseguição
+		if current_state == State.PATROL:
+			current_state = State.CHASE_SPEED
+			current_chase_mode = ChaseMode.SPEED
+			update_light_color()
 	else:
-		# Jogador fora do campo de visão
+		# Jogador fora do alcance
 		if current_state != State.PATROL:
 			current_state = State.PATROL
 			update_light_color()
@@ -246,7 +228,10 @@ func attack_player():
 	
 	var damage = speed_mode_damage if current_chase_mode == ChaseMode.SPEED else strength_mode_damage
 	
-	# Aqui você pode implementar o dano ao jogador
+	# Enviar sinal de dano ao player se tiver o método
+	if player.has_method("take_damage"):
+		player.take_damage(damage)
+	
 	print("Attacking player with ", damage, " damage in ", current_chase_mode, " mode")
 	
 	attack_timer = attack_cooldown

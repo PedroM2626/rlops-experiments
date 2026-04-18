@@ -1,0 +1,62 @@
+[gd_scene load_steps=9 format=3 uid="uid://d14ieeekpnte3"]
+
+[ext_resource type="PackedScene" uid="uid://evo3tlf71e6n" path="res://Models/Mimic/DefMimic/source/Mimic.fbx" id="1_mimic"]
+[ext_resource type="Script" uid="uid://b26piotk3bqa4" path="res://scripts/Player.gd" id="2_player"]
+[ext_resource type="Script" uid="uid://dbpil3dnb77n5" path="res://scripts/MimicEnemy.gd" id="3_mimic_enemy"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_floor"]
+size = Vector3(50, 1, 50)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_floor"]
+size = Vector3(50, 1, 50)
+
+[sub_resource type="NavigationMesh" id="NavigationMesh_navmesh"]
+vertices = PackedVector3Array(-25, 0.5, -25, 25, 0.5, -25, 25, 0.5, 25, -25, 0.5, 25)
+polygons = [PackedInt32Array(0, 1, 2), PackedInt32Array(0, 2, 3)]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_player"]
+size = Vector3(1, 2, 1)
+
+[sub_resource type="SphereShape3D" id="SphereShape3D_vision"]
+radius = 20.0
+
+[node name="MimicExperiment" type="Node3D"]
+
+[node name="Floor" type="StaticBody3D" parent="."]
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Floor"]
+mesh = SubResource("BoxMesh_floor")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Floor"]
+shape = SubResource("BoxShape3D_floor")
+
+[node name="NavigationRegion3D" type="NavigationRegion3D" parent="."]
+navigation_mesh = SubResource("NavigationMesh_navmesh")
+
+[node name="Player" type="CharacterBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 4.8119307, -16.208775)
+script = ExtResource("2_player")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Player"]
+shape = SubResource("BoxShape3D_player")
+
+[node name="Camera3D" type="Camera3D" parent="Player"]
+
+[node name="Mimic" parent="." instance=ExtResource("1_mimic")]
+transform = Transform3D(0.01, 0, 0, 0, 0.01, 0, 0, 0, 0.01, 0, 1.103132, 0)
+script = ExtResource("3_mimic_enemy")
+
+[node name="OmniLight3D" type="OmniLight3D" parent="Mimic"]
+light_energy = 5.0
+omni_range = 10.0
+
+[node name="NavigationAgent3D" type="NavigationAgent3D" parent="Mimic"]
+path_desired_distance = 0.5
+target_desired_distance = 0.5
+
+[node name="Area3D" type="Area3D" parent="Mimic"]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Mimic/Area3D"]
+shape = SubResource("SphereShape3D_vision")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]

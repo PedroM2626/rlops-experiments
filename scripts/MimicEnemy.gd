@@ -49,6 +49,18 @@ var animation_player: AnimationPlayer
 var animation_tree: AnimationTree
 var stamina_full_required: bool = false
 
+# Memória do player
+var last_known_player_position: Vector3 = Vector3.ZERO
+var memory_timer: float = 0.0
+var memory_duration: float = 3.0  # Segundos que lembra do player após perdê-lo
+var is_searching: bool = false
+
+# Movimento gradual dinâmico
+var current_velocity: Vector3 = Vector3.ZERO
+var rotation_speed: float = 5.0  # Velocidade de rotação (quanto maior, mais rápido vira)
+var acceleration: float = 8.0    # Aceleração ao começar a andar
+var deceleration: float = 10.0   # Desaceleração ao parar
+
 # Materiais
 var head_material: Material
 var limbs_material: Material
@@ -104,12 +116,16 @@ func _physics_process(delta):
 	if mode_switch_timer > 0:
 		mode_switch_timer -= delta
 	
-	# Regenerar stamina quando não está em perseguição
+	# Regenerar stamina quando não está em perseguição ativa
 	if current_state == State.PATROL:
 		current_stamina = min(current_stamina + stamina_regen * delta, max_stamina)
 	
-	# Verificar campo de visão
+	# Verificar campo de visão (inclui lógica de memória/busca)
 	check_vision()
+	
+	# Se está procurando mas estado é PATROL (timer acabou), garantir que pare de buscar
+	if is_searching and current_state == State.PATROL:
+		is_searching = false
 
 func setup_vision():
 	# Configurar Area3D para detecção de jogador
@@ -149,7 +165,8 @@ func patrol_behavior(delta):
 func chase_behavior(delta):
 	var chase_speed = chase_speed_speed if current_chase_mode == ChaseMode.SPEED else chase_strength_speed
 	
-	if player:
+	if player and not is_searching:
+		# Perseguindo player visível
 		navigation_agent.set_target_position(player.global_position)
 		print("Chasing player at: ", player.global_position)
 		
@@ -177,33 +194,71 @@ func chase_behavior(delta):
 				play_animation("Mimic|Fastwalk_225")
 		else:
 			play_animation("Mimic|Fastwalk_225")
+	elif is_searching:
+		# Buscando na última posição conhecida
+		print("Searching at last known position: ", last_known_player_position)
+		
+		# Verificar se chegou na última posição conhecida
+		if navigation_agent.is_navigation_finished():
+			print("Reached last known position, continuing search...")
+		
+		# Durante busca, drenar stamina mais lentamente
+		current_stamina = min(current_stamina + stamina_regen * 0.5 * delta, max_stamina)
+		
+		# Animação de busca
+		play_animation("Mimic|Fastwalk_225")
 	
 	move_towards_target(chase_speed, delta)
 
 func move_towards_target(speed: float, delta: float):
 	if navigation_agent.is_navigation_finished():
+		# Desacelerar gradualmente quando chega no destino
+		current_velocity = current_velocity.move_toward(Vector3.ZERO, deceleration * delta)
+		if current_velocity.length() > 0.01:
+			global_position += current_velocity * delta
 		return
 	
 	var next_position = navigation_agent.get_next_path_position()
 	var direction = global_position.direction_to(next_position)
-	var velocity = direction * speed
 	
-	# Rotacionar para olhar na direção do movimento
+	# Rotacionar suavemente para olhar na direção do movimento
 	if direction.length() > 0.01:
-		look_at(global_position - direction, Vector3.UP)
+		var target_basis = Basis.looking_at(-direction, Vector3.UP)
+		var target_quat = Quaternion(target_basis)
+		var current_quat = quaternion
+		quaternion = current_quat.slerp(target_quat, rotation_speed * delta)
 	
+	# Calcular velocidade desejada
+	var target_velocity = direction * speed
+	
+	# Acelerar/desacelerar suavemente
+	current_velocity = current_velocity.move_toward(target_velocity, acceleration * delta)
+	
+	# Aplicar movimento
+	global_position += current_velocity * delta
+	
+	# Atualizar NavigationAgent com a velocidade atual
 	if navigation_agent.avoidance_enabled:
-		navigation_agent.set_velocity(velocity)
-	else:
-		_on_velocity_computed(velocity)
+		navigation_agent.set_velocity(current_velocity)
 
 func _on_velocity_computed(safe_velocity: Vector3):
-	global_position += safe_velocity * get_physics_process_delta_time()
+	# Não usamos mais este callback diretamente, o movimento é controlado em move_towards_target
+	pass
 
 func check_vision():
 	if not player:
-		# Se não há player, voltar para patrulha
-		if current_state != State.PATROL:
+		# Se está procurando (memória ativa), decrementar timer
+		if is_searching:
+			memory_timer -= get_physics_process_delta_time()
+			if memory_timer <= 0:
+				# Timer acabou, voltar a patrulhar
+				print("Memory timer ended, switching to patrol")
+				current_state = State.PATROL
+				is_searching = false
+				stamina_full_required = true
+				update_light_color()
+		elif current_state != State.PATROL:
+			# Se não há player e não está procurando, voltar para patrulha
 			print("No player, switching to patrol")
 			current_state = State.PATROL
 			stamina_full_required = true
@@ -211,6 +266,10 @@ func check_vision():
 		return
 	
 	var distance_to_player = global_position.distance_to(player.global_position)
+	
+	# Guardar última posição conhecida do player
+	last_known_player_position = player.global_position
+	
 	print("Distance to player: ", distance_to_player, " Vision range: ", vision_range)
 	
 	# Se o player está dentro do alcance da área de visão, detecta automaticamente
@@ -220,24 +279,36 @@ func check_vision():
 			print("Stamina not full yet, cannot chase. Current: ", current_stamina, " Max: ", max_stamina)
 			return
 		
+		# Jogador detectado, resetar estado de busca
+		is_searching = false
+		
 		# Jogador detectado, mudar para estado de perseguição
-		if current_state == State.PATROL:
+		if current_state == State.PATROL or is_searching:
 			print("Player detected! Switching to chase")
 			current_state = State.CHASE_SPEED
 			current_chase_mode = ChaseMode.SPEED
 			stamina_full_required = false
 			update_light_color()
 	else:
-		# Jogador fora do alcance, voltar para patrulha
-		if current_state != State.PATROL:
-			print("Player lost! Switching to patrol")
-			current_state = State.PATROL
-			stamina_full_required = true
-			update_light_color()
+		# Jogador fora do alcance, iniciar modo de busca
+		if not is_searching and current_state != State.PATROL:
+			print("Player lost! Starting search for ", memory_duration, " seconds")
+			is_searching = true
+			memory_timer = memory_duration
+			# Definir target para última posição conhecida
+			navigation_agent.set_target_position(last_known_player_position)
 
 func switch_chase_mode(new_mode: ChaseMode):
 	current_chase_mode = new_mode
 	mode_switch_timer = mode_switch_cooldown
+	
+	# Atualizar estado baseado no modo
+	if new_mode == ChaseMode.SPEED:
+		current_state = State.CHASE_SPEED
+	else:
+		current_state = State.CHASE_STRENGTH
+	
+	print("Switched to ", new_mode, " mode, state: ", current_state)
 	update_light_color()
 
 func attack_player():

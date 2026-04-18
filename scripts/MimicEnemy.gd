@@ -19,7 +19,7 @@ enum ChaseMode {
 @onready var mimic_node = $"."
 
 # Configurações de campo de visão
-@export var vision_range: float = 20.0
+@export var vision_range: float = 50.0
 @export var vision_angle: float = 90.0
 @export var patrol_speed: float = 2.0
 @export var chase_speed_speed: float = 4.0
@@ -47,6 +47,7 @@ var current_patrol_index: int = 0
 var skeleton: Skeleton3D
 var animation_player: AnimationPlayer
 var animation_tree: AnimationTree
+var stamina_full_required: bool = false
 
 # Materiais
 var head_material: Material
@@ -150,6 +151,7 @@ func chase_behavior(delta):
 	
 	if player:
 		navigation_agent.set_target_position(player.global_position)
+		print("Chasing player at: ", player.global_position)
 		
 		# Verificar se pode atacar
 		var distance_to_player = global_position.distance_to(player.global_position)
@@ -200,21 +202,37 @@ func _on_velocity_computed(safe_velocity: Vector3):
 
 func check_vision():
 	if not player:
+		# Se não há player, voltar para patrulha
+		if current_state != State.PATROL:
+			print("No player, switching to patrol")
+			current_state = State.PATROL
+			stamina_full_required = true
+			update_light_color()
 		return
 	
 	var distance_to_player = global_position.distance_to(player.global_position)
+	print("Distance to player: ", distance_to_player, " Vision range: ", vision_range)
 	
 	# Se o player está dentro do alcance da área de visão, detecta automaticamente
 	if distance_to_player < vision_range:
+		# Verificar se stamina está cheia se foi perdido anteriormente
+		if stamina_full_required and current_stamina < max_stamina:
+			print("Stamina not full yet, cannot chase. Current: ", current_stamina, " Max: ", max_stamina)
+			return
+		
 		# Jogador detectado, mudar para estado de perseguição
 		if current_state == State.PATROL:
+			print("Player detected! Switching to chase")
 			current_state = State.CHASE_SPEED
 			current_chase_mode = ChaseMode.SPEED
+			stamina_full_required = false
 			update_light_color()
 	else:
-		# Jogador fora do alcance
+		# Jogador fora do alcance, voltar para patrulha
 		if current_state != State.PATROL:
+			print("Player lost! Switching to patrol")
 			current_state = State.PATROL
+			stamina_full_required = true
 			update_light_color()
 
 func switch_chase_mode(new_mode: ChaseMode):
@@ -314,9 +332,13 @@ func apply_materials_recursive(node: Node):
 		apply_materials_recursive(child)
 
 func _on_body_entered_vision(body: Node3D):
+	print("Body entered vision: ", body.name, " is CharacterBody3D: ", body is CharacterBody3D)
 	if body is CharacterBody3D and body.name == "Player":
+		print("Player detected by Area3D!")
 		player = body
 
 func _on_body_exited_vision(body: Node3D):
+	print("Body exited vision: ", body.name)
 	if body == player:
+		print("Player exited Area3D!")
 		player = null

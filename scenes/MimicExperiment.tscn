@@ -1,9 +1,9 @@
-[gd_scene load_steps=10 format=3 uid="uid://d14ieeekpnte3"]
+[gd_scene load_steps=12 format=3 uid="uid://d14ieeekpnte3"]
 
 [ext_resource type="PackedScene" uid="uid://evo3tlf71e6n" path="res://Models/Mimic/DefMimic/source/Mimic.fbx" id="1_mimic"]
 [ext_resource type="Script" uid="uid://b26piotk3bqa4" path="res://scripts/Player.gd" id="2_player"]
 [ext_resource type="Script" uid="uid://dbpil3dnb77n5" path="res://scripts/MimicEnemy.gd" id="3_mimic_enemy"]
-[ext_resource type="Script" path="res://scripts/MimicHUD.gd" id="4_hud"]
+[ext_resource type="Script" uid="uid://r1x6ccrh1ole" path="res://scripts/MimicHUD.gd" id="4_hud"]
 
 [sub_resource type="BoxMesh" id="BoxMesh_floor"]
 size = Vector3(50, 1, 50)
@@ -51,7 +51,6 @@ navigation_mesh = SubResource("NavigationMesh_navmesh")
 [node name="Player" type="CharacterBody3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 4.8119307, -16.208775)
 script = ExtResource("2_player")
-groups = ["player"]
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Player"]
 shape = SubResource("BoxShape3D_player")
@@ -61,19 +60,21 @@ shape = SubResource("BoxShape3D_player")
 [node name="Mimic" parent="." instance=ExtResource("1_mimic")]
 transform = Transform3D(0.01, 0, 0, 0, 0.01, 0, 0, 0, 0.01, 0, 1.103132, 0)
 script = ExtResource("3_mimic_enemy")
+vision_range = 500.0
 
 [node name="OmniLight3D" type="OmniLight3D" parent="Mimic"]
 light_energy = 5.0
 omni_range = 10.0
 
-[node name="NavigationAgent3D" type="NavigationAgent3D" parent="Mimic"]
-path_desired_distance = 0.5
-target_desired_distance = 0.5
-
 [node name="Area3D" type="Area3D" parent="Mimic"]
+collision_layer = 0
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Mimic/Area3D"]
 shape = SubResource("SphereShape3D_vision")
+
+[node name="NavigationAgent3D" type="NavigationAgent3D" parent="Mimic"]
+path_desired_distance = 0.5
+target_desired_distance = 0.5
 
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
 
@@ -99,7 +100,6 @@ offset_right = -20.0
 offset_bottom = 50.0
 grow_horizontal = 0
 theme_override_colors/font_color = Color(1, 1, 1, 1)
-theme_override_colors/font_shadow_color = Color(0, 0, 0, 1)
 theme_override_font_sizes/font_size = 16
 theme_override_styles/background = SubResource("StyleBoxFlat_bg")
 theme_override_styles/fill = SubResource("StyleBoxFlat_fill")

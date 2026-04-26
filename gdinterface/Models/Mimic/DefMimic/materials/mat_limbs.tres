@@ -1,0 +1,15 @@
+[gd_resource type="StandardMaterial3D" uid="uid://mat_limbs_mimic" load_steps=4 format=3]
+
+[ext_resource type="Texture2D" uid="uid://ckssh04xnrqy6" path="res://Models/Mimic/DefMimic/textures/T_Mimic_Limbs_D.png" id="1"]
+[ext_resource type="Texture2D" uid="uid://dg2w4oj22d11s" path="res://Models/Mimic/DefMimic/textures/T_Mimic_Limbs_M.png" id="2"]
+[ext_resource type="Texture2D" uid="uid://dp6te5a2d5mxc" path="res://Models/Mimic/DefMimic/textures/T_Mimic_Limbs_N.png" id="3"]
+[ext_resource type="Texture2D" uid="uid://dni43em73nkhi" path="res://Models/Mimic/DefMimic/textures/T_Mimic_Limbs_R.png" id="4"]
+
+resource_name="Mimic Limbs Material"
+albedo_texture = ExtResource("1")
+metallic_texture = ExtResource("2")
+metallic_texture_channel = 0
+roughness_texture = ExtResource("4")
+roughness_texture_channel = 0
+normal_texture = ExtResource("3")
+normal_enabled = true

@@ -1,0 +1,15 @@
+[gd_resource type="StandardMaterial3D" uid="uid://mat_head_mimic" load_steps=4 format=3]
+
+[ext_resource type="Texture2D" uid="uid://cm2lfp8c1pwxc" path="res://Models/Mimic/DefMimic/textures/T_Mimic_Head_D.png" id="1"]
+[ext_resource type="Texture2D" uid="uid://cap0rbn5op2mp" path="res://Models/Mimic/DefMimic/textures/T_Mimic_Head_M.png" id="2"]
+[ext_resource type="Texture2D" uid="uid://yeyu52cfsox" path="res://Models/Mimic/DefMimic/textures/T_Mimic_Head_N.png" id="3"]
+[ext_resource type="Texture2D" uid="uid://c5q4jepd38o73" path="res://Models/Mimic/DefMimic/textures/T_Mimic_Head_R.png" id="4"]
+
+resource_name="Mimic Head Material"
+albedo_texture = ExtResource("1")
+metallic_texture = ExtResource("2")
+metallic_texture_channel = 0
+roughness_texture = ExtResource("4")
+roughness_texture_channel = 0
+normal_texture = ExtResource("3")
+normal_enabled = true

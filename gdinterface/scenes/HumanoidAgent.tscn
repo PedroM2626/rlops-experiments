@@ -1,0 +1,120 @@
+[gd_scene load_steps=16 format=3]
+
+[ext_resource type="Script" path="res://scripts/HumanoidAgent.gd" id="1"]
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_body"]
+radius = 0.35
+height = 1.3
+
+[sub_resource type="SphereShape3D" id="SphereShape3D_head"]
+radius = 0.19
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_leg"]
+radius = 0.16
+height = 0.62
+
+[sub_resource type="SphereShape3D" id="SphereShape3D_arm"]
+radius = 0.14
+
+[sub_resource type="CapsuleMesh" id="CapsuleMesh_torso"]
+radius = 0.32
+height = 1.1
+
+[sub_resource type="CapsuleMesh" id="CapsuleMesh_arm"]
+radius = 0.12
+height = 0.7
+
+[sub_resource type="CapsuleMesh" id="CapsuleMesh_leg"]
+radius = 0.14
+height = 0.85
+
+[sub_resource type="SphereMesh" id="SphereMesh_head"]
+radius = 0.24
+height = 0.48
+
+[sub_resource type="StandardMaterial3D" id="Material_body"]
+albedo_color = Color(0.15, 0.67, 0.93, 1)
+roughness = 0.5
+
+[sub_resource type="StandardMaterial3D" id="Material_head"]
+albedo_color = Color(0.95, 0.86, 0.7, 1)
+roughness = 0.65
+
+[sub_resource type="StandardMaterial3D" id="Material_limb"]
+albedo_color = Color(0.24, 0.34, 0.98, 1)
+roughness = 0.42
+
+[node name="HumanoidAgent" type="CharacterBody3D"]
+script = ExtResource("1")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+position = Vector3(0, 1, 0)
+shape = SubResource("CapsuleShape3D_body")
+
+[node name="HeadCollision" type="CollisionShape3D" parent="."]
+position = Vector3(0, 1.9, 0)
+shape = SubResource("SphereShape3D_head")
+
+[node name="LeftArmCollision" type="CollisionShape3D" parent="."]
+position = Vector3(-0.35, 1.45, 0)
+shape = SubResource("SphereShape3D_arm")
+
+[node name="RightArmCollision" type="CollisionShape3D" parent="."]
+position = Vector3(0.35, 1.45, 0)
+shape = SubResource("SphereShape3D_arm")
+
+[node name="LeftLegCollision" type="CollisionShape3D" parent="."]
+position = Vector3(-0.18, 0.45, 0)
+shape = SubResource("CapsuleShape3D_leg")
+
+[node name="RightLegCollision" type="CollisionShape3D" parent="."]
+position = Vector3(0.18, 0.45, 0)
+shape = SubResource("CapsuleShape3D_leg")
+
+[node name="VisualRoot" type="Node3D" parent="."]
+
+[node name="ModelContainer" type="Node3D" parent="VisualRoot"]
+
+[node name="Torso" type="MeshInstance3D" parent="VisualRoot"]
+position = Vector3(0, 1.2, 0)
+mesh = SubResource("CapsuleMesh_torso")
+material_override = SubResource("Material_body")
+
+[node name="HeadPivot" type="Node3D" parent="VisualRoot"]
+position = Vector3(0, 1.86, 0)
+
+[node name="Head" type="MeshInstance3D" parent="VisualRoot/HeadPivot"]
+mesh = SubResource("SphereMesh_head")
+material_override = SubResource("Material_head")
+
+[node name="LeftArmPivot" type="Node3D" parent="VisualRoot"]
+position = Vector3(-0.46, 1.45, 0)
+
+[node name="LeftArm" type="MeshInstance3D" parent="VisualRoot/LeftArmPivot"]
+position = Vector3(0, -0.38, 0)
+mesh = SubResource("CapsuleMesh_arm")
+material_override = SubResource("Material_limb")
+
+[node name="RightArmPivot" type="Node3D" parent="VisualRoot"]
+position = Vector3(0.46, 1.45, 0)
+
+[node name="RightArm" type="MeshInstance3D" parent="VisualRoot/RightArmPivot"]
+position = Vector3(0, -0.38, 0)
+mesh = SubResource("CapsuleMesh_arm")
+material_override = SubResource("Material_limb")
+
+[node name="LeftLegPivot" type="Node3D" parent="VisualRoot"]
+position = Vector3(-0.2, 0.88, 0)
+
+[node name="LeftLeg" type="MeshInstance3D" parent="VisualRoot/LeftLegPivot"]
+position = Vector3(0, -0.46, 0)
+mesh = SubResource("CapsuleMesh_leg")
+material_override = SubResource("Material_limb")
+
+[node name="RightLegPivot" type="Node3D" parent="VisualRoot"]
+position = Vector3(0.2, 0.88, 0)
+
+[node name="RightLeg" type="MeshInstance3D" parent="VisualRoot/RightLegPivot"]
+position = Vector3(0, -0.46, 0)
+mesh = SubResource("CapsuleMesh_leg")
+material_override = SubResource("Material_limb")

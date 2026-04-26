@@ -1,0 +1,182 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/HUD.gd" id="1"]
+
+[node name="HUD" type="Control"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+script = ExtResource("1")
+
+[node name="PanelsContainer" type="HBoxContainer" parent="."]
+offset_left = 16.0
+offset_top = 16.0
+offset_right = 1020.0
+offset_bottom = 290.0
+size_flags_horizontal = 3
+
+[node name="GamePanel" type="PanelContainer" parent="PanelsContainer"]
+custom_minimum_size = Vector2(320, 260)
+size_flags_horizontal = 3
+
+[node name="Content" type="MarginContainer" parent="PanelsContainer/GamePanel"]
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 10
+
+[node name="GameVBox" type="VBoxContainer" parent="PanelsContainer/GamePanel/Content"]
+
+[node name="Title" type="Label" parent="PanelsContainer/GamePanel/Content/GameVBox"]
+text = "Jogo"
+
+[node name="GameStats" type="RichTextLabel" parent="PanelsContainer/GamePanel/Content/GameVBox"]
+custom_minimum_size = Vector2(280, 210)
+scroll_active = false
+bbcode_enabled = false
+fit_content = true
+
+[node name="AgentPanel" type="PanelContainer" parent="PanelsContainer"]
+custom_minimum_size = Vector2(320, 260)
+size_flags_horizontal = 3
+
+[node name="Content" type="MarginContainer" parent="PanelsContainer/AgentPanel"]
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 10
+
+[node name="AgentVBox" type="VBoxContainer" parent="PanelsContainer/AgentPanel/Content"]
+
+[node name="Title" type="Label" parent="PanelsContainer/AgentPanel/Content/AgentVBox"]
+text = "Agente"
+
+[node name="AgentStats" type="RichTextLabel" parent="PanelsContainer/AgentPanel/Content/AgentVBox"]
+custom_minimum_size = Vector2(280, 210)
+scroll_active = false
+bbcode_enabled = false
+fit_content = true
+
+[node name="TrainingPanel" type="PanelContainer" parent="PanelsContainer"]
+custom_minimum_size = Vector2(320, 260)
+size_flags_horizontal = 3
+
+[node name="Content" type="MarginContainer" parent="PanelsContainer/TrainingPanel"]
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 10
+
+[node name="TrainingVBox" type="VBoxContainer" parent="PanelsContainer/TrainingPanel/Content"]
+
+[node name="Title" type="Label" parent="PanelsContainer/TrainingPanel/Content/TrainingVBox"]
+text = "Treino"
+
+[node name="TrainingStats" type="RichTextLabel" parent="PanelsContainer/TrainingPanel/Content/TrainingVBox"]
+custom_minimum_size = Vector2(280, 210)
+scroll_active = false
+bbcode_enabled = false
+fit_content = true
+
+[node name="ControlsPanel" type="PanelContainer" parent="."]
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -350.0
+offset_top = 320.0
+offset_right = -16.0
+offset_bottom = 704.0
+
+[node name="Content" type="MarginContainer" parent="ControlsPanel"]
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 10
+
+[node name="ControlsVBox" type="VBoxContainer" parent="ControlsPanel/Content"]
+
+[node name="Title" type="Label" parent="ControlsPanel/Content/ControlsVBox"]
+text = "Controle de Treino"
+
+[node name="UseOnnxCheck" type="CheckButton" parent="ControlsPanel/Content/ControlsVBox"]
+text = "Usar politica ONNX"
+button_pressed = true
+
+[node name="ReuseCheckpointCheck" type="CheckButton" parent="ControlsPanel/Content/ControlsVBox"]
+text = "Reusar checkpoint no treino"
+button_pressed = true
+
+[node name="GenerationsRow" type="HBoxContainer" parent="ControlsPanel/Content/ControlsVBox"]
+
+[node name="Label" type="Label" parent="ControlsPanel/Content/ControlsVBox/GenerationsRow"]
+text = "Geracoes"
+
+[node name="GenerationsSpin" type="SpinBox" parent="ControlsPanel/Content/ControlsVBox/GenerationsRow"]
+min_value = 1.0
+max_value = 1000.0
+step = 1.0
+value = 60.0
+size_flags_horizontal = 3
+
+[node name="PopulationRow" type="HBoxContainer" parent="ControlsPanel/Content/ControlsVBox"]
+
+[node name="Label" type="Label" parent="ControlsPanel/Content/ControlsVBox/PopulationRow"]
+text = "Populacao"
+
+[node name="PopulationSpin" type="SpinBox" parent="ControlsPanel/Content/ControlsVBox/PopulationRow"]
+min_value = 4.0
+max_value = 512.0
+step = 1.0
+value = 28.0
+size_flags_horizontal = 3
+
+[node name="ArenasRow" type="HBoxContainer" parent="ControlsPanel/Content/ControlsVBox"]
+
+[node name="Label" type="Label" parent="ControlsPanel/Content/ControlsVBox/ArenasRow"]
+text = "Arenas"
+
+[node name="ArenasSpin" type="SpinBox" parent="ControlsPanel/Content/ControlsVBox/ArenasRow"]
+min_value = 1.0
+max_value = 32.0
+step = 1.0
+value = 4.0
+size_flags_horizontal = 3
+
+[node name="EpisodeRow" type="HBoxContainer" parent="ControlsPanel/Content/ControlsVBox"]
+
+[node name="Label" type="Label" parent="ControlsPanel/Content/ControlsVBox/EpisodeRow"]
+text = "Tempo episodio (s)"
+
+[node name="EpisodeSpin" type="SpinBox" parent="ControlsPanel/Content/ControlsVBox/EpisodeRow"]
+min_value = 10.0
+max_value = 240.0
+step = 1.0
+value = 45.0
+size_flags_horizontal = 3
+
+[node name="SeedRow" type="HBoxContainer" parent="ControlsPanel/Content/ControlsVBox"]
+
+[node name="Label" type="Label" parent="ControlsPanel/Content/ControlsVBox/SeedRow"]
+text = "Seed"
+
+[node name="SeedSpin" type="SpinBox" parent="ControlsPanel/Content/ControlsVBox/SeedRow"]
+min_value = 0.0
+max_value = 999999.0
+step = 1.0
+value = 7.0
+size_flags_horizontal = 3
+
+[node name="StartTrainingButton" type="Button" parent="ControlsPanel/Content/ControlsVBox"]
+text = "Iniciar Treino"
+
+[node name="StopTrainingButton" type="Button" parent="ControlsPanel/Content/ControlsVBox"]
+text = "Parar Treino"
+
+[node name="RestartEpisodeButton" type="Button" parent="ControlsPanel/Content/ControlsVBox"]
+text = "Reiniciar Episodio"
+
+[node name="ModelPathLabel" type="Label" parent="ControlsPanel/Content/ControlsVBox"]
+autowrap_mode = 3
+text = "Modelo ativo: res://ml/models/agent_policy.onnx"
+
+[node name="SystemMessageLabel" type="Label" parent="ControlsPanel/Content/ControlsVBox"]
+autowrap_mode = 3
+text = "Status: aguardando"

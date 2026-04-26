@@ -1,0 +1,5 @@
+[gd_scene load_steps=2 format=3 uid="uid://b5fnmp5quupte"]
+
+[ext_resource type="PackedScene" uid="uid://c27btyy0optj4" path="res://Models/Mimic/source/A_DLC_OldEndo_IdleA.fbx" id="1_xkjmy"]
+
+[node name="Mimic" instance=ExtResource("1_xkjmy")]

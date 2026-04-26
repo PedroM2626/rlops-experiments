@@ -1,0 +1,166 @@
+{
+  "history": [
+    {
+      "episode": 1,
+      "kind": "episode",
+      "length": 5,
+      "reward": -31.666014,
+      "step": 5,
+      "timestamp": "2026-04-06T20:21:56+00:00"
+    },
+    {
+      "episode": 2,
+      "kind": "episode",
+      "length": 3,
+      "reward": -31.258307,
+      "step": 8,
+      "timestamp": "2026-04-06T20:21:56+00:00"
+    },
+    {
+      "episode": 3,
+      "kind": "episode",
+      "length": 3,
+      "reward": -30.465116,
+      "step": 11,
+      "timestamp": "2026-04-06T20:21:56+00:00"
+    },
+    {
+      "episode": 4,
+      "kind": "episode",
+      "length": 5,
+      "reward": -30.493115,
+      "step": 16,
+      "timestamp": "2026-04-06T20:21:56+00:00"
+    },
+    {
+      "episode": 5,
+      "kind": "episode",
+      "length": 3,
+      "reward": -31.079094,
+      "step": 19,
+      "timestamp": "2026-04-06T20:21:56+00:00"
+    },
+    {
+      "episode": 6,
+      "kind": "episode",
+      "length": 5,
+      "reward": -29.45738,
+      "step": 24,
+      "timestamp": "2026-04-06T20:21:56+00:00"
+    },
+    {
+      "episode": 7,
+      "kind": "episode",
+      "length": 4,
+      "reward": -30.327877,
+      "step": 28,
+      "timestamp": "2026-04-06T20:21:56+00:00"
+    },
+    {
+      "episode": 8,
+      "kind": "episode",
+      "length": 9,
+      "reward": -24.510831,
+      "step": 37,
+      "timestamp": "2026-04-06T20:21:56+00:00"
+    },
+    {
+      "episode": 9,
+      "kind": "episode",
+      "length": 4,
+      "reward": -28.520502,
+      "step": 41,
+      "timestamp": "2026-04-06T20:21:56+00:00"
+    },
+    {
+      "episode": 10,
+      "kind": "episode",
+      "length": 5,
+      "reward": -29.325117,
+      "step": 46,
+      "timestamp": "2026-04-06T20:21:56+00:00"
+    },
+    {
+      "episode": 11,
+      "kind": "episode",
+      "length": 2,
+      "reward": -30.226715,
+      "step": 48,
+      "timestamp": "2026-04-06T20:21:56+00:00"
+    },
+    {
+      "episode": 12,
+      "kind": "episode",
+      "length": 10,
+      "reward": -30.493514,
+      "step": 58,
+      "timestamp": "2026-04-06T20:21:56+00:00"
+    },
+    {
+      "episode": 13,
+      "kind": "episode",
+      "length": 5,
+      "reward": -30.091711,
+      "step": 63,
+      "timestamp": "2026-04-06T20:21:56+00:00"
+    },
+    {
+      "approx_kl": 5.1062554121017456e-05,
+      "entropy_loss": -2.8373353481292725,
+      "kind": "train",
+      "loss": 3.1010985374450684,
+      "policy_loss": -0.00206067506223917,
+      "step": 65,
+      "timestamp": "2026-04-06T20:21:56+00:00",
+      "value_loss": 9.402727603912354
+    },
+    {
+      "episode": 14,
+      "kind": "episode",
+      "length": 3,
+      "reward": -30.023562,
+      "step": 66,
+      "timestamp": "2026-04-06T20:21:56+00:00"
+    },
+    {
+      "episode": 15,
+      "kind": "episode",
+      "length": 9,
+      "reward": -26.671269,
+      "step": 75,
+      "timestamp": "2026-04-06T20:21:56+00:00"
+    },
+    {
+      "episode": 16,
+      "kind": "episode",
+      "length": 3,
+      "reward": -29.094073,
+      "step": 78,
+      "timestamp": "2026-04-06T20:21:56+00:00"
+    },
+    {
+      "episode": 17,
+      "kind": "episode",
+      "length": 4,
+      "reward": -29.942962,
+      "step": 82,
+      "timestamp": "2026-04-06T20:21:56+00:00"
+    },
+    {
+      "episode": 18,
+      "kind": "episode",
+      "length": 3,
+      "reward": -29.663791,
+      "step": 85,
+      "timestamp": "2026-04-06T20:21:56+00:00"
+    },
+    {
+      "episode": 19,
+      "kind": "episode",
+      "length": 4,
+      "reward": -30.594598,
+      "step": 89,
+      "timestamp": "2026-04-06T20:21:56+00:00"
+    }
+  ]
+}

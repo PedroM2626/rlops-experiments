@@ -1,0 +1,4 @@
+{"message": "Runner started for Arena 2D.", "timestamp": "2026-04-09T22:08:15+00:00"}
+{"message": "Timestep limit reached at 64 steps.", "timestamp": "2026-04-09T22:08:15+00:00"}
+{"message": "Final model saved to C:\\Users\\pedro\\Downloads\\ML-Games\\runtime\\export_smoke\\runs\\arena2d_engine_export_smoke\\models\\ppo_arena2d_final.zip", "timestamp": "2026-04-09T22:08:15+00:00"}
+{"message": "Engine export bundle saved to C:\\Users\\pedro\\Downloads\\ML-Games\\runtime\\export_smoke\\runs\\arena2d_engine_export_smoke\\engine_export.", "timestamp": "2026-04-09T22:08:15+00:00"}

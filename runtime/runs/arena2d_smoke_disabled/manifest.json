@@ -1,0 +1,117 @@
+{
+  "created_at": "2026-04-06T20:23:17+00:00",
+  "device": "cpu",
+  "initial_control": {
+    "pilot": {
+      "name": "disabled",
+      "version": 1
+    },
+    "reward": {
+      "values": {
+        "alive_bonus": 0.02,
+        "boundary_penalty": 0.2,
+        "catch_penalty": -30.0,
+        "chaser_speed": 0.55,
+        "energy_scale": 0.02,
+        "goal_reward": 35.0,
+        "progress_scale": 3.5,
+        "speed_scale": 0.15,
+        "step_penalty": -0.01
+      },
+      "version": 1
+    },
+    "runtime": {
+      "paused": false,
+      "run_id": "arena2d_smoke_disabled",
+      "save_version": 0,
+      "speed": 1.0,
+      "stop_requested": false
+    },
+    "scenario_id": "arena2d",
+    "training": {
+      "batch_size": 16,
+      "checkpoint_freq": 16,
+      "clip_range": 0.2,
+      "ent_coef": 0.01,
+      "gae_lambda": 0.95,
+      "gamma": 0.99,
+      "lr": 0.0003,
+      "model_path": null,
+      "n_envs": 1,
+      "n_epochs": 1,
+      "n_steps": 32,
+      "net_arch": "32,32",
+      "seed": 5,
+      "timesteps": 32,
+      "vecnorm_path": null
+    },
+    "world": {
+      "values": {
+        "dt": 0.18,
+        "max_steps": 600,
+        "world_size": 20.0
+      },
+      "version": 1
+    }
+  },
+  "mlflow_run_id": "d7ad979da2454d6a889ecacb6d48a7ce",
+  "paths": {
+    "charts_dir": "C:\\Users\\pedro\\Downloads\\ML-Games\\runtime\\runs\\arena2d_smoke_disabled\\charts",
+    "models_dir": "C:\\Users\\pedro\\Downloads\\ML-Games\\runtime\\runs\\arena2d_smoke_disabled\\models",
+    "run_dir": "C:\\Users\\pedro\\Downloads\\ML-Games\\runtime\\runs\\arena2d_smoke_disabled"
+  },
+  "reward": {
+    "alive_bonus": 0.02,
+    "boundary_penalty": 0.2,
+    "catch_penalty": -30.0,
+    "chaser_speed": 0.55,
+    "energy_scale": 0.02,
+    "goal_reward": 35.0,
+    "progress_scale": 3.5,
+    "speed_scale": 0.15,
+    "step_penalty": -0.01
+  },
+  "run_id": "arena2d_smoke_disabled",
+  "scenario": {
+    "description": "Sandbox rapido para testar PPO, shaping de recompensa e dashboards.",
+    "dimension": "2D",
+    "info": {
+      "action_dim": 2,
+      "notes": "2D sandbox rapido para testes de shaping, catalogo de artefatos e smoke runs.",
+      "observation_dim": 10
+    },
+    "label": "Arena 2D",
+    "scenario_id": "arena2d",
+    "viewport": "streamlit"
+  },
+  "system": {
+    "cuda_available": false,
+    "cwd": "C:\\Users\\pedro\\Downloads\\ML-Games",
+    "mlflow": "3.10.1",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "python": "3.14.3 (tags/v3.14.3:323c59a, Feb  3 2026, 16:04:56) [MSC v.1944 64 bit (AMD64)]",
+    "torch": "2.10.0+cpu"
+  },
+  "training": {
+    "batch_size": 16,
+    "checkpoint_freq": 16,
+    "clip_range": 0.2,
+    "ent_coef": 0.01,
+    "gae_lambda": 0.95,
+    "gamma": 0.99,
+    "lr": 0.0003,
+    "model_path": null,
+    "n_envs": 1,
+    "n_epochs": 1,
+    "n_steps": 32,
+    "net_arch": "32,32",
+    "seed": 5,
+    "timesteps": 32,
+    "vecnorm_path": null
+  },
+  "world": {
+    "dt": 0.18,
+    "max_steps": 600,
+    "world_size": 20.0
+  }
+}

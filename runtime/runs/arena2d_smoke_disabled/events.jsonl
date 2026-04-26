@@ -1,0 +1,5 @@
+{"message": "Runner started for Arena 2D.", "timestamp": "2026-04-06T20:23:17+00:00"}
+{"message": "Checkpoint saved to C:\\Users\\pedro\\Downloads\\ML-Games\\runtime\\runs\\arena2d_smoke_disabled\\models\\ppo_arena2d_0000000016.zip", "timestamp": "2026-04-06T20:23:17+00:00"}
+{"message": "Checkpoint saved to C:\\Users\\pedro\\Downloads\\ML-Games\\runtime\\runs\\arena2d_smoke_disabled\\models\\ppo_arena2d_0000000032.zip", "timestamp": "2026-04-06T20:23:18+00:00"}
+{"message": "Timestep limit reached at 32 steps.", "timestamp": "2026-04-06T20:23:18+00:00"}
+{"message": "Final model saved to C:\\Users\\pedro\\Downloads\\ML-Games\\runtime\\runs\\arena2d_smoke_disabled\\models\\ppo_arena2d_final.zip", "timestamp": "2026-04-06T20:23:18+00:00"}

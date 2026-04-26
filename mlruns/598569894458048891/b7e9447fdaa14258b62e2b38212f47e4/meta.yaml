@@ -1,0 +1,14 @@
+artifact_uri: file:C:/Users/pedro/Downloads/ML-Games/mlruns/598569894458048891/b7e9447fdaa14258b62e2b38212f47e4/artifacts
+end_time: 1775506050827
+entry_point_name: ''
+experiment_id: '598569894458048891'
+lifecycle_stage: active
+run_id: b7e9447fdaa14258b62e2b38212f47e4
+run_name: chase_1775505626
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1775505626809
+status: 3
+tags: []
+user_id: pedro

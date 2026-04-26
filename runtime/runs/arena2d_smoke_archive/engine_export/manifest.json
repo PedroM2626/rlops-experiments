@@ -1,0 +1,65 @@
+{
+  "compatibility": {
+    "game_engines": [
+      "unity",
+      "godot",
+      "unreal"
+    ],
+    "recommended_exchange_format": "onnx",
+    "standalone": [
+      "python",
+      "onnxruntime",
+      "original_sb3_checkpoint"
+    ]
+  },
+  "contract": {
+    "action_dim": 2,
+    "action_high": [
+      1.0,
+      1.0
+    ],
+    "action_low": [
+      -1.0,
+      -1.0
+    ],
+    "deterministic": true,
+    "input_name": "obs",
+    "normalization_baked_into_onnx": true,
+    "observation_dim": 10,
+    "output_name": "action"
+  },
+  "exported_at": "2026-04-09T22:10:53+00:00",
+  "run_id": "arena2d_smoke_archive",
+  "scenario": {
+    "description": "Sandbox rapido para testar PPO, shaping de recompensa e dashboards.",
+    "dimension": "2D",
+    "info": {
+      "action_dim": 2,
+      "action_names": [
+        "move_x",
+        "move_y"
+      ],
+      "notes": "2D sandbox rapido para testes de shaping, catalogo de artefatos e smoke runs.",
+      "observation_dim": 10,
+      "observation_names": [
+        "agent_pos_x",
+        "agent_pos_y",
+        "agent_vel_x",
+        "agent_vel_y",
+        "goal_delta_x",
+        "goal_delta_y",
+        "chaser_delta_x",
+        "chaser_delta_y",
+        "time_left",
+        "goal_distance_norm"
+      ]
+    },
+    "label": "Arena 2D",
+    "scenario_id": "arena2d",
+    "viewport": "streamlit"
+  },
+  "source": {
+    "model_path": "C:\\Users\\pedro\\Downloads\\ML-Games\\runtime\\runs\\arena2d_smoke_archive\\models\\ppo_arena2d_final.zip",
+    "vecnorm_path": "C:\\Users\\pedro\\Downloads\\ML-Games\\runtime\\runs\\arena2d_smoke_archive\\models\\vec_normalize.pkl"
+  }
+}

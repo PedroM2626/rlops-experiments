@@ -1,15 +1,13 @@
+# Godot 4+ specific ignores
+.godot/
+/android/
+
+# Python cache
 __pycache__/
-*.pyc
-*.pyo
-.venv/
-venv/
-.env
-models/*.zip
-models/*.pkl
-mlruns/
-*.egg-info/
-dist/
-build/
-.pytest_cache/
-*.zip
-runtime/
+
+# Generated ML artifacts
+ml/models/*.pt
+ml/models/*.onnx
+ml/models/training_status.json
+ml/models/training_history.jsonl
+ragdolltrainer-*

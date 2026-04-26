@@ -1,0 +1,10 @@
+{"episode": 1, "kind": "episode", "length": 8, "reward": -32.768961, "step": 8, "timestamp": "2026-04-09T22:08:15+00:00"}
+{"episode": 2, "kind": "episode", "length": 11, "reward": -34.647645, "step": 19, "timestamp": "2026-04-09T22:08:15+00:00"}
+{"episode": 3, "kind": "episode", "length": 4, "reward": -30.487901, "step": 23, "timestamp": "2026-04-09T22:08:15+00:00"}
+{"episode": 4, "kind": "episode", "length": 8, "reward": -27.278163, "step": 31, "timestamp": "2026-04-09T22:08:15+00:00"}
+{"episode": 5, "kind": "episode", "length": 3, "reward": -29.66502, "step": 34, "timestamp": "2026-04-09T22:08:15+00:00"}
+{"episode": 6, "kind": "episode", "length": 6, "reward": -31.796301, "step": 40, "timestamp": "2026-04-09T22:08:15+00:00"}
+{"episode": 7, "kind": "episode", "length": 3, "reward": -29.323219, "step": 43, "timestamp": "2026-04-09T22:08:15+00:00"}
+{"episode": 8, "kind": "episode", "length": 5, "reward": -28.945771, "step": 48, "timestamp": "2026-04-09T22:08:15+00:00"}
+{"episode": 9, "kind": "episode", "length": 8, "reward": -30.780332, "step": 56, "timestamp": "2026-04-09T22:08:15+00:00"}
+{"episode": 10, "kind": "episode", "length": 3, "reward": -30.315176, "step": 59, "timestamp": "2026-04-09T22:08:15+00:00"}

@@ -1,7 +1,26 @@
-# ML-Games: 2D/3D ML Experiment Engine
+# ML-Games: Open Source Machine Learning Experiments in Games
 
-An experimentation engine for 2D and 3D ML game projects, with a shared PPO core,
-live control dashboard, hot-reloadable reward shaping, and real-time viewport previews.
+A comprehensive repository for open source machine learning experiments in games, featuring both 3D physics simulations (PyBullet) and game engine integration (Godot). This project includes reinforcement learning training pipelines, experiment tracking with MLflow, and ONNX model export for deployment in game engines.
+
+## Project Overview
+
+This repository contains multiple ML experiments for games:
+
+### Python-based RL Experiments (PyBullet + Stable Baselines3)
+
+- **Chase (Pega-Pega)**: A humanoid agent must evade a floating capsule that chases it at increasing speed
+- **Parkour Obstacles**: A humanoid agent must navigate procedurally generated platforms, gaps, ramps, and ledges
+- **Race**: Procedural terrain generation for competitive racing environments
+- **Arena 2D**: A lightweight top-down sandbox for rapid PPO iteration and reward shaping
+
+### Godot-based ML Experiments
+
+- **ML Survival Arena**: 3D game in Godot where a humanoid agent must survive as long as possible from a pursuer
+- Full-body physics locomotion with RigidBody3D joints
+- ONNX inference server integration for real-time policy execution
+- In-game training interface with live metrics
+
+## Technology Stack
 
 | Component | Technology |
 |-----------|-----------|
@@ -10,63 +29,75 @@ live control dashboard, hot-reloadable reward shaping, and real-time viewport pr
 | RL algorithm | PPO (Stable Baselines3) |
 | Experiment tracking | MLflow |
 | Live dashboard | Streamlit |
+| Game engine | Godot 4.5+ |
 | Deployment/export | ONNX + ONNX Runtime |
 | Containerisation | Docker / Docker Compose |
-
-## Games
-
-### Chase (Pega-Pega)
-A humanoid agent must evade a floating capsule that chases it at increasing speed. Survive as long as possible.
-
-### Parkour Obstacles
-A humanoid agent must navigate procedurally generated platforms, gaps, ramps, and ledges to reach a goal zone.
-
-### Arena 2D
-A lightweight top-down sandbox for rapid PPO iteration, reward shaping, and dashboard smoke tests.
 
 ## Project Structure
 
 ```
 ML-Games/
-├── Chase/
+├── Chase/                          # PyBullet chase environment
 │   ├── src/
-│   │   ├── env/chase_env.py           # Chase Gymnasium environment (PyBullet)
-│   │   ├── agent/callbacks.py         # MLflow + SB3 callback
-│   │   ├── train.py                   # Batch training entrypoint
-│   │   └── train_interactive.py       # Interactive training with in-window controls
-│   ├── models/                        # Saved checkpoints
-│   └── play_chase.py                  # Watch the trained agent
+│   │   ├── env/chase_env.py       # Gymnasium environment
+│   │   ├── agent/callbacks.py     # MLflow + SB3 callback
+│   │   ├── train.py               # Batch training
+│   │   └── train_interactive.py   # Interactive training
+│   └── models/                    # Saved checkpoints
 │
-├── Parkour-Obstacles/
+├── Parkour-Obstacles/             # PyBullet parkour environment
 │   ├── src/
-│   │   ├── env/
-│   │   │   ├── parkour_env.py         # Parkour Gymnasium environment (PyBullet)
-│   │   │   └── level_generator.py     # Procedural level builder
-│   │   ├── agent/callbacks.py         # MLflow + SB3 callback
-│   │   ├── train.py                   # Batch training entrypoint
-│   │   ├── train_interactive.py       # Interactive training with in-window controls
-│   │   └── play.py                    # Watch the trained agent
-│   └── models/                        # Saved checkpoints
+│   │   ├── env/parkour_env.py     # Gymnasium environment
+│   │   ├── env/level_generator.py # Procedural level builder
+│   │   ├── agent/callbacks.py
+│   │   ├── train.py
+│   │   ├── train_interactive.py
+│   │   └── play.py
+│   └── models/
 │
+├── Race/                          # Procedural terrain racing
+│   ├── src/
+│   │   ├── env/race_env.py
+│   │   ├── train.py
+│   │   └── play.py
+│   └── models/
+│
+├── ml_games_engine/               # Unified ML experiment engine
+│   ├── runner.py                  # Unified runtime
+│   ├── scenarios.py               # Scenario registry
+│   ├── brains.py                  # Live viewport brain switcher
+│   ├── catalog.py                 # Checkpoint discovery
+│   ├── exporters.py               # ONNX exporter
+│   └── envs/arena2d_env.py        # 2D sandbox
+│
+├── ml/                             # Godot ML integration
+│   ├── train_agent.py              # Training pipeline
+│   ├── onnx_inference_server.py   # ONNX inference server
+│   ├── game_env.py                 # Game environment wrapper
+│   ├── policy.py                   # Policy network
+│   └── requirements.txt
+│
+├── scenes/                         # Godot scenes
+│   ├── Main.tscn                   # Main game scene
+│   ├── FullBodyLocomotion.tscn     # Full-body physics
+│   ├── HumanoidAgent.tscn
+│   ├── Pursuer.tscn
+│   └── HUD.tscn
+│
+├── scripts/                        # Godot scripts
+├── Models/                         # 3D models
+├── streamlit_app.py                # Unified dashboard
 ├── Dockerfile
 ├── docker-compose.yml
-├── .env.example
 ├── requirements.txt
-└── README.md
+└── project.godot                   # Godot project file
 ```
-
-New engine pieces:
-- `ml_games_engine/runner.py`: unified runtime with hot-reloadable control/state files
-- `ml_games_engine/scenarios.py`: registry for the built-in 2D and 3D scenarios
-- `ml_games_engine/brains.py`: live viewport brain switcher
-- `ml_games_engine/catalog.py`: automatic discovery of checkpoints, vecnormalizers, and saved runs
-- `ml_games_engine/exporters.py`: ONNX exporter with standalone/runtime bundles for external engines
-- `ml_games_engine/envs/arena2d_env.py`: built-in 2D sandbox
-- `streamlit_app.py`: dashboard for hyperparameters, reward shaping, metrics, and control
 
 ## Quick Start
 
-### 1. Install
+### Python-based Experiments
+
+#### 1. Install Dependencies
 
 ```bash
 python -m venv .venv
@@ -78,14 +109,14 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 2. Configure
+#### 2. Configure
 
 ```bash
 cp .env.example .env
 # Edit .env to adjust hyperparameters or MLflow URI
 ```
 
-### 3. Engine Dashboard (recommended)
+#### 3. Engine Dashboard (Recommended)
 
 Start the unified dashboard:
 
@@ -94,97 +125,37 @@ streamlit run streamlit_app.py
 ```
 
 From the dashboard you can:
-- choose a 2D or 3D scenario before hitting play
-- browse discovered checkpoints and VecNormalize files without typing paths
-- set PPO hyperparameters
-- inspect world and physics settings such as gravity, timestep, frame skip, and camera setup
-- pause and resume training
-- hot-reload reward weights without closing the run
-- hot-reload physics and world settings while the run is alive
-- switch the live viewport brain between the in-training policy, a random baseline, or a PPO checkpoint
-- disable the viewport brain entirely when you only want raw training throughput
-- inspect episode reward and training loss curves in real time
-- open a saved-runs tab that reads archived configs, state history, metrics, charts, checkpoints, and preview snapshots
-- get an automatic `engine_export/` bundle at the end of each run, ready for standalone use or integration into Unity, Godot, and Unreal
+- Choose a 2D or 3D scenario
+- Browse discovered checkpoints and VecNormalize files
+- Set PPO hyperparameters
+- Inspect world and physics settings
+- Pause and resume training
+- Hot-reload reward weights
+- Switch between live viewport brains
+- View real-time metrics
+- Export ONNX models for Unity, Godot, Unreal
 
-Notes:
-- 3D scenarios open a separate PyBullet window for the viewport, with the default debug panes and shadow noise disabled.
-- The 2D scenario streams frames directly into the dashboard.
-- Runtime state is written to `runtime/`, and each run is archived under `runtime/runs/<run_id>/`.
-- Each archived run can include `runtime/runs/<run_id>/engine_export/` with `policy.onnx`, `manifest.json`, `validation.json`, sample observation data, and starter wrappers for Unity, Godot, Unreal, and Python.
-
-### 3.1. Exporting For Unity, Godot, Unreal, Or Standalone
-
-The engine now exports a deployment-friendly ONNX bundle so the trained AI can be reused:
-- inside this Python project with Stable Baselines3
-- as a pure ONNX Runtime policy without the training stack
-- inside Unity, Godot, or Unreal by recreating the same observation vector contract described in `manifest.json`
-
-Automatic flow:
-- every final run writes an ONNX export bundle into `runtime/runs/<run_id>/engine_export/`
-- the Streamlit dashboard exposes those bundles in the `Saved Runs` and `Assets` tabs
-- the exported ONNX already bakes in `VecNormalize` observation normalization when available
-
-Manual CLI export:
-
-```bash
-python -m ml_games_engine.exporters ^
-  --scenario arena2d ^
-  --model runtime/runs/<run_id>/models/ppo_arena2d_final.zip ^
-  --vecnorm runtime/runs/<run_id>/models/vec_normalize.pkl ^
-  --out runtime/runs/<run_id>/engine_export
-```
-
-Bundle contents:
-- `policy.onnx`: deterministic clipped inference graph
-- `manifest.json`: observation/action contract, bounds, and scenario metadata
-- `normalization.json`: exported normalization stats for auditing
-- `validation.json`: PyTorch vs ONNXRuntime parity check
-- `python/run_policy.py`: standalone ONNX Runtime example
-- `unity/MLGamesPolicyRunner.cs`: Unity integration starter
-- `godot/ml_games_policy_runner.gd`: Godot integration starter
-- `unreal/MLGamesPolicyRunner.h/.cpp`: Unreal integration starter
-
-### 4. Legacy Interactive Training
-
-Both games have an interactive training script that opens a PyBullet window with **live controls embedded directly in the simulation window**:
+#### 4. Interactive Training
 
 **Chase:**
 ```bash
 cd Chase
 python src/train_interactive.py
-# Continue from checkpoint:
-python src/train_interactive.py --model models/ppo_chase_final.zip
 ```
 
 **Parkour:**
 ```bash
 cd Parkour-Obstacles
 python src/train_interactive.py
-# Continue from checkpoint:
-python src/train_interactive.py --model models/ppo_parkour_final.zip
 ```
 
-#### In-Window Controls (PyBullet sliders & buttons)
+**Race:**
+```bash
+cd Race
+python src/train.py --timesteps 1000000
+```
 
-| Control | Description |
-|---------|-------------|
-| **Speed** slider (0.1 - 4.0) | Training speed multiplier |
-| **Timestep Limit** slider (0 = unlimited) | Stop training after N timesteps |
-| **Pause / Resume** button | Toggle training on/off |
-| **Save Checkpoint** button | Save model immediately |
-
-#### Live HUD (rendered in the 3D scene)
-
-The top of the scene shows a yellow HUD with:
-- Status (running / PAUSED)
-- Current step vs. limit
-- Episode count
-- Last and best episode reward
-- Speed multiplier
-- Elapsed wall-clock time
-
-### 5. Batch Training
+#### 5. Batch Training
 
 ```bash
 # Chase
@@ -196,32 +167,48 @@ cd Parkour-Obstacles
 python src/train.py --timesteps 1000000
 ```
 
-### 6. Watch the Agent
+### Godot-based Experiments
+
+#### 1. Install Dependencies
+
+- Godot 4.5+
+- Python 3.10+
 
 ```bash
-# Chase
-cd Chase
-python play_chase.py --model models/ppo_chase_final.zip
-
-# Parkour
-cd Parkour-Obstacles
-python src/play.py --model models/ppo_parkour_final
+pip install -r ml/requirements.txt
 ```
 
-## Training Arguments
+#### 2. Run the Game
 
-| Argument | Default | Description |
-|----------|---------|-------------|
-| `--model` | None | Load pretrained model to continue training |
-| `--timesteps` | 0 (unlimited) | Timestep limit (interactive) / 1M (batch) |
-| `--lr` | 3e-4 | PPO learning rate |
-| `--n-steps` | 2048 | Steps per rollout per env |
-| `--batch-size` | 64 | Mini-batch size |
-| `--gamma` | 0.99 | Discount factor |
-| `--n-epochs` | 10 | PPO update epochs |
-| `--n-envs` | 4 | Parallel training environments |
-| `--net-arch` | `256,256` | MLP hidden layers |
-| `--experiment-name` | `chase_ppo` / `parkour_ppo` | MLflow experiment name |
+1. Open the project in Godot
+2. Run the main scene (configured as main scene)
+3. If ONNX model exists in `ml/models/agent_policy.onnx` and ONNX toggle is active, the game starts the inference server automatically
+4. If no ONNX exists, the agent uses heuristic policy until you train
+
+#### 3. Train via In-Game Interface
+
+1. Adjust Generations, Population, Episode Time, and Seed
+2. Check/uncheck Reuse checkpoint
+3. Click Start Training
+4. Monitor metrics in the Training panel
+
+Generated files:
+- `ml/models/agent_policy.pt` (checkpoint for continuing training)
+- `ml/models/agent_policy.onnx` (model for inference)
+- `ml/models/training_status.json` (real-time status)
+- `ml/models/training_history.jsonl` (generation history)
+
+#### 4. Manual Training
+
+```bash
+python ml/train_agent.py --model-dir ml/models --generations 60 --population 28 --episode-seconds 45 --reuse true
+```
+
+#### 5. Manual Inference Server
+
+```bash
+python ml/onnx_inference_server.py --model ml/models/agent_policy.onnx --host 127.0.0.1 --port 8765
+```
 
 ## MLflow Tracking
 
@@ -244,9 +231,10 @@ docker compose up trainer      # Build and train
 docker compose up mlflow-ui    # Start MLflow UI only
 ```
 
-## Chase Environment
+## Environment Details
 
-### Observation Space (42-dim)
+### Chase Environment (42-dim observation)
+
 | Range | Description |
 |-------|-------------|
 | 0-1 | sin/cos angle to chaser |
@@ -257,17 +245,14 @@ docker compose up mlflow-ui    # Start MLflow UI only
 | 19-28 | joint velocities (10 joints) |
 | 29-41 | raycasts (16 rays) |
 
-### Reward Function
-| Event | Reward |
-|-------|--------|
-| Survival per step | +0.01 |
-| Increasing distance from chaser | +2.0 * delta |
-| Being within 3m of chaser | -0.5 * (3 - dist) |
-| Fall / caught | -50 |
+**Reward Function:**
+- Survival per step: +0.01
+- Increasing distance from chaser: +2.0 * delta
+- Being within 3m of chaser: -0.5 * (3 - dist)
+- Fall / caught: -50
 
-## Parkour Environment
+### Parkour Environment (44-dim observation)
 
-### Observation Space (44-dim)
 | Range | Description |
 |-------|-------------|
 | 0-2 | torso position (x, y, z) |
@@ -282,22 +267,62 @@ docker compose up mlflow-ui    # Start MLflow UI only
 | 42 | torso height |
 | 43 | time remaining fraction |
 
-### Reward Function
-| Event | Reward |
-|-------|--------|
-| Progress toward goal | +5.0 * delta |
-| Forward speed (when progressing) | +0.3 * forward_vel |
-| Reaching goal | +150 |
-| Fall penalty | -5 |
-| Lateral drift | penalty proportional to Y offset |
-| Per timestep | -0.02 |
+**Reward Function:**
+- Progress toward goal: +5.0 * delta
+- Forward speed (when progressing): +0.3 * forward_vel
+- Reaching goal: +150
+- Fall penalty: -5
+- Lateral drift: penalty proportional to Y offset
+- Per timestep: -0.02
+
+## ONNX Export
+
+The engine exports deployment-friendly ONNX bundles for:
+- Python projects with Stable Baselines3
+- Pure ONNX Runtime without training stack
+- Unity, Godot, or Unreal integration
+
+Automatic flow:
+- Every final run writes an ONNX export bundle to `runtime/runs/<run_id>/engine_export/`
+- The Streamlit dashboard exposes bundles in Saved Runs and Assets tabs
+- Exported ONNX includes VecNormalize observation normalization
+
+Manual CLI export:
+
+```bash
+python -m ml_games_engine.exporters ^
+  --scenario arena2d ^
+  --model runtime/runs/<run_id>/models/ppo_arena2d_final.zip ^
+  --vecnorm runtime/runs/<run_id>/models/vec_normalize.pkl ^
+  --out runtime/runs/<run_id>/engine_export
+```
+
+Bundle contents:
+- `policy.onnx`: deterministic clipped inference graph
+- `manifest.json`: observation/action contract, bounds, and scenario metadata
+- `normalization.json`: exported normalization stats
+- `validation.json`: PyTorch vs ONNXRuntime parity check
+- `python/run_policy.py`: standalone ONNX Runtime example
+- `unity/MLGamesPolicyRunner.cs`: Unity integration starter
+- `godot/ml_games_policy_runner.gd`: Godot integration starter
+- `unreal/MLGamesPolicyRunner.h/.cpp`: Unreal integration starter
 
 ## Requirements
 
 - Python 3.10+
+- Godot 4.5+ (for Godot experiments)
 - PyBullet 3.2.6
 - Stable Baselines3 2.7.1
 - PyTorch 2.10.0
 - MLflow 3.10.1
+- ONNX 1.20.1
+- ONNX Runtime 1.24.3
 
 See `requirements.txt` for exact versions.
+
+## Notes
+
+- The FBX model in `Models/RobotKyle.fbx` is loaded in the agent when available
+- The procedural rig (capsules/spheres) remains active for separate body part movement
+- If Python is not in PATH, adjust `python_command` in `OnnxPolicyClient.gd` and `TrainingManager.gd`
+- All paths in the project are relative to the repository root

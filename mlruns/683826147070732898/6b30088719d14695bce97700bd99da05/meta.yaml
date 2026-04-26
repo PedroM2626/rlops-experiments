@@ -1,0 +1,14 @@
+artifact_uri: file:C:/Users/pedro/Downloads/ML-Games/mlruns/683826147070732898/6b30088719d14695bce97700bd99da05/artifacts
+end_time: 1775772496215
+entry_point_name: ''
+experiment_id: '683826147070732898'
+lifecycle_stage: active
+run_id: 6b30088719d14695bce97700bd99da05
+run_name: arena2d_engine_export_smoke
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1775772494576
+status: 3
+tags: []
+user_id: pedro

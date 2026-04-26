@@ -1,16 +1,15 @@
 """
-Custom Stable Baselines3 callback for MLflow experiment tracking.
+MLflow callback for the Race environment training.
 
-Logs per-episode reward, length, and cumulative timesteps.
+Logs per-episode reward, episode length, and cumulative timesteps.
 Saves model checkpoints as MLflow artifacts every N steps.
-Follows the same pattern as Chase/src/agent/callbacks.py.
 """
 
 import os
 import mlflow
 import numpy as np
+import matplotlib.pyplot as plt
 from stable_baselines3.common.callbacks import BaseCallback
-
 
 class MLflowCallback(BaseCallback):
     """
@@ -21,36 +20,26 @@ class MLflowCallback(BaseCallback):
     checkpoint_freq : int
         Save a model checkpoint every this many env steps.
     model_save_dir : str
-        Local directory where checkpoint files are saved before being logged.
-    agent_name : str
-        Name of the agent being trained (used in checkpoint filenames).
+        Local directory where checkpoint files are saved.
     verbose : int
         Verbosity level.
-    stats_callback : callable, optional
-        Called with (ep_reward, ep_length) after each episode for live UI updates.
     """
 
-    def __init__(
-        self,
-        checkpoint_freq: int = 50_000,
-        model_save_dir: str = "models",
-        agent_name: str = "mario",
-        verbose: int = 1,
-        stats_callback=None,
-    ):
+    def __init__(self,
+                 checkpoint_freq: int = 50_000,
+                 model_save_dir: str = "models",
+                 verbose: int = 1):
         super().__init__(verbose)
-        self.checkpoint_freq = checkpoint_freq
-        self.model_save_dir = model_save_dir
-        self.agent_name = agent_name
-        self._last_checkpoint = 0
-        self.stats_callback = stats_callback
+        self.checkpoint_freq   = checkpoint_freq
+        self.model_save_dir    = model_save_dir
+        self._last_checkpoint  = 0
 
-        # Public stats accessible from the training loop
+        # Public stats accessible from interactive training loops
         self.episode_count = 0
-        self.best_reward = float("-inf")
-        self.last_reward = 0.0
-        self.best_x_pos = 0
-        self.total_flags = 0
+        self.best_reward   = float("-inf")
+        self.last_reward   = 0.0
+        self.all_rewards   = []
+        self.all_lengths   = []
 
     # ------------------------------------------------------------------
     # SB3 hooks
@@ -67,43 +56,31 @@ class MLflowCallback(BaseCallback):
                 ep_reward = float(ep_info["r"])
                 ep_length = int(ep_info["l"])
                 self.episode_count += 1
-                self.last_reward = ep_reward
+                self.last_reward    = ep_reward
+                self.all_rewards.append(ep_reward)
+                self.all_lengths.append(ep_length)
                 if ep_reward > self.best_reward:
                     self.best_reward = ep_reward
-
-                # track x_pos and flag completion
-                x_pos = info.get("x_pos", 0)
-                flag_get = info.get("flag_get", False)
-                if x_pos > self.best_x_pos:
-                    self.best_x_pos = x_pos
-                if flag_get:
-                    self.total_flags += 1
 
                 try:
                     mlflow.log_metrics(
                         {
                             "episode_reward": ep_reward,
                             "episode_length": ep_length,
-                            "x_pos": x_pos,
-                            "best_x_pos": self.best_x_pos,
-                            "flag_completions": self.total_flags,
+                            "best_reward":    self.best_reward,
                         },
                         step=self.num_timesteps,
                     )
                 except Exception:
                     pass
 
-                if self.stats_callback is not None:
-                    self.stats_callback(ep_reward, ep_length)
-
                 if self.verbose >= 1:
-                    flag_str = " [FLAG]" if flag_get else ""
                     print(
-                        f"  [{self.agent_name}] ep={self.episode_count} "
+                        f"  [ep={self.episode_count:04d}] "
                         f"step={self.num_timesteps:,} "
                         f"reward={ep_reward:.2f} "
-                        f"x_pos={x_pos} "
-                        f"len={ep_length}{flag_str}"
+                        f"length={ep_length} "
+                        f"best={self.best_reward:.2f}"
                     )
 
         # Checkpoint
@@ -115,6 +92,25 @@ class MLflowCallback(BaseCallback):
 
     def _on_training_end(self) -> None:
         self._save_checkpoint(tag="final")
+        self._generate_and_log_charts()
+
+    # ------------------------------------------------------------------
+    # Hooks the chart generation
+    # ------------------------------------------------------------------
+    def _generate_and_log_charts(self):
+        try:
+            plt.figure(figsize=(10, 5))
+            plt.plot(self.all_rewards, label="Episode Reward")
+            plt.xlabel("Episode")
+            plt.ylabel("Reward")
+            plt.title("Training Rewards")
+            plt.legend()
+            chart_path = os.path.join(self.model_save_dir, "training_rewards.png")
+            plt.savefig(chart_path)
+            plt.close()
+            mlflow.log_artifact(chart_path, artifact_path="charts")
+        except Exception as e:
+            print(f"  [MLflow] Warning: could not generate charts: {e}")
 
     # ------------------------------------------------------------------
     # Helpers
@@ -122,15 +118,15 @@ class MLflowCallback(BaseCallback):
 
     def _save_checkpoint(self, tag: str = None) -> None:
         step_str = f"{self.num_timesteps:010d}"
-        suffix = f"_{tag}" if tag else ""
-        filename = f"ppo_{self.agent_name}_{step_str}{suffix}.zip"
-        path = os.path.join(self.model_save_dir, filename)
+        suffix   = f"_{tag}" if tag else ""
+        filename = f"ppo_race_{step_str}{suffix}.zip"
+        path     = os.path.join(self.model_save_dir, filename)
 
         self.model.save(path)
 
         try:
             mlflow.log_artifact(path, artifact_path="checkpoints")
             if self.verbose >= 1:
-                print(f"  [MLflow] Checkpoint saved -> {path}")
+                print(f"  [MLflow] Checkpoint -> {path}")
         except Exception as e:
             print(f"  [MLflow] Warning: could not log artifact: {e}")

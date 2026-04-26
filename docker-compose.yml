@@ -28,19 +28,33 @@ services:
       sh -c "pip install --quiet mlflow &&
              mlflow ui --host 0.0.0.0 --port 5000 --backend-store-uri /app/mlruns"
 
-  competitive-mario:
+  # ---- Race: Competitive Multi-Agent Humanoid Walking Race ----
+  race-trainer:
     build:
-      context: ./Competitive-Mario
+      context: ./Race
       dockerfile: Dockerfile
+    working_dir: /app
     volumes:
-      - ./Competitive-Mario/models:/app/models
-      - ./Competitive-Mario/mlruns:/app/mlruns
-      - ./Competitive-Mario/results:/app/results
+      - ./Race/models:/app/models
+      - ./Race/mlruns:/app/mlruns
     env_file:
-      - .env
+      - ./Race/.env.example
+    command: python -m src.train
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+  race-mlflow:
+    image: python:3.10-slim
+    working_dir: /app
+    volumes:
+      - ./Race/mlruns:/app/mlruns
+    ports:
+      - "5001:5001"
     command: >
-      sh -c "python src/train.py --agent-name mario_speedster --config configs/agents.yaml &&
-             python src/train.py --agent-name mario_careful --config configs/agents.yaml &&
-             python src/train.py --agent-name mario_balanced --config configs/agents.yaml &&
-             python src/train.py --agent-name mario_explorer --config configs/agents.yaml &&
-             python src/compete.py"
+      sh -c "pip install --quiet mlflow &&
+             mlflow ui --host 0.0.0.0 --port 5001 --backend-store-uri /app/mlruns"

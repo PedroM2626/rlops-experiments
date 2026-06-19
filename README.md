@@ -132,8 +132,10 @@ From the dashboard you can:
 - Pause and resume training
 - Hot-reload reward weights
 - Switch between live viewport brains
-- View real-time metrics
+- View real-time metrics (utilizing non-blocking Streamlit fragments for smooth updates)
+- Access the local/remote MLflow UI via the sidebar tracking shortcut link
 - Export ONNX models for Unity, Godot, Unreal
+- Run reliably on Windows with concurrent file access retries
 
 #### 4. Interactive Training
 

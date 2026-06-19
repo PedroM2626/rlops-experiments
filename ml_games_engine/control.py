@@ -7,6 +7,7 @@ import json
 import os
 import re
 import tempfile
+import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -22,36 +23,74 @@ def load_json(path: Path, default: Dict[str, Any] | None = None) -> Dict[str, An
     """Load JSON from disk, falling back to a defensive copy of ``default``."""
     if not path.exists():
         return copy.deepcopy(default or {})
-    try:
-        with path.open("r", encoding="utf-8-sig") as handle:
-            return json.load(handle)
-    except (OSError, json.JSONDecodeError):
-        return copy.deepcopy(default or {})
+    
+    max_retries = 5
+    delay = 0.05
+    for attempt in range(max_retries):
+        try:
+            with path.open("r", encoding="utf-8-sig") as handle:
+                return json.load(handle)
+        except (PermissionError, OSError):
+            if attempt == max_retries - 1:
+                return copy.deepcopy(default or {})
+            time.sleep(delay)
+        except json.JSONDecodeError:
+            return copy.deepcopy(default or {})
+    return copy.deepcopy(default or {})
 
 
 def write_json(path: Path, payload: Dict[str, Any]) -> None:
     """Atomically write JSON so the dashboard never reads a partial file."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    fd, tmp_path = tempfile.mkstemp(
-        prefix=f"{path.stem}_",
-        suffix=".tmp",
-        dir=str(path.parent),
-    )
-    try:
-        with os.fdopen(fd, "w", encoding="utf-8") as handle:
-            json.dump(payload, handle, indent=2, sort_keys=True)
-        os.replace(tmp_path, path)
-    finally:
-        if os.path.exists(tmp_path):
-            os.remove(tmp_path)
+    
+    max_retries = 5
+    delay = 0.05
+    last_exc = None
+    
+    for attempt in range(max_retries):
+        fd, tmp_path = tempfile.mkstemp(
+            prefix=f"{path.stem}_",
+            suffix=".tmp",
+            dir=str(path.parent),
+        )
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as handle:
+                json.dump(payload, handle, indent=2, sort_keys=True)
+            os.replace(tmp_path, path)
+            return
+        except (PermissionError, OSError) as exc:
+            last_exc = exc
+            if os.path.exists(tmp_path):
+                try:
+                    os.remove(tmp_path)
+                except Exception:
+                    pass
+            time.sleep(delay)
+            
+    if last_exc:
+        raise last_exc
 
 
 def append_jsonl(path: Path, payload: Dict[str, Any]) -> None:
     """Append a single JSON object to a JSONL file."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("a", encoding="utf-8") as handle:
-        handle.write(json.dumps(payload, sort_keys=True))
-        handle.write("\n")
+    
+    max_retries = 5
+    delay = 0.05
+    last_exc = None
+    
+    for attempt in range(max_retries):
+        try:
+            with path.open("a", encoding="utf-8") as handle:
+                handle.write(json.dumps(payload, sort_keys=True))
+                handle.write("\n")
+            return
+        except (PermissionError, OSError) as exc:
+            last_exc = exc
+            time.sleep(delay)
+            
+    if last_exc:
+        raise last_exc
 
 
 def read_jsonl(path: Path) -> List[Dict[str, Any]]:
@@ -59,17 +98,26 @@ def read_jsonl(path: Path) -> List[Dict[str, Any]]:
     if not path.exists():
         return []
 
-    rows: List[Dict[str, Any]] = []
-    with path.open("r", encoding="utf-8-sig") as handle:
-        for line in handle:
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                rows.append(json.loads(line))
-            except json.JSONDecodeError:
-                continue
-    return rows
+    max_retries = 5
+    delay = 0.05
+    for attempt in range(max_retries):
+        try:
+            rows: List[Dict[str, Any]] = []
+            with path.open("r", encoding="utf-8-sig") as handle:
+                for line in handle:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        rows.append(json.loads(line))
+                    except json.JSONDecodeError:
+                        continue
+            return rows
+        except (PermissionError, OSError):
+            if attempt == max_retries - 1:
+                return []
+            time.sleep(delay)
+    return []
 
 
 def sanitize_slug(value: str) -> str:

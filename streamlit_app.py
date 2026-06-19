@@ -207,13 +207,23 @@ selected_scenario = st.sidebar.selectbox(
 )
 scenario = get_scenario(selected_scenario)
 
-model_assets = cached_model_assets(selected_scenario)
-vecnorm_assets = cached_vecnorm_assets(selected_scenario)
-engine_exports = cached_engine_exports(selected_scenario)
+# Autorefresh settings in sidebar
+st.sidebar.markdown("---")
+st.sidebar.markdown("### ⚙️ Dashboard Controls")
+auto_refresh = st.sidebar.checkbox("Auto refresh Live Monitor", value=True)
+refresh_seconds = st.sidebar.slider("Refresh interval (seconds)", min_value=1, max_value=5, value=2, step=1)
 
-st.title("ML Games Engine")
-st.caption("Core desacoplado + dashboard hot-reload com catalogo de checkpoints, fisica configuravel, historico completo e exportacao ONNX para uso standalone, Unity, Godot ou Unreal.")
+# MLflow tracking link
+control = current_control()
+custom_uri = control.get("tracking_uri") or getattr(scenario, "tracking_uri", None)
+mlflow_url = custom_uri if custom_uri and (custom_uri.startswith("http://") or custom_uri.startswith("https://")) else "http://localhost:5000"
 
+st.sidebar.markdown("---")
+st.sidebar.markdown("### 📊 MLOps & Tracking")
+st.sidebar.markdown(f"[**Acessar MLflow UI**]({mlflow_url})")
+st.sidebar.caption(f"Tracking URI: `{custom_uri}`")
+
+st.sidebar.markdown("---")
 st.sidebar.markdown(f"**Dimensao:** {scenario.dimension}")
 st.sidebar.markdown(f"**Viewport:** {scenario.viewport}")
 st.sidebar.caption(scenario.description)
@@ -224,6 +234,65 @@ st.sidebar.json(
     },
     expanded=False,
 )
+
+
+@st.fragment(run_every=refresh_seconds if auto_refresh else None)
+def render_live_monitor(scenario, paths):
+    state, metrics = load_runtime_state()
+    live_dimension = state.get("dimension", scenario.dimension)
+    status_cols = st.columns(6)
+    status_cols[0].metric("Status", state.get("status", "idle"))
+    status_cols[1].metric("Steps", f"{int(state.get('step', 0)):,}")
+    status_cols[2].metric("Episodes", int(state.get("episodes", 0)))
+    status_cols[3].metric("Last Reward", f"{float(state.get('last_reward', 0.0)):.2f}")
+    status_cols[4].metric("Best Reward", f"{float(state.get('best_reward') or 0.0):.2f}")
+    gravity_display = state.get("world", {}).get("gravity_z", scenario.default_world.get("gravity_z", "n/a"))
+    status_cols[5].metric("Gravity Z", gravity_display)
+
+    live_left, live_right = st.columns([1.2, 1.0])
+    history = metrics.get("history", [])
+    episode_rows = [row for row in history if row.get("kind") == "episode"]
+    train_rows = [row for row in history if row.get("kind") == "train"]
+
+    with live_left:
+        st.subheader("Live Metrics")
+        if episode_rows:
+            df_rewards = pd.DataFrame(episode_rows)
+            safe_line_chart(df_rewards, x="step", y="reward")
+        else:
+            st.info("Os graficos vao aparecer assim que os primeiros episodios forem fechados.")
+
+        if train_rows:
+            df_losses = pd.DataFrame(train_rows)
+            chart_cols = [col for col in ["loss", "value_loss", "policy_loss", "approx_kl"] if col in df_losses.columns]
+            if chart_cols:
+                safe_line_chart(df_losses, x="step", y=chart_cols)
+
+        st.subheader("State Snapshot")
+        st.json(state or {"status": "idle"}, expanded=False)
+
+    with live_right:
+        st.subheader("Viewport")
+        if state.get("pilot_name") == "disabled":
+            st.info("Preview desativado neste run.")
+        elif live_dimension == "2D" and paths.frame.exists():
+            st.image(np.load(paths.frame), caption="Arena 2D live preview", use_container_width=True)
+        elif live_dimension == "3D":
+            st.info("O viewport 3D abre em uma janela PyBullet separada. O dashboard salva o historico completo do run em `runtime/runs/`.")
+        else:
+            st.info("Nenhum frame disponivel ainda.")
+
+        st.subheader("Events")
+        for event in state.get("events", []):
+            st.code(event)
+
+
+model_assets = cached_model_assets(selected_scenario)
+vecnorm_assets = cached_vecnorm_assets(selected_scenario)
+engine_exports = cached_engine_exports(selected_scenario)
+
+st.title("ML Games Engine")
+st.caption("Core desacoplado + dashboard hot-reload com catalogo de checkpoints, fisica configuravel, historico completo e exportacao ONNX para uso standalone, Unity, Godot ou Unreal.")
 
 default_training = dict(scenario.default_training)
 default_reward = dict(scenario.default_reward)
@@ -325,8 +394,6 @@ with tab_experiment:
         st.subheader("Reward Hot Reload")
         reward_values = render_config_editor(f"reward_{selected_scenario}", default_reward, columns=1)
         speed = st.slider("Preview speed", min_value=0.1, max_value=2.0, value=1.0, step=0.1)
-        auto_refresh = st.checkbox("Auto refresh", value=True)
-        refresh_seconds = st.slider("Refresh interval", min_value=1, max_value=5, value=2, step=1)
 
     training_payload = {
         "timesteps": int(timesteps),
@@ -481,52 +548,7 @@ with tab_experiment:
         st.rerun()
 
 with tab_live:
-    live_dimension = state.get("dimension", scenario.dimension)
-    status_cols = st.columns(6)
-    status_cols[0].metric("Status", state.get("status", "idle"))
-    status_cols[1].metric("Steps", f"{int(state.get('step', 0)):,}")
-    status_cols[2].metric("Episodes", int(state.get("episodes", 0)))
-    status_cols[3].metric("Last Reward", f"{float(state.get('last_reward', 0.0)):.2f}")
-    status_cols[4].metric("Best Reward", f"{float(state.get('best_reward') or 0.0):.2f}")
-    gravity_display = state.get("world", {}).get("gravity_z", scenario.default_world.get("gravity_z", "n/a"))
-    status_cols[5].metric("Gravity Z", gravity_display)
-
-    live_left, live_right = st.columns([1.2, 1.0])
-    history = metrics.get("history", [])
-    episode_rows = [row for row in history if row.get("kind") == "episode"]
-    train_rows = [row for row in history if row.get("kind") == "train"]
-
-    with live_left:
-        st.subheader("Live Metrics")
-        if episode_rows:
-            df_rewards = pd.DataFrame(episode_rows)
-            safe_line_chart(df_rewards, x="step", y="reward")
-        else:
-            st.info("Os graficos vao aparecer assim que os primeiros episodios forem fechados.")
-
-        if train_rows:
-            df_losses = pd.DataFrame(train_rows)
-            chart_cols = [col for col in ["loss", "value_loss", "policy_loss", "approx_kl"] if col in df_losses.columns]
-            if chart_cols:
-                safe_line_chart(df_losses, x="step", y=chart_cols)
-
-        st.subheader("State Snapshot")
-        st.json(state or {"status": "idle"}, expanded=False)
-
-    with live_right:
-        st.subheader("Viewport")
-        if state.get("pilot_name") == "disabled":
-            st.info("Preview desativado neste run.")
-        elif live_dimension == "2D" and PATHS.frame.exists():
-            st.image(np.load(PATHS.frame), caption="Arena 2D live preview", use_container_width=True)
-        elif live_dimension == "3D":
-            st.info("O viewport 3D abre em uma janela PyBullet separada. O dashboard salva o historico completo do run em `runtime/runs/`.")
-        else:
-            st.info("Nenhum frame disponivel ainda.")
-
-        st.subheader("Events")
-        for event in state.get("events", []):
-            st.code(event)
+    render_live_monitor(scenario, PATHS)
 
 with tab_saved:
     saved_runs = cached_saved_runs()
@@ -646,12 +668,4 @@ with tab_assets:
     else:
         st.info("Nenhum bundle ONNX catalogado para este scenario.")
 
-if "auto_refresh" not in locals():
-    auto_refresh = True
-if "refresh_seconds" not in locals():
-    refresh_seconds = 2
-
-if auto_refresh:
-    time.sleep(refresh_seconds)
-    st.cache_data.clear()
-    st.rerun()
+# Page auto-refresh managed via st.fragment decorator on the Live Monitor tab.

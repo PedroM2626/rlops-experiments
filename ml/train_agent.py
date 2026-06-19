@@ -40,13 +40,40 @@ def parse_args() -> argparse.Namespace:
 def write_json_atomic(path: Path, payload: dict) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     temp_path = path.with_suffix(path.suffix + ".tmp")
-    temp_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
-    temp_path.replace(path)
+    
+    max_retries = 5
+    delay = 0.05
+    last_exc = None
+    
+    for attempt in range(max_retries):
+        try:
+            temp_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+            temp_path.replace(path)
+            return
+        except (PermissionError, OSError) as exc:
+            last_exc = exc
+            time.sleep(delay)
+            
+    if last_exc:
+        raise last_exc
 
 
 def append_history(path: Path, payload: dict) -> None:
-    with path.open("a", encoding="utf-8") as handle:
-        handle.write(json.dumps(payload, ensure_ascii=True) + "\n")
+    max_retries = 5
+    delay = 0.05
+    last_exc = None
+    
+    for attempt in range(max_retries):
+        try:
+            with path.open("a", encoding="utf-8") as handle:
+                handle.write(json.dumps(payload, ensure_ascii=True) + "\n")
+            return
+        except (PermissionError, OSError) as exc:
+            last_exc = exc
+            time.sleep(delay)
+            
+    if last_exc:
+        raise last_exc
 
 
 def run_episode(env: SurvivalTrainingEnv, model: PolicyNetwork) -> tuple[float, dict]:

@@ -1,7 +1,0 @@
-artifact_location: file:///D:/OMLEG/ML-Games/PPO-Comparison/mlruns/707532254209172153
-creation_time: 1783696111724
-experiment_id: '707532254209172153'
-last_update_time: 1783696111724
-lifecycle_stage: active
-name: ppo_comparison_LunarLander-v3_v2
-workspace: default

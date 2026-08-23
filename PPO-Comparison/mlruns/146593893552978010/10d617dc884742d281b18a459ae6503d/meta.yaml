@@ -1,0 +1,14 @@
+artifact_uri: file:///D:/OMLEG/ML-Games/PPO-Comparison/mlruns/146593893552978010/10d617dc884742d281b18a459ae6503d/artifacts
+end_time: 1783689462052
+entry_point_name: ''
+experiment_id: '146593893552978010'
+lifecycle_stage: active
+run_id: 10d617dc884742d281b18a459ae6503d
+run_name: custom_pytorch
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1783688025059
+status: 3
+tags: []
+user_id: pedro

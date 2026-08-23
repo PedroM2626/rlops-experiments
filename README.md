@@ -12,6 +12,7 @@ This repository contains multiple ML experiments for games:
 - **Parkour Obstacles**: A humanoid agent must navigate procedurally generated platforms, gaps, ramps, and ledges
 - **Race**: Procedural terrain generation for competitive racing environments
 - **Arena 2D**: A lightweight top-down sandbox for rapid PPO iteration and reward shaping
+- **PPO Implementation Comparison**: A controlled experiment comparing Stable Baselines3, CleanRL, Custom PyTorch, and TorchRL implementations of PPO on LunarLander-v3
 
 ### Godot-based ML Experiments
 

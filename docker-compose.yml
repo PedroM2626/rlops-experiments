@@ -58,3 +58,32 @@ services:
     command: >
       sh -c "pip install --quiet mlflow &&
              mlflow ui --host 0.0.0.0 --port 5001 --backend-store-uri /app/mlruns"
+
+  # ---- PPO Implementation Comparison ----
+  ppo-comparison:
+    build:
+      context: ./PPO-Comparison
+      dockerfile: Dockerfile
+    working_dir: /app
+    volumes:
+      - ./PPO-Comparison/results:/app/results
+      - ./PPO-Comparison/mlruns:/app/mlruns
+    command: python run_all.py
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+  ppo-comparison-mlflow:
+    image: python:3.14-slim
+    working_dir: /app
+    volumes:
+      - ./PPO-Comparison/mlruns:/app/mlruns
+    ports:
+      - "5002:5000"
+    command: >
+      sh -c "pip install --quiet mlflow &&
+             mlflow ui --host 0.0.0.0 --port 5000 --backend-store-uri /app/mlruns"

@@ -1,0 +1,14 @@
+artifact_uri: file:///D:/OMLEG/ML-Games/PPO-Comparison/mlruns/146593893552978010/49a045477563429ca91dcce51154f8a9/artifacts
+end_time: 1783656124428
+entry_point_name: ''
+experiment_id: '146593893552978010'
+lifecycle_stage: active
+run_id: 49a045477563429ca91dcce51154f8a9
+run_name: cleanrl_ppo
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1783655734404
+status: 3
+tags: []
+user_id: pedro

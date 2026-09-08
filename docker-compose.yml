@@ -1,14 +1,14 @@
-version: "3.9"
-
 services:
-  trainer:
-    build: .
+  # ---- Chase: single-humanoid evasion ----
+  chase-trainer:
+    build:
+      context: ./Chase
+      dockerfile: Dockerfile
+    working_dir: /app
     volumes:
-      - ./models:/app/models
-      - ./mlruns:/app/mlruns
-    env_file:
-      - .env
-    command: python src/train.py
+      - ./Chase/models:/app/models
+      - ./Chase/mlruns:/app/mlruns
+    command: python -m src.train_interactive
     deploy:
       resources:
         reservations:
@@ -17,16 +17,45 @@ services:
               count: all
               capabilities: [gpu]
 
-  mlflow-ui:
+  chase-mlflow:
     image: python:3.10-slim
     working_dir: /app
     volumes:
-      - ./mlruns:/app/mlruns
+      - ./Chase/mlruns:/app/mlruns
     ports:
       - "5000:5000"
     command: >
       sh -c "pip install --quiet mlflow &&
              mlflow ui --host 0.0.0.0 --port 5000 --backend-store-uri /app/mlruns"
+
+  # ---- Parkour: procedural platform navigation ----
+  parkour-trainer:
+    build: .
+    volumes:
+      - ./Parkour-Obstacles/models:/app/Parkour-Obstacles/models
+      - ./Parkour-Obstacles/mlruns:/app/Parkour-Obstacles/mlruns
+    env_file:
+      - .env
+    working_dir: /app/Parkour-Obstacles
+    command: python -m src.train
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+  parkour-mlflow:
+    image: python:3.10-slim
+    working_dir: /app
+    volumes:
+      - ./Parkour-Obstacles/mlruns:/app/mlruns
+    ports:
+      - "5003:5003"
+    command: >
+      sh -c "pip install --quiet mlflow &&
+             mlflow ui --host 0.0.0.0 --port 5003 --backend-store-uri /app/mlruns"
 
   # ---- Race: Competitive Multi-Agent Humanoid Walking Race ----
   race-trainer:
@@ -38,7 +67,7 @@ services:
       - ./Race/models:/app/models
       - ./Race/mlruns:/app/mlruns
     env_file:
-      - ./Race/.env.example
+      - ./Race/.env
     command: python -m src.train
     deploy:
       resources:
@@ -78,7 +107,7 @@ services:
               capabilities: [gpu]
 
   ppo-comparison-mlflow:
-    image: python:3.14-slim
+    image: python:3.10-slim
     working_dir: /app
     volumes:
       - ./PPO-Comparison/mlruns:/app/mlruns

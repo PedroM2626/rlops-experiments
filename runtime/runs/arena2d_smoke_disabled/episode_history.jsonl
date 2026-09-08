@@ -1,7 +1,0 @@
-{"episode": 1, "kind": "episode", "length": 5, "reward": -29.451941, "step": 5, "timestamp": "2026-04-06T20:23:17+00:00"}
-{"episode": 2, "kind": "episode", "length": 5, "reward": -29.997884, "step": 10, "timestamp": "2026-04-06T20:23:17+00:00"}
-{"episode": 3, "kind": "episode", "length": 6, "reward": -27.498558, "step": 16, "timestamp": "2026-04-06T20:23:17+00:00"}
-{"episode": 4, "kind": "episode", "length": 4, "reward": -29.476347, "step": 20, "timestamp": "2026-04-06T20:23:17+00:00"}
-{"episode": 5, "kind": "episode", "length": 5, "reward": -30.642119, "step": 25, "timestamp": "2026-04-06T20:23:17+00:00"}
-{"episode": 6, "kind": "episode", "length": 3, "reward": -31.288934, "step": 28, "timestamp": "2026-04-06T20:23:17+00:00"}
-{"episode": 7, "kind": "episode", "length": 3, "reward": -29.971257, "step": 31, "timestamp": "2026-04-06T20:23:17+00:00"}

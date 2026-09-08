@@ -17,5 +17,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-# Default: run training
-CMD ["python", "src/train.py"]
+WORKDIR /app/Parkour-Obstacles
+
+# Default: run Parkour training (override with another command as needed)
+CMD ["python", "train.py"]

@@ -1,7 +1,0 @@
-artifact_location: file:C:/Users/pedro/Downloads/ML-Games/mlruns/598569894458048891
-creation_time: 1775505626661
-experiment_id: '598569894458048891'
-last_update_time: 1775505626661
-lifecycle_stage: active
-name: chase_ppo_engine
-workspace: default

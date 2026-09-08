@@ -1,13 +1,28 @@
-# Godot 4+ specific ignores
-.godot/
-/android/
-
 # Python cache
 __pycache__/
+*.pyc
+*.pyo
+
+# Virtual environments (root-level only)
+/.venv/
+/venv/
+/ENV/
 
 # Generated ML artifacts
-ml/models/*.pt
-ml/models/*.onnx
-ml/models/training_status.json
-ml/models/training_history.jsonl
-ragdolltrainer-*
+mlruns/
+**/mlruns/
+runtime/
+**/models/*.zip
+**/models/*.pkl
+**/vec_normalize.pkl
+*.onnx
+
+# Env files with secrets
+.env
+Race/.env
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

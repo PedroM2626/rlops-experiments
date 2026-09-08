@@ -1,0 +1,14 @@
+.venv/
+venv/
+ENV/
+__pycache__/
+*.pyc
+mlruns/
+**/mlruns/
+runtime/
+*.zip
+*.pkl
+*.pt
+*.onnx
+.env
+.git/

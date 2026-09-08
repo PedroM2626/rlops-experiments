@@ -8,13 +8,13 @@ __pycache__/
 /venv/
 /ENV/
 
-# Generated ML artifacts
+# Generated ML artifacts (checkpoints and weights are regenerable; not versioned)
 mlruns/
 **/mlruns/
 runtime/
-**/models/*.zip
-**/models/*.pkl
-**/vec_normalize.pkl
+*.zip
+*.pkl
+*.pt
 *.onnx
 
 # Env files with secrets

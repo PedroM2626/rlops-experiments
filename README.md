@@ -134,6 +134,8 @@ Each run logs:
 - Model checkpoints every 50k steps (as artifacts)
 - Final model + VecNormalize stats
 
+> Checkpoints (`*.zip`/`*.pkl`/`*.pt`) are git-ignored on purpose — they are regenerable via training and would bloat the repo (~560 MB before this change).
+
 ## Docker
 
 ```bash

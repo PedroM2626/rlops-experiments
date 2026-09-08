@@ -45,7 +45,7 @@ python run_all.py
 ## Results
 
 After running the orchestrator, you will find (under `results/<EnvId>/`):
-- **Trained Models**: Saved in `results/<EnvId>/models/`
+- **Trained Models**: Saved in `results/<EnvId>/models/` (weights `*.pt`/`*.zip` are git-ignored; retrain with `run_all.py` to regenerate)
 - **Training Curves**: CSVs in `results/<EnvId>/curves/`
 - **Evaluation Scores**: Raw data and statistics in `results/eval_rewards.csv` and `results/eval_stats.csv`
 - **Plots**: Visualizations in `results/<EnvId>/plots/` (Training curves and evaluation boxplot)

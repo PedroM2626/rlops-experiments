@@ -1,0 +1,8 @@
+{
+  "name": "tianshou",
+  "env_id": "LunarLander-v3",
+  "seed": 42,
+  "elapsed_seconds": 233.8264503479004,
+  "rewards": [],
+  "final_reward": null
+}

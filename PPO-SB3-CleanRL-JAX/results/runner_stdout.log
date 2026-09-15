@@ -1,0 +1,43 @@
+[runner] missing jobs: 37
+  sb3_torch CartPole-v1 seed=0
+  sb3_torch CartPole-v1 seed=1
+  sb3_torch CartPole-v1 seed=2
+  sb3_torch CartPole-v1 seed=3
+  sb3_torch CartPole-v1 seed=4
+  jax_sb3 CartPole-v1 seed=3
+  jax_sb3 CartPole-v1 seed=4
+  jax_cleanrl CartPole-v1 seed=0
+  jax_cleanrl CartPole-v1 seed=1
+  jax_cleanrl CartPole-v1 seed=2
+  jax_cleanrl CartPole-v1 seed=3
+  jax_cleanrl CartPole-v1 seed=4
+  sb3_torch LunarLander-v3 seed=0
+  sb3_torch LunarLander-v3 seed=1
+  sb3_torch LunarLander-v3 seed=2
+  sb3_torch LunarLander-v3 seed=3
+  sb3_torch LunarLander-v3 seed=4
+  cleanrl_torch LunarLander-v3 seed=0
+  cleanrl_torch LunarLander-v3 seed=1
+  cleanrl_torch LunarLander-v3 seed=2
+  cleanrl_torch LunarLander-v3 seed=3
+  cleanrl_torch LunarLander-v3 seed=4
+  cleanrl_sb3mode_torch LunarLander-v3 seed=0
+  cleanrl_sb3mode_torch LunarLander-v3 seed=1
+  cleanrl_sb3mode_torch LunarLander-v3 seed=2
+  cleanrl_sb3mode_torch LunarLander-v3 seed=3
+  cleanrl_sb3mode_torch LunarLander-v3 seed=4
+  jax_sb3 LunarLander-v3 seed=0
+  jax_sb3 LunarLander-v3 seed=1
+  jax_sb3 LunarLander-v3 seed=2
+  jax_sb3 LunarLander-v3 seed=3
+  jax_sb3 LunarLander-v3 seed=4
+  jax_cleanrl LunarLander-v3 seed=0
+  jax_cleanrl LunarLander-v3 seed=1
+  jax_cleanrl LunarLander-v3 seed=2
+  jax_cleanrl LunarLander-v3 seed=3
+  jax_cleanrl LunarLander-v3 seed=4
+[runner] done ('sb3_torch', 'CartPole-v1', 0) -> OK
+[runner] done ('sb3_torch', 'CartPole-v1', 1) -> OK
+[runner] done ('sb3_torch', 'CartPole-v1', 2) -> OK
+[runner] done ('sb3_torch', 'CartPole-v1', 3) -> OK
+[runner] done ('sb3_torch', 'CartPole-v1', 4) -> OK

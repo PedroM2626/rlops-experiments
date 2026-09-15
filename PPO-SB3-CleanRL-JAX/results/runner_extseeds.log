@@ -1,0 +1,52 @@
+﻿[runner] missing jobs: 25
+  sb3_torch LunarLander-v3 seed=5
+  sb3_torch LunarLander-v3 seed=6
+  sb3_torch LunarLander-v3 seed=7
+  sb3_torch LunarLander-v3 seed=8
+  sb3_torch LunarLander-v3 seed=9
+  cleanrl_torch LunarLander-v3 seed=5
+  cleanrl_torch LunarLander-v3 seed=6
+  cleanrl_torch LunarLander-v3 seed=7
+  cleanrl_torch LunarLander-v3 seed=8
+  cleanrl_torch LunarLander-v3 seed=9
+  cleanrl_sb3mode_torch LunarLander-v3 seed=5
+  cleanrl_sb3mode_torch LunarLander-v3 seed=6
+  cleanrl_sb3mode_torch LunarLander-v3 seed=7
+  cleanrl_sb3mode_torch LunarLander-v3 seed=8
+  cleanrl_sb3mode_torch LunarLander-v3 seed=9
+  jax_sb3 LunarLander-v3 seed=5
+  jax_sb3 LunarLander-v3 seed=6
+  jax_sb3 LunarLander-v3 seed=7
+  jax_sb3 LunarLander-v3 seed=8
+  jax_sb3 LunarLander-v3 seed=9
+  jax_cleanrl LunarLander-v3 seed=5
+  jax_cleanrl LunarLander-v3 seed=6
+  jax_cleanrl LunarLander-v3 seed=7
+  jax_cleanrl LunarLander-v3 seed=8
+  jax_cleanrl LunarLander-v3 seed=9
+[runner] done ('sb3_torch', 'LunarLander-v3', 5) -> OK
+[runner] done ('sb3_torch', 'LunarLander-v3', 6) -> OK
+[runner] done ('sb3_torch', 'LunarLander-v3', 7) -> OK
+[runner] done ('sb3_torch', 'LunarLander-v3', 8) -> OK
+[runner] done ('sb3_torch', 'LunarLander-v3', 9) -> OK
+[runner] done ('cleanrl_torch', 'LunarLander-v3', 5) -> OK
+[runner] done ('cleanrl_torch', 'LunarLander-v3', 6) -> OK
+[runner] done ('cleanrl_torch', 'LunarLander-v3', 7) -> OK
+[runner] done ('cleanrl_torch', 'LunarLander-v3', 8) -> OK
+[runner] done ('cleanrl_torch', 'LunarLander-v3', 9) -> OK
+[runner] done ('cleanrl_sb3mode_torch', 'LunarLander-v3', 5) -> OK
+[runner] done ('cleanrl_sb3mode_torch', 'LunarLander-v3', 6) -> OK
+[runner] done ('cleanrl_sb3mode_torch', 'LunarLander-v3', 7) -> OK
+[runner] done ('cleanrl_sb3mode_torch', 'LunarLander-v3', 8) -> OK
+[runner] done ('cleanrl_sb3mode_torch', 'LunarLander-v3', 9) -> OK
+[runner] done ('jax_sb3', 'LunarLander-v3', 5) -> OK
+[runner] done ('jax_sb3', 'LunarLander-v3', 6) -> OK
+[runner] done ('jax_sb3', 'LunarLander-v3', 7) -> OK
+[runner] done ('jax_sb3', 'LunarLander-v3', 8) -> OK
+[runner] done ('jax_sb3', 'LunarLander-v3', 9) -> OK
+[runner] done ('jax_cleanrl', 'LunarLander-v3', 5) -> OK
+[runner] done ('jax_cleanrl', 'LunarLander-v3', 6) -> OK
+[runner] done ('jax_cleanrl', 'LunarLander-v3', 7) -> OK
+[runner] done ('jax_cleanrl', 'LunarLander-v3', 8) -> OK
+[runner] done ('jax_cleanrl', 'LunarLander-v3', 9) -> OK
+[runner] ALL OK

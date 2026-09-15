@@ -1,0 +1,42 @@
+﻿[runner] missing jobs: 20
+  cleanrl_sb3mode_torch LunarLander-v3 seed=0
+  cleanrl_sb3mode_torch LunarLander-v3 seed=1
+  cleanrl_sb3mode_torch LunarLander-v3 seed=2
+  cleanrl_sb3mode_torch LunarLander-v3 seed=3
+  cleanrl_sb3mode_torch LunarLander-v3 seed=4
+  cleanrl_sb3mode_torch LunarLander-v3 seed=5
+  cleanrl_sb3mode_torch LunarLander-v3 seed=6
+  cleanrl_sb3mode_torch LunarLander-v3 seed=7
+  cleanrl_sb3mode_torch LunarLander-v3 seed=8
+  cleanrl_sb3mode_torch LunarLander-v3 seed=9
+  jax_sb3 LunarLander-v3 seed=0
+  jax_sb3 LunarLander-v3 seed=1
+  jax_sb3 LunarLander-v3 seed=2
+  jax_sb3 LunarLander-v3 seed=3
+  jax_sb3 LunarLander-v3 seed=4
+  jax_sb3 LunarLander-v3 seed=5
+  jax_sb3 LunarLander-v3 seed=6
+  jax_sb3 LunarLander-v3 seed=7
+  jax_sb3 LunarLander-v3 seed=8
+  jax_sb3 LunarLander-v3 seed=9
+[runner] done ('cleanrl_sb3mode_torch', 'LunarLander-v3', 0) -> OK
+[runner] done ('cleanrl_sb3mode_torch', 'LunarLander-v3', 1) -> OK
+[runner] done ('cleanrl_sb3mode_torch', 'LunarLander-v3', 2) -> OK
+[runner] done ('cleanrl_sb3mode_torch', 'LunarLander-v3', 3) -> OK
+[runner] done ('cleanrl_sb3mode_torch', 'LunarLander-v3', 4) -> OK
+[runner] done ('cleanrl_sb3mode_torch', 'LunarLander-v3', 5) -> OK
+[runner] done ('cleanrl_sb3mode_torch', 'LunarLander-v3', 6) -> OK
+[runner] done ('cleanrl_sb3mode_torch', 'LunarLander-v3', 7) -> OK
+[runner] done ('cleanrl_sb3mode_torch', 'LunarLander-v3', 8) -> OK
+[runner] done ('cleanrl_sb3mode_torch', 'LunarLander-v3', 9) -> OK
+[runner] done ('jax_sb3', 'LunarLander-v3', 0) -> OK
+[runner] done ('jax_sb3', 'LunarLander-v3', 1) -> OK
+[runner] done ('jax_sb3', 'LunarLander-v3', 2) -> OK
+[runner] done ('jax_sb3', 'LunarLander-v3', 3) -> OK
+[runner] done ('jax_sb3', 'LunarLander-v3', 4) -> OK
+[runner] done ('jax_sb3', 'LunarLander-v3', 5) -> OK
+[runner] done ('jax_sb3', 'LunarLander-v3', 6) -> OK
+[runner] done ('jax_sb3', 'LunarLander-v3', 7) -> OK
+[runner] done ('jax_sb3', 'LunarLander-v3', 8) -> OK
+[runner] done ('jax_sb3', 'LunarLander-v3', 9) -> OK
+[runner] ALL OK

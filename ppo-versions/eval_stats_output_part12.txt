@@ -1,0 +1,36 @@
+======================================================================
+AVALIAÇÃO: 1 seed de treino (seed=42), 50 episódios de avaliação por lib
+======================================================================
+tianshou                         média=   281.2  mediana=   284.9  std=   37.6  min=   54.3  max=  318.4
+PyTorch puro (estilo CleanRL)    média=   265.4  mediana=   270.1  std=   31.7  min=   86.1  max=  303.9
+CleanRL (oficial)                média=   235.0  mediana=   258.3  std=   73.4  min=   31.3  max=  302.2
+Stable-Baselines3                média=   231.3  mediana=   263.2  std=   88.8  min=  -22.6  max=  302.6
+JAX puro                         média=   158.3  mediana=   160.8  std=   24.9  min=   49.3  max=  198.4
+RLlib (Ray)                      média=   123.7  mediana=   134.1  std=   34.9  min=   11.3  max=  168.4
+torchrl                          média=   112.3  mediana=   111.1  std=   38.0  min=   35.1  max=  245.1
+
+Kruskal-Wallis: H=220.311, p=0.0000
+Mann-Whitney U pairwise (Bonferroni, alpha corrigido=0.0024):
+  PyTorch puro (estilo CleanRL) vs torchrl                      p=  0.0000  SIM
+  tianshou                     vs RLlib (Ray)                  p=  0.0000  SIM
+  PyTorch puro (estilo CleanRL) vs RLlib (Ray)                  p=  0.0000  SIM
+  tianshou                     vs JAX puro                     p=  0.0000  SIM
+  PyTorch puro (estilo CleanRL) vs JAX puro                     p=  0.0000  SIM
+  tianshou                     vs torchrl                      p=  0.0000  SIM
+  CleanRL (oficial)            vs RLlib (Ray)                  p=  0.0000  SIM
+  JAX puro                     vs torchrl                      p=  0.0000  SIM
+  CleanRL (oficial)            vs JAX puro                     p=  0.0000  SIM
+  CleanRL (oficial)            vs torchrl                      p=  0.0000  SIM
+  Stable-Baselines3            vs RLlib (Ray)                  p=  0.0000  SIM
+  Stable-Baselines3            vs JAX puro                     p=  0.0000  SIM
+  Stable-Baselines3            vs torchrl                      p=  0.0000  SIM
+  JAX puro                     vs RLlib (Ray)                  p=  0.0000  SIM
+  tianshou                     vs CleanRL (oficial)            p=  0.0000  SIM
+  tianshou                     vs Stable-Baselines3            p=  0.0000  SIM
+  tianshou                     vs PyTorch puro (estilo CleanRL) p=  0.0000  SIM
+  RLlib (Ray)                  vs torchrl                      p=  0.0003  SIM
+  PyTorch puro (estilo CleanRL) vs CleanRL (oficial)            p=  0.0050  não
+  PyTorch puro (estilo CleanRL) vs Stable-Baselines3            p=  0.0759  não
+  CleanRL (oficial)            vs Stable-Baselines3            p=  0.3432  não
+
+saved boxplot to /mnt/user-data/outputs/ppo_eval_boxplot_LunarLander-v3-zoo.png

@@ -15,7 +15,9 @@ runtime/
 *.zip
 *.pkl
 *.pt
+*.npz
 *.onnx
+**/results/logs/
 
 # Env files with secrets
 .env

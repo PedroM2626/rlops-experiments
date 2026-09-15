@@ -1,0 +1,9 @@
+contrast,A,B,boot_mean_diff,ci95,p_two_sided,cliff_delta,n_seeds
+ABL_novclip_vs_cleanrl,jax_abl_novclip,jax_cleanrl,41.8984,"[20.5539,57.7710]",0.0000,0.9200,5
+ABL_noanneal_vs_cleanrl,jax_abl_noanneal,jax_cleanrl,20.4241,"[4.2453,41.8337]",0.0000,0.6800,5
+ABL_fullmse_vs_cleanrl,jax_abl_fullmse,jax_cleanrl,0.3055,"[-18.2798,18.2804]",0.9564,0.0400,5
+ABL_tboot_vs_cleanrl,jax_abl_tboot,jax_cleanrl,-8.5958,"[-27.1459,11.8782]",0.3240,-0.4400,5
+ABL_novclip_vs_sb3,jax_abl_novclip,jax_sb3,4.4064,"[-35.9794,48.2015]",0.8396,0.1200,5
+ABL_noanneal_vs_sb3,jax_abl_noanneal,jax_sb3,-17.0163,"[-40.3549,5.0804]",0.0760,-0.3600,5
+ABL_fullmse_vs_sb3,jax_abl_fullmse,jax_sb3,-37.4640,"[-52.2859,-19.2847]",0.0000,-0.6000,5
+ABL_tboot_vs_sb3,jax_abl_tboot,jax_sb3,-46.2042,"[-69.0871,-23.5309]",0.0000,-0.8400,5

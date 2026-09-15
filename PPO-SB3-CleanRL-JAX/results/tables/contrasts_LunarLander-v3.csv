@@ -1,0 +1,7 @@
+contrast,A,B,boot_mean_diff,ci95,p_two_sided,cliff_delta,n_seeds
+Q1_total_gap,sb3_torch,cleanrl_torch,27.0896,"[-28.0808,79.4494]",0.3292,0.3200,10
+Q2_stack_given_SB3spec,sb3_torch,jax_sb3,-6.9385,"[-55.5895,40.9708]",0.7912,-0.0200,10
+Q3_stack_given_CleanRLspec,cleanrl_torch,jax_cleanrl,15.7145,"[-10.4693,41.7220]",0.2460,0.3200,10
+Q4_specBridge_torch,sb3_torch,cleanrl_sb3mode_torch,-15.9286,"[-59.5765,25.6277]",0.4748,-0.1200,10
+Q5_spec_within_JAX,jax_sb3,jax_cleanrl,50.3246,"[25.4776,78.0741]",0.0000,0.7200,10
+Q6_bridge_vs_JAXSB3,cleanrl_sb3mode_torch,jax_sb3,8.8848,"[-13.0704,32.3796]",0.4744,0.1600,10

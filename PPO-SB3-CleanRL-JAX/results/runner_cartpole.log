@@ -1,0 +1,18 @@
+﻿[runner] missing jobs: 12
+  sb3_torch CartPole-v1 seed=0
+  sb3_torch CartPole-v1 seed=1
+  sb3_torch CartPole-v1 seed=2
+  sb3_torch CartPole-v1 seed=3
+  sb3_torch CartPole-v1 seed=4
+  jax_sb3 CartPole-v1 seed=3
+  jax_sb3 CartPole-v1 seed=4
+  jax_cleanrl CartPole-v1 seed=0
+  jax_cleanrl CartPole-v1 seed=1
+  jax_cleanrl CartPole-v1 seed=2
+  jax_cleanrl CartPole-v1 seed=3
+  jax_cleanrl CartPole-v1 seed=4
+[runner] done ('sb3_torch', 'CartPole-v1', 0) -> OK
+[runner] done ('sb3_torch', 'CartPole-v1', 1) -> OK
+[runner] done ('sb3_torch', 'CartPole-v1', 2) -> OK
+[runner] done ('sb3_torch', 'CartPole-v1', 3) -> OK
+[runner] done ('sb3_torch', 'CartPole-v1', 4) -> OK

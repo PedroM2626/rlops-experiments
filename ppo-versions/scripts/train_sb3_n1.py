@@ -1,11 +1,14 @@
-"""Exact replica of train_sb3.py, changing ONLY one thing: n_envs=1 instead of 8.
-Goal: test whether this single structural difference explains why SB3
-looked far more unstable in the external project (N_ENVS=1 there) than in
-our benchmark (N_ENVS=8 here, where SB3 was consistently the most
-STABLE of the 5-7 implementations)."""
+"""Exact replica of train_sb3.py, changing ONLY one thing: n_envs=1 instead of
+the baseline's value. Goal: test whether this single structural difference
+explains why SB3 looked far more unstable in the external project (N_ENVS=1
+there) than in our benchmark (N_ENVS=8 when this arm ran in Part 6, where SB3
+was consistently the most STABLE of the 5-7 implementations). Caveat for anyone
+re-running it: the shared PPO_CONFIG in common.py now carries the Part 12 RL Zoo
+value n_envs=16, so this script compares 1 against 16, not 1 against 8."""
 import time
+import os
 import sys
-sys.path.insert(0, "/home/claude/ppo-benchmark/scripts")
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from common import ENV_ID, SEED, TOTAL_TIMESTEPS, PPO_CONFIG, save_result, evaluate_policy, save_eval_result
 
 import gymnasium as gym

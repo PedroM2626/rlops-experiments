@@ -4,8 +4,9 @@ init) and then runs the shared stochastic evaluation. Its init is not fully comp
 exposes no separate gain for the output head, so RLlib's last layer keeps the hidden-layer gain.
 """
 import time
+import os
 import sys
-sys.path.insert(0, "/home/claude/ppo-benchmark/scripts")
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from common import ENV_ID, SEED, TOTAL_TIMESTEPS, PPO_CONFIG, save_result, evaluate_policy, save_eval_result
 
 import ray

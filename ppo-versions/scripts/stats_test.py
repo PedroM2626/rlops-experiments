@@ -12,8 +12,9 @@ import numpy as np
 from scipy import stats
 
 import os
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ENV_TAG = os.environ.get("PPO_ENV", "CartPole-v1").replace("/", "_") + os.environ.get("PPO_RUN_TAG", "")
-RESULTS_DIR = f"/home/claude/ppo-benchmark/results/{ENV_TAG}"
+RESULTS_DIR = f"{PROJECT_ROOT}/results/{ENV_TAG}"
 
 labels = {
     "stable_baselines3": "Stable-Baselines3",

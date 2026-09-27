@@ -3,6 +3,7 @@ master branch) as a subprocess, passing the SAME hyperparameters used by the
 other 3 implementations. This is their real implementation, not a
 reproduction -- unlike 'cleanrl_style_pytorch', which is merely inspired by its style.
 """
+import os
 import re
 import subprocess
 import sys
@@ -13,7 +14,9 @@ import torch
 import torch.nn as nn
 from torch.distributions import Categorical
 
-sys.path.insert(0, "/home/claude/ppo-benchmark/scripts")
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)
+sys.path.insert(0, SCRIPT_DIR)
 from common import ENV_ID, SEED, TOTAL_TIMESTEPS, PPO_CONFIG, save_result, evaluate_policy, save_eval_result
 
 LINE_RE = re.compile(r"global_step=(\d+), episodic_return=([\-\d.]+)")
@@ -49,7 +52,7 @@ class Agent(nn.Module):
 
 def main():
     cfg = PPO_CONFIG
-    script = "/home/claude/ppo-benchmark/scripts/cleanrl_original_ppo.py"
+    script = f"{SCRIPT_DIR}/cleanrl_original_ppo.py"
 
     cmd = [
         sys.executable, script,
@@ -74,7 +77,7 @@ def main():
     ]
 
     t0 = time.time()
-    proc = subprocess.run(cmd, capture_output=True, text=True, cwd="/home/claude/ppo-benchmark")
+    proc = subprocess.run(cmd, capture_output=True, text=True, cwd=PROJECT_ROOT)
     elapsed = time.time() - t0
 
     if proc.returncode != 0:
@@ -105,7 +108,7 @@ def main():
     act_dim = tmp_env.action_space.n
     tmp_env.close()
 
-    ckpt_path = f"/home/claude/ppo-benchmark/results/_ckpt_cleanrl_original_seed{SEED}.pt"
+    ckpt_path = f"{PROJECT_ROOT}/results/_ckpt_cleanrl_original_seed{SEED}.pt"
     agent = Agent(obs_dim, act_dim)
     agent.load_state_dict(torch.load(ckpt_path, map_location="cpu"))
     agent.eval()

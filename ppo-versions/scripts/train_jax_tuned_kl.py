@@ -14,8 +14,9 @@ in RLlib) explain the gap left between jax_tuned (45.1) and real
 RLlib (158.9) on LunarLander.
 """
 import time
+import os
 import sys
-sys.path.insert(0, "/home/claude/ppo-benchmark/scripts")
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from common import ENV_ID, SEED, TOTAL_TIMESTEPS, PPO_CONFIG, save_result, evaluate_policy, save_eval_result
 
 import numpy as np

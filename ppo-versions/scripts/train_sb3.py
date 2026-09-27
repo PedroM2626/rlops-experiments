@@ -3,8 +3,9 @@ MlpPolicy on SB3's own orthogonal init, a callback that harvests ep_info_buffer 
 curve, then the shared stochastic evaluation of the frozen policy.
 """
 import time
+import os
 import sys
-sys.path.insert(0, "/home/claude/ppo-benchmark/scripts")
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from common import ENV_ID, SEED, TOTAL_TIMESTEPS, PPO_CONFIG, save_result, evaluate_policy, save_eval_result
 
 import gymnasium as gym

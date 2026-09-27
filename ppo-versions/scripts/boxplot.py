@@ -12,9 +12,11 @@ import matplotlib.pyplot as plt
 from scipy import stats
 
 import os
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ENV_TAG = os.environ.get("PPO_ENV", "CartPole-v1").replace("/", "_") + os.environ.get("PPO_RUN_TAG", "")
-RESULTS_DIR = f"/home/claude/ppo-benchmark/results/{ENV_TAG}"
-OUT_PATH = f"/mnt/user-data/outputs/ppo_boxplot_{ENV_TAG}.png"
+RESULTS_DIR = f"{PROJECT_ROOT}/results/{ENV_TAG}"
+FIGURES_DIR = f"{PROJECT_ROOT}/figures"
+OUT_PATH = f"{FIGURES_DIR}/ppo_boxplot_{ENV_TAG}.png"
 
 labels = {
     "stable_baselines3": "Stable-\nBaselines3",
@@ -63,5 +65,6 @@ ax.set_title(f"Distribution of final reward per library (n={n_seeds} seeds each)
 ax.legend(loc="lower right")
 ax.grid(alpha=0.3, axis="y")
 fig.tight_layout()
+os.makedirs(FIGURES_DIR, exist_ok=True)
 fig.savefig(OUT_PATH, dpi=150)
 print(f"saved boxplot to {OUT_PATH}")

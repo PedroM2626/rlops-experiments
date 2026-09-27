@@ -12,8 +12,9 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-OUT_DIR  = os.path.join(os.path.dirname(__file__), "results")
-ART_DIR  = r"C:\Users\Acer\.gemini\antigravity-ide\brain\ba1c8a11-8fe6-4f79-b29a-66466415603f"
+OUT_DIR  = os.path.join(os.path.dirname(os.path.abspath(__file__)), "results")
+ART_DIR  = OUT_DIR
+os.makedirs(OUT_DIR, exist_ok=True)
 
 # ── Data for Families 1 and 3 ────────────────────────────────────────────────
 f13_path = os.path.join(OUT_DIR, "raw_results.json")

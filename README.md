@@ -272,10 +272,13 @@ PPO_ENV=LunarLander-v3 PPO_TIMESTEPS=1000000 PPO_SEED=42 PPO_RUN_TAG=-zoo python
 PPO_ENV=LunarLander-v3 PPO_SEED=42 PPO_RUN_TAG=-zoo python scripts/eval_stats.py
 ```
 
-Caveat for fresh checkouts: these scripts hard-code the absolute output prefix of the machine
-where the benchmark was run (`/home/claude/ppo-benchmark/...`), so a re-run writes outside this
-repo until that prefix is adjusted. Treat the committed `results/` and `results_eval/` as the
-record of the study rather than something to regenerate in place.
+Output paths resolve relative to the script, so a re-run writes inside the project:
+`results/` and `results_eval/` for the JSON, `figures/` for the PNGs the post-processing
+scripts produce (that directory is new; no figures were ever committed). The study itself ran
+on a throwaway Linux sandbox that wrote to `/home/claude/ppo-benchmark` and
+`/mnt/user-data/outputs`. Note that `results/` and `results_eval/` are the committed record of
+the benchmark, and a re-run overwrites files with the same name in place — set `PPO_RUN_TAG` to
+keep a new run separate.
 
 ### evolutionary-estrategies (from `evolutionary-estrategies/`)
 
@@ -324,7 +327,7 @@ and `VecNormalize` stats as artifacts. The experiment name comes from `EXPERIMEN
 
 ## Docker
 
-`docker-compose.yml` at the repo root defines six usable services:
+`docker-compose.yml` at the repo root defines six services:
 
 | Service | Build | Command | Notes |
 |---|---|---|---|
@@ -344,9 +347,6 @@ docker compose up chase-mlflow parkour-mlflow race-mlflow
 
 Caveats:
 
-- The compose file still defines `ppo-comparison` and `ppo-comparison-mlflow`, which build from
-  `./PPO-Comparison`. That directory is gone, so those services will fail; the studies that
-  replaced it have no Dockerfile.
 - `race-trainer` loads `env_file: ./Race/.env`, and `parkour-trainer` loads the root `.env`;
   `.env` files are ignored, so copy the matching `.env.example` before starting those services.
 - Every trainer declares an NVIDIA GPU reservation. On a CPU-only host, build and run directly

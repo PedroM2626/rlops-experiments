@@ -17,6 +17,8 @@ import tyro
 from torch.distributions.categorical import Categorical
 from torch.utils.tensorboard import SummaryWriter
 
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
 
 @dataclass
 class Args:
@@ -313,6 +315,6 @@ if __name__ == "__main__":
         print("SPS:", int(global_step / (time.time() - start_time)))
         writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
 
-    torch.save(agent.state_dict(), f"/home/claude/ppo-benchmark/results/_ckpt_cleanrl_original_seed{args.seed}.pt")
+    torch.save(agent.state_dict(), f"{PROJECT_ROOT}/results/_ckpt_cleanrl_original_seed{args.seed}.pt")
     envs.close()
     writer.close()

@@ -45,7 +45,7 @@ from src.benchmark import run_param_based_v2, run_program_based
 from src.evaluation import make_test_eval_fn, evaluate_program_100, compute_statistical_metrics
 
 OUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "results")
-ART_DIR = r"C:\Users\Acer\.gemini\antigravity-ide\brain\ba1c8a11-8fe6-4f79-b29a-66466415603f"
+ART_DIR = OUT_DIR
 os.makedirs(OUT_DIR, exist_ok=True)
 os.makedirs(ART_DIR, exist_ok=True)
 

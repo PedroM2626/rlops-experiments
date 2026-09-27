@@ -1,8 +1,9 @@
 """Minimalist CleanRL-style PPO: a direct implementation, with no RL framework on top.
 Just PyTorch + gymnasium. That makes every single implementation decision visible."""
 import time
+import os
 import sys
-sys.path.insert(0, "/home/claude/ppo-benchmark/scripts")
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from common import ENV_ID, SEED, TOTAL_TIMESTEPS, PPO_CONFIG, save_result, evaluate_policy, save_eval_result
 
 import numpy as np

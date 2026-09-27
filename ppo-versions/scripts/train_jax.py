@@ -2,8 +2,9 @@
 (gym's CartPole isn't jittable the way Brax's is, but this way we compare the SAME physics
 across the 3 implementations -- fairness > purity)."""
 import time
+import os
 import sys
-sys.path.insert(0, "/home/claude/ppo-benchmark/scripts")
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from common import ENV_ID, SEED, TOTAL_TIMESTEPS, PPO_CONFIG, save_result, evaluate_policy, save_eval_result
 
 import numpy as np

@@ -11,9 +11,11 @@ from scipy import stats
 from itertools import combinations
 import os
 
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ENV_TAG = os.environ.get("PPO_ENV", "LunarLander-v3").replace("/", "_") + os.environ.get("PPO_RUN_TAG", "")
 EVAL_SEED = os.environ.get("PPO_SEED", "42")
-RESULTS_DIR = f"/home/claude/ppo-benchmark/results_eval/{ENV_TAG}"
+RESULTS_DIR = f"{PROJECT_ROOT}/results_eval/{ENV_TAG}"
+FIGURES_DIR = f"{PROJECT_ROOT}/figures"
 
 labels = {
     "stable_baselines3": "Stable-Baselines3",
@@ -77,6 +79,7 @@ ax.set_title(f"1 training run per library (seed={EVAL_SEED}, 1M steps) — varia
              f"Kruskal-Wallis: H={h_stat:.2f}, p={p_kw:.4f}")
 ax.grid(alpha=0.3, axis="y")
 fig.tight_layout()
-out_path = f"/mnt/user-data/outputs/ppo_eval_boxplot_{ENV_TAG}.png"
+out_path = f"{FIGURES_DIR}/ppo_eval_boxplot_{ENV_TAG}.png"
+os.makedirs(FIGURES_DIR, exist_ok=True)
 fig.savefig(out_path, dpi=150)
 print(f"\nsaved boxplot to {out_path}")

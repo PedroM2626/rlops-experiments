@@ -3,8 +3,9 @@ for discrete actions -- TorchRL uses a OneHot spec by default for gym.Discrete,
 so the right pattern is ProbabilisticActor + OneHotCategorical (not a
 plain Categorical), as in the DataCamp/official documentation example."""
 import time
+import os
 import sys
-sys.path.insert(0, "/home/claude/ppo-benchmark/scripts")
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from common import ENV_ID, SEED, TOTAL_TIMESTEPS, PPO_CONFIG, save_result, evaluate_policy, save_eval_result
 
 import numpy as np

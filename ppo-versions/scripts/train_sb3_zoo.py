@@ -10,8 +10,9 @@ Zoo hyperparameters for LunarLander-v3:
     (lr, clip_range, vf_coef, max_grad_norm, architecture: SB3 default)
 """
 import time
+import os
 import sys
-sys.path.insert(0, "/home/claude/ppo-benchmark/scripts")
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from common import ENV_ID, SEED, save_result, evaluate_policy, save_eval_result
 
 import gymnasium as gym

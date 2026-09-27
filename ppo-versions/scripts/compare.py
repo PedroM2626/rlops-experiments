@@ -10,9 +10,11 @@ import matplotlib.pyplot as plt
 from collections import defaultdict
 
 import os
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ENV_TAG = os.environ.get("PPO_ENV", "CartPole-v1").replace("/", "_") + os.environ.get("PPO_RUN_TAG", "")
-RESULTS_DIR = f"/home/claude/ppo-benchmark/results/{ENV_TAG}"
-OUT_PATH = f"/mnt/user-data/outputs/ppo_comparison_{ENV_TAG}.png"
+RESULTS_DIR = f"{PROJECT_ROOT}/results/{ENV_TAG}"
+FIGURES_DIR = f"{PROJECT_ROOT}/figures"
+OUT_PATH = f"{FIGURES_DIR}/ppo_comparison_{ENV_TAG}.png"
 
 colors = {
     "stable_baselines3": "#4C72B0",
@@ -79,6 +81,7 @@ ax.axhline(500, color="gray", linestyle="--", alpha=0.4, label="Max possible (50
 ax.legend(loc="lower right", fontsize=9)
 ax.grid(alpha=0.3)
 fig.tight_layout()
+os.makedirs(FIGURES_DIR, exist_ok=True)
 fig.savefig(OUT_PATH, dpi=150)
 print(f"saved chart to {OUT_PATH}")
 

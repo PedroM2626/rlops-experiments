@@ -1,6 +1,8 @@
 """Shared configuration for all implementations, to keep the comparison fair."""
 import os
 
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
 ENV_ID = os.environ.get("PPO_ENV", "CartPole-v1")
 SEED = int(os.environ.get("PPO_SEED", 42))
 TOTAL_TIMESTEPS = int(os.environ.get("PPO_TIMESTEPS", 150_000))
@@ -64,7 +66,7 @@ def save_eval_result(name, train_elapsed_s, eval_returns, path=None):
     import numpy as np
 
     if path is None:
-        path = f"/home/claude/ppo-benchmark/results_eval/{RESULTS_SUBDIR}"
+        path = f"{PROJECT_ROOT}/results_eval/{RESULTS_SUBDIR}"
     os.makedirs(path, exist_ok=True)
     out = {
         "name": name,
@@ -89,7 +91,7 @@ def save_result(name, elapsed_s, rewards, path=None):
     import os
 
     if path is None:
-        path = f"/home/claude/ppo-benchmark/results/{RESULTS_SUBDIR}"
+        path = f"{PROJECT_ROOT}/results/{RESULTS_SUBDIR}"
     os.makedirs(path, exist_ok=True)
     out = {
         "name": name,

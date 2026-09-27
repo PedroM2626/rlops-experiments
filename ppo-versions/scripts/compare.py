@@ -43,8 +43,12 @@ for path in glob.glob(f"{RESULTS_DIR}/*.json"):
 fig, ax = plt.subplots(figsize=(9.5, 6))
 
 summary_rows = []
+excluded = []
 for name, seed_runs in runs.items():
     seed_runs = sorted(seed_runs, key=lambda d: d.get("seed", 0))
+    if not any(r["rewards"] for r in seed_runs):
+        excluded.append(name)  # this arm saved no curve; there is nothing to plot
+        continue
     n_seeds = len(seed_runs)
 
     common_max = min(r["rewards"][-1][0] for r in seed_runs if r["rewards"])
@@ -76,7 +80,10 @@ for name, seed_runs in runs.items():
 
 ax.set_xlabel("Timesteps")
 ax.set_ylabel("Mean reward (20-episode window)")
-ax.set_title("PPO on CartPole-v1 — mean ± std deviation across seeds")
+title = f"PPO on {ENV_TAG} — mean ± std deviation across seeds"
+if excluded:
+    title += f"\nnot shown, no curve recorded: {', '.join(sorted(excluded))}"
+ax.set_title(title)
 ax.axhline(500, color="gray", linestyle="--", alpha=0.4, label="Max possible (500)")
 ax.legend(loc="lower right", fontsize=9)
 ax.grid(alpha=0.3)
@@ -84,6 +91,8 @@ fig.tight_layout()
 os.makedirs(FIGURES_DIR, exist_ok=True)
 fig.savefig(OUT_PATH, dpi=150)
 print(f"saved chart to {OUT_PATH}")
+if excluded:
+    print(f"excluded, no curve recorded: {', '.join(sorted(excluded))}")
 
 summary_rows.sort(key=lambda r: -r["final_mean"])
 print("\n| Library | Seeds | Final reward (mean ± std) | Mean time (s) |")

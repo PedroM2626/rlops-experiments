@@ -41,8 +41,14 @@ for path in glob.glob(f"{RESULTS_DIR}/*.json"):
     with open(path) as f:
         runs[name].append(json.load(f))
 
-order = sorted(runs.keys(), key=lambda n: -np.mean([r["final_reward"] for r in runs[n]]))
-data = [np.array([r["final_reward"] for r in runs[n]]) for n in order]
+# One arm (tianshou on LunarLander) stored a null final_reward because its run
+# produced no curve; it cannot be boxed, so drop it here and name it in the
+# title instead of letting the figure silently omit it.
+usable = {n: [r for r in runs[n] if r.get("final_reward") is not None] for n in runs}
+excluded = sorted(n for n in usable if not usable[n])
+usable = {n: v for n, v in usable.items() if v}
+order = sorted(usable.keys(), key=lambda n: -np.mean([r["final_reward"] for r in usable[n]]))
+data = [np.array([r["final_reward"] for r in usable[n]]) for n in order]
 seed_counts = [len(d) for d in data]
 n_seeds = (f"{min(seed_counts)}-{max(seed_counts)}"
            if min(seed_counts) != max(seed_counts) else str(seed_counts[0]))
@@ -62,11 +68,17 @@ for i, d in enumerate(data):
 
 ax.axhline(500, color="gray", linestyle="--", alpha=0.4, label="Max possible (500)")
 ax.set_ylabel("Final reward (mean of the last 20 episodes)")
-ax.set_title(f"Distribution of final reward per library (n={n_seeds} seeds per library)\n"
-             f"Kruskal-Wallis: H={h_stat:.2f}, p={p_kw:.4f}")
+title = (f"Distribution of final reward per library on {ENV_TAG}\n"
+         f"(n={n_seeds} seeds per library)   "
+         f"Kruskal-Wallis: H={h_stat:.2f}, p={p_kw:.4f}")
+if excluded:
+    title += f"\nnot shown, no final reward recorded: {', '.join(excluded)}"
+ax.set_title(title)
 ax.legend(loc="lower right")
 ax.grid(alpha=0.3, axis="y")
 fig.tight_layout()
 os.makedirs(FIGURES_DIR, exist_ok=True)
 fig.savefig(OUT_PATH, dpi=150)
 print(f"saved boxplot to {OUT_PATH}")
+if excluded:
+    print(f"excluded, no final reward recorded: {', '.join(excluded)}")

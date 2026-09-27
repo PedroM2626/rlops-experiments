@@ -275,11 +275,11 @@ PPO_ENV=LunarLander-v3 PPO_SEED=42 PPO_RUN_TAG=-zoo python scripts/eval_stats.py
 Output paths resolve relative to the script, so a re-run writes inside the project:
 `results/` and `results_eval/` for the JSON, `figures/` for the PNGs the post-processing
 scripts produce. The study itself ran on a throwaway Linux sandbox that wrote to
-`/home/claude/ppo-benchmark` and `/mnt/user-data/outputs`; the five figures now under
-`figures/` were regenerated from the committed JSON, and their statistics match the tables in
-the project README. The two LunarLander training-curve figures cannot be produced:
-`results/LunarLander-v3/tianshou_seed42.json` stores an empty curve and a null final reward,
-and both plotters drop out on it. Note that `results/` and `results_eval/`
+`/home/claude/ppo-benchmark` and `/mnt/user-data/outputs`; the nine figures under `figures/`
+were regenerated from the committed JSON alone, and their statistics match the tables in the
+project README. One arm is missing from the LunarLander plots:
+`results/LunarLander-v3/tianshou_seed42.json` stores an empty curve and a null final reward, so
+the post-processors skip it and name it in the figure title instead of dropping it silently. Note that `results/` and `results_eval/`
 are the committed record of the benchmark, and a re-run overwrites files with the same name in
 place — set `PPO_RUN_TAG` to keep a new run separate.
 

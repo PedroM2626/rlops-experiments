@@ -3,9 +3,9 @@ __pycache__/
 *.pyc
 *.pyo
 
-# Virtual environments (root-level only)
-/.venv/
-/venv/
+# Virtual environments (any depth)
+.venv/
+venv/
 /ENV/
 
 # Generated ML artifacts (checkpoints and weights are regenerable; not versioned)
@@ -18,6 +18,11 @@ runtime/
 *.npz
 *.onnx
 **/results/logs/
+
+# Emulator ROMs and native cores (binary payloads, not source)
+*.sfc
+*.nes
+*.dll
 
 # Env files with secrets
 .env

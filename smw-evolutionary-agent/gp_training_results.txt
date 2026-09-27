@@ -1,0 +1,264 @@
+Gen 0 | MaxF=123.0 MeanF=92.6 StdF=23.3 MeanSize=92.6 BestSize=58
+--- MELHOR POLITICA SIMBOLICA (GEN 0 | Fitness 123) ---
+  A: spr(-32,-16)
+  B: tile(-16,96)
+  X: tile(48,-32)
+  Y: tile(-32,-48)
+  Up: spr(64,48)
+  Down: spr(0,0)
+  Left: tile(-96,48)
+  Right: ADD(AND(OR(LT(MUL(tile(-16,-96), spr(32,-48)), OR(tile(96,0), tile(32,-32))), MAX(GT(tile(32,48), spr(-80,-32)), MIN(tile(-48,-80), tile(-48,0)))), TANH(LT(MAX(tile(80,80), spr(64,0)), NOT(tile(80,-48))))), ADD(MUL(NOT(IF(spr(48,-64), tile(-80,96), tile(64,96))), MIN(MUL(spr(-80,-80), spr(16,80)), NOT(spr(-48,32)))), AND(GT(MUL(tile(64,-64), spr(96,-16)), ADD(tile(-32,-16), spr(-48,96))), MIN(OR(spr(-32,-16), C_1), TANH(tile(-80,0))))))
+------------------------------------------------------------------------
+
+Gen 1 | MaxF=123.0 MeanF=115.3 StdF=7.3 MeanSize=54.5 BestSize=58
+--- MELHOR POLITICA SIMBOLICA (GEN 1 | Fitness 123) ---
+  A: spr(-32,-16)
+  B: tile(-16,96)
+  X: tile(48,-32)
+  Y: tile(-32,-48)
+  Up: spr(64,48)
+  Down: spr(0,0)
+  Left: tile(-96,48)
+  Right: ADD(AND(OR(LT(MUL(tile(-16,-96), spr(32,-48)), OR(tile(96,0), tile(32,-32))), MAX(GT(tile(32,48), spr(-80,-32)), MIN(tile(-48,-80), tile(-48,0)))), TANH(LT(MAX(tile(80,80), spr(64,0)), NOT(tile(80,-48))))), ADD(MUL(NOT(IF(spr(48,-64), tile(-80,96), tile(64,96))), MIN(MUL(spr(-80,-80), spr(16,80)), NOT(spr(-48,32)))), AND(GT(MUL(tile(64,-64), spr(96,-16)), ADD(tile(-32,-16), spr(-48,96))), MIN(OR(spr(-32,-16), C_1), TANH(tile(-80,0))))))
+------------------------------------------------------------------------
+
+Gen 2 | MaxF=140.5 MeanF=120.4 StdF=6.5 MeanSize=60.6 BestSize=59
+--- MELHOR POLITICA SIMBOLICA (GEN 2 | Fitness 140) ---
+  A: spr(0,-32)
+  B: tile(-16,96)
+  X: tile(48,-32)
+  Y: NOT(tile(48,-16))
+  Up: spr(64,48)
+  Down: spr(0,0)
+  Left: tile(-96,48)
+  Right: ADD(AND(OR(LT(MUL(tile(-16,-96), spr(32,-48)), OR(tile(96,0), tile(32,-32))), MAX(GT(tile(32,48), spr(-80,-32)), MIN(tile(-48,-80), tile(-48,0)))), TANH(LT(MAX(tile(80,80), spr(64,0)), NOT(tile(80,-48))))), ADD(MUL(NOT(IF(spr(48,-64), tile(-80,96), tile(64,96))), MIN(MUL(spr(-80,-80), spr(16,80)), NOT(spr(-48,32)))), AND(GT(MUL(tile(64,-64), spr(96,-16)), ADD(tile(-32,-16), spr(-48,96))), MIN(OR(spr(-32,-16), C_1), TANH(tile(-80,0))))))
+------------------------------------------------------------------------
+
+Gen 3 | MaxF=140.5 MeanF=123.9 StdF=8.2 MeanSize=57.8 BestSize=59
+--- MELHOR POLITICA SIMBOLICA (GEN 3 | Fitness 140) ---
+  A: spr(0,-32)
+  B: tile(-16,96)
+  X: tile(48,-32)
+  Y: NOT(tile(48,-16))
+  Up: spr(64,48)
+  Down: spr(0,0)
+  Left: tile(-96,48)
+  Right: ADD(AND(OR(LT(MUL(tile(-16,-96), spr(32,-48)), OR(tile(96,0), tile(32,-32))), MAX(GT(tile(32,48), spr(-80,-32)), MIN(tile(-48,-80), tile(-48,0)))), TANH(LT(MAX(tile(80,80), spr(64,0)), NOT(tile(80,-48))))), ADD(MUL(NOT(IF(spr(48,-64), tile(-80,96), tile(64,96))), MIN(MUL(spr(-80,-80), spr(16,80)), NOT(spr(-48,32)))), AND(GT(MUL(tile(64,-64), spr(96,-16)), ADD(tile(-32,-16), spr(-48,96))), MIN(OR(spr(-32,-16), C_1), TANH(tile(-80,0))))))
+------------------------------------------------------------------------
+
+Gen 4 | MaxF=140.5 MeanF=130.3 StdF=10.9 MeanSize=58.9 BestSize=59
+--- MELHOR POLITICA SIMBOLICA (GEN 4 | Fitness 140) ---
+  A: spr(0,-32)
+  B: tile(-16,96)
+  X: tile(48,-32)
+  Y: NOT(tile(48,-16))
+  Up: spr(64,48)
+  Down: spr(0,0)
+  Left: tile(-96,48)
+  Right: ADD(AND(OR(LT(MUL(tile(-16,-96), spr(32,-48)), OR(tile(96,0), tile(32,-32))), MAX(GT(tile(32,48), spr(-80,-32)), MIN(tile(-48,-80), tile(-48,0)))), TANH(LT(MAX(tile(80,80), spr(64,0)), NOT(tile(80,-48))))), ADD(MUL(NOT(IF(spr(48,-64), tile(-80,96), tile(64,96))), MIN(MUL(spr(-80,-80), spr(16,80)), NOT(spr(-48,32)))), AND(GT(MUL(tile(64,-64), spr(96,-16)), ADD(tile(-32,-16), spr(-48,96))), MIN(OR(spr(-32,-16), C_1), TANH(tile(-80,0))))))
+------------------------------------------------------------------------
+
+Gen 5 | MaxF=140.5 MeanF=136.0 StdF=9.3 MeanSize=58.8 BestSize=59
+--- MELHOR POLITICA SIMBOLICA (GEN 5 | Fitness 140) ---
+  A: spr(0,-32)
+  B: tile(-16,96)
+  X: tile(48,-32)
+  Y: NOT(tile(48,-16))
+  Up: spr(64,48)
+  Down: spr(0,0)
+  Left: tile(-96,48)
+  Right: ADD(AND(OR(LT(MUL(tile(-16,-96), spr(32,-48)), OR(tile(96,0), tile(32,-32))), MAX(GT(tile(32,48), spr(-80,-32)), MIN(tile(-48,-80), tile(-48,0)))), TANH(LT(MAX(tile(80,80), spr(64,0)), NOT(tile(80,-48))))), ADD(MUL(NOT(IF(spr(48,-64), tile(-80,96), tile(64,96))), MIN(MUL(spr(-80,-80), spr(16,80)), NOT(spr(-48,32)))), AND(GT(MUL(tile(64,-64), spr(96,-16)), ADD(tile(-32,-16), spr(-48,96))), MIN(OR(spr(-32,-16), C_1), TANH(tile(-80,0))))))
+------------------------------------------------------------------------
+
+Gen 6 | MaxF=145.0 MeanF=136.3 StdF=10.2 MeanSize=59.4 BestSize=46
+--- MELHOR POLITICA SIMBOLICA (GEN 6 | Fitness 145) ---
+  A: spr(0,-32)
+  B: tile(-48,-32)
+  X: tile(48,-32)
+  Y: NOT(tile(48,-16))
+  Up: tile(-80,96)
+  Down: spr(0,0)
+  Left: tile(-96,48)
+  Right: ADD(AND(OR(LT(MUL(tile(-16,-96), spr(32,-48)), OR(tile(96,0), tile(32,-32))), MAX(GT(tile(32,48), spr(-80,-32)), MIN(tile(-48,-80), tile(-48,0)))), TANH(LT(MAX(tile(80,80), spr(64,0)), NOT(tile(80,-48))))), ADD(MUL(NOT(IF(spr(48,-64), tile(-80,96), tile(64,96))), MIN(MUL(spr(-80,-80), spr(16,80)), NOT(spr(-48,32)))), spr(32,-48)))
+------------------------------------------------------------------------
+
+Gen 7 | MaxF=145.0 MeanF=137.8 StdF=9.3 MeanSize=55.9 BestSize=46
+--- MELHOR POLITICA SIMBOLICA (GEN 7 | Fitness 145) ---
+  A: spr(0,-32)
+  B: tile(-48,-32)
+  X: tile(48,-32)
+  Y: NOT(tile(48,-16))
+  Up: tile(-80,96)
+  Down: spr(0,0)
+  Left: tile(-96,48)
+  Right: ADD(AND(OR(LT(MUL(tile(-16,-96), spr(32,-48)), OR(tile(96,0), tile(32,-32))), MAX(GT(tile(32,48), spr(-80,-32)), MIN(tile(-48,-80), tile(-48,0)))), TANH(LT(MAX(tile(80,80), spr(64,0)), NOT(tile(80,-48))))), ADD(MUL(NOT(IF(spr(48,-64), tile(-80,96), tile(64,96))), MIN(MUL(spr(-80,-80), spr(16,80)), NOT(spr(-48,32)))), spr(32,-48)))
+------------------------------------------------------------------------
+
+Gen 8 | MaxF=145.0 MeanF=140.2 StdF=7.7 MeanSize=50.8 BestSize=46
+--- MELHOR POLITICA SIMBOLICA (GEN 8 | Fitness 145) ---
+  A: spr(0,-32)
+  B: tile(-48,-32)
+  X: tile(48,-32)
+  Y: NOT(tile(48,-16))
+  Up: tile(-80,96)
+  Down: spr(0,0)
+  Left: tile(-96,48)
+  Right: ADD(AND(OR(LT(MUL(tile(-16,-96), spr(32,-48)), OR(tile(96,0), tile(32,-32))), MAX(GT(tile(32,48), spr(-80,-32)), MIN(tile(-48,-80), tile(-48,0)))), TANH(LT(MAX(tile(80,80), spr(64,0)), NOT(tile(80,-48))))), ADD(MUL(NOT(IF(spr(48,-64), tile(-80,96), tile(64,96))), MIN(MUL(spr(-80,-80), spr(16,80)), NOT(spr(-48,32)))), spr(32,-48)))
+------------------------------------------------------------------------
+
+Gen 9 | MaxF=145.0 MeanF=142.5 StdF=6.9 MeanSize=46.3 BestSize=46
+--- MELHOR POLITICA SIMBOLICA (GEN 9 | Fitness 145) ---
+  A: spr(0,-32)
+  B: tile(-48,-32)
+  X: tile(48,-32)
+  Y: NOT(tile(48,-16))
+  Up: tile(-80,96)
+  Down: spr(0,0)
+  Left: tile(-96,48)
+  Right: ADD(AND(OR(LT(MUL(tile(-16,-96), spr(32,-48)), OR(tile(96,0), tile(32,-32))), MAX(GT(tile(32,48), spr(-80,-32)), MIN(tile(-48,-80), tile(-48,0)))), TANH(LT(MAX(tile(80,80), spr(64,0)), NOT(tile(80,-48))))), ADD(MUL(NOT(IF(spr(48,-64), tile(-80,96), tile(64,96))), MIN(MUL(spr(-80,-80), spr(16,80)), NOT(spr(-48,32)))), spr(32,-48)))
+------------------------------------------------------------------------
+
+Gen 10 | MaxF=145.0 MeanF=139.1 StdF=15.2 MeanSize=49.7 BestSize=46
+--- MELHOR POLITICA SIMBOLICA (GEN 10 | Fitness 145) ---
+  A: spr(0,-32)
+  B: tile(-48,-32)
+  X: tile(48,-32)
+  Y: NOT(tile(48,-16))
+  Up: tile(-80,96)
+  Down: spr(0,0)
+  Left: tile(-96,48)
+  Right: ADD(AND(OR(LT(MUL(tile(-16,-96), spr(32,-48)), OR(tile(96,0), tile(32,-32))), MAX(GT(tile(32,48), spr(-80,-32)), MIN(tile(-48,-80), tile(-48,0)))), TANH(LT(MAX(tile(80,80), spr(64,0)), NOT(tile(80,-48))))), ADD(MUL(NOT(IF(spr(48,-64), tile(-80,96), tile(64,96))), MIN(MUL(spr(-80,-80), spr(16,80)), NOT(spr(-48,32)))), spr(32,-48)))
+------------------------------------------------------------------------
+
+Gen 11 | MaxF=145.0 MeanF=142.6 StdF=7.5 MeanSize=45.0 BestSize=46
+--- MELHOR POLITICA SIMBOLICA (GEN 11 | Fitness 145) ---
+  A: spr(0,-32)
+  B: tile(-48,-32)
+  X: tile(48,-32)
+  Y: NOT(tile(48,-16))
+  Up: tile(-80,96)
+  Down: spr(0,0)
+  Left: tile(-96,48)
+  Right: ADD(AND(OR(LT(MUL(tile(-16,-96), spr(32,-48)), OR(tile(96,0), tile(32,-32))), MAX(GT(tile(32,48), spr(-80,-32)), MIN(tile(-48,-80), tile(-48,0)))), TANH(LT(MAX(tile(80,80), spr(64,0)), NOT(tile(80,-48))))), ADD(MUL(NOT(IF(spr(48,-64), tile(-80,96), tile(64,96))), MIN(MUL(spr(-80,-80), spr(16,80)), NOT(spr(-48,32)))), spr(32,-48)))
+------------------------------------------------------------------------
+
+Gen 12 | MaxF=145.0 MeanF=143.5 StdF=6.4 MeanSize=46.6 BestSize=46
+--- MELHOR POLITICA SIMBOLICA (GEN 12 | Fitness 145) ---
+  A: spr(0,-32)
+  B: tile(-48,-32)
+  X: tile(48,-32)
+  Y: NOT(tile(48,-16))
+  Up: tile(-80,96)
+  Down: spr(0,0)
+  Left: tile(-96,48)
+  Right: ADD(AND(OR(LT(MUL(tile(-16,-96), spr(32,-48)), OR(tile(96,0), tile(32,-32))), MAX(GT(tile(32,48), spr(-80,-32)), MIN(tile(-48,-80), tile(-48,0)))), TANH(LT(MAX(tile(80,80), spr(64,0)), NOT(tile(80,-48))))), ADD(MUL(NOT(IF(spr(48,-64), tile(-80,96), tile(64,96))), MIN(MUL(spr(-80,-80), spr(16,80)), NOT(spr(-48,32)))), spr(32,-48)))
+------------------------------------------------------------------------
+
+Gen 13 | MaxF=145.0 MeanF=142.6 StdF=7.7 MeanSize=45.3 BestSize=46
+--- MELHOR POLITICA SIMBOLICA (GEN 13 | Fitness 145) ---
+  A: spr(0,-32)
+  B: tile(-48,-32)
+  X: tile(48,-32)
+  Y: NOT(tile(48,-16))
+  Up: tile(-80,96)
+  Down: spr(0,0)
+  Left: tile(-96,48)
+  Right: ADD(AND(OR(LT(MUL(tile(-16,-96), spr(32,-48)), OR(tile(96,0), tile(32,-32))), MAX(GT(tile(32,48), spr(-80,-32)), MIN(tile(-48,-80), tile(-48,0)))), TANH(LT(MAX(tile(80,80), spr(64,0)), NOT(tile(80,-48))))), ADD(MUL(NOT(IF(spr(48,-64), tile(-80,96), tile(64,96))), MIN(MUL(spr(-80,-80), spr(16,80)), NOT(spr(-48,32)))), spr(32,-48)))
+------------------------------------------------------------------------
+
+Gen 14 | MaxF=145.0 MeanF=141.0 StdF=9.0 MeanSize=45.8 BestSize=46
+--- MELHOR POLITICA SIMBOLICA (GEN 14 | Fitness 145) ---
+  A: spr(0,-32)
+  B: tile(-48,-32)
+  X: tile(48,-32)
+  Y: NOT(tile(48,-16))
+  Up: tile(-80,96)
+  Down: spr(0,0)
+  Left: tile(-96,48)
+  Right: ADD(AND(OR(LT(MUL(tile(-16,-96), spr(32,-48)), OR(tile(96,0), tile(32,-32))), MAX(GT(tile(32,48), spr(-80,-32)), MIN(tile(-48,-80), tile(-48,0)))), TANH(LT(MAX(tile(80,80), spr(64,0)), NOT(tile(80,-48))))), ADD(MUL(NOT(IF(spr(48,-64), tile(-80,96), tile(64,96))), MIN(MUL(spr(-80,-80), spr(16,80)), NOT(spr(-48,32)))), spr(32,-48)))
+------------------------------------------------------------------------
+
+Gen 15 | MaxF=145.0 MeanF=142.1 StdF=8.5 MeanSize=46.7 BestSize=46
+--- MELHOR POLITICA SIMBOLICA (GEN 15 | Fitness 145) ---
+  A: spr(0,-32)
+  B: tile(-48,-32)
+  X: tile(48,-32)
+  Y: NOT(tile(48,-16))
+  Up: tile(-80,96)
+  Down: spr(0,0)
+  Left: tile(-96,48)
+  Right: ADD(AND(OR(LT(MUL(tile(-16,-96), spr(32,-48)), OR(tile(96,0), tile(32,-32))), MAX(GT(tile(32,48), spr(-80,-32)), MIN(tile(-48,-80), tile(-48,0)))), TANH(LT(MAX(tile(80,80), spr(64,0)), NOT(tile(80,-48))))), ADD(MUL(NOT(IF(spr(48,-64), tile(-80,96), tile(64,96))), MIN(MUL(spr(-80,-80), spr(16,80)), NOT(spr(-48,32)))), spr(32,-48)))
+------------------------------------------------------------------------
+
+Gen 16 | MaxF=145.0 MeanF=140.5 StdF=10.7 MeanSize=46.9 BestSize=46
+--- MELHOR POLITICA SIMBOLICA (GEN 16 | Fitness 145) ---
+  A: spr(0,-32)
+  B: tile(-48,-32)
+  X: tile(48,-32)
+  Y: NOT(tile(48,-16))
+  Up: tile(-80,96)
+  Down: spr(0,0)
+  Left: tile(-96,48)
+  Right: ADD(AND(OR(LT(MUL(tile(-16,-96), spr(32,-48)), OR(tile(96,0), tile(32,-32))), MAX(GT(tile(32,48), spr(-80,-32)), MIN(tile(-48,-80), tile(-48,0)))), TANH(LT(MAX(tile(80,80), spr(64,0)), NOT(tile(80,-48))))), ADD(MUL(NOT(IF(spr(48,-64), tile(-80,96), tile(64,96))), MIN(MUL(spr(-80,-80), spr(16,80)), NOT(spr(-48,32)))), spr(32,-48)))
+------------------------------------------------------------------------
+
+Gen 17 | MaxF=145.0 MeanF=142.7 StdF=7.2 MeanSize=46.8 BestSize=46
+--- MELHOR POLITICA SIMBOLICA (GEN 17 | Fitness 145) ---
+  A: spr(0,-32)
+  B: tile(-48,-32)
+  X: tile(48,-32)
+  Y: NOT(tile(48,-16))
+  Up: tile(-80,96)
+  Down: spr(0,0)
+  Left: tile(-96,48)
+  Right: ADD(AND(OR(LT(MUL(tile(-16,-96), spr(32,-48)), OR(tile(96,0), tile(32,-32))), MAX(GT(tile(32,48), spr(-80,-32)), MIN(tile(-48,-80), tile(-48,0)))), TANH(LT(MAX(tile(80,80), spr(64,0)), NOT(tile(80,-48))))), ADD(MUL(NOT(IF(spr(48,-64), tile(-80,96), tile(64,96))), MIN(MUL(spr(-80,-80), spr(16,80)), NOT(spr(-48,32)))), spr(32,-48)))
+------------------------------------------------------------------------
+
+Gen 18 | MaxF=145.0 MeanF=142.4 StdF=9.2 MeanSize=46.1 BestSize=46
+--- MELHOR POLITICA SIMBOLICA (GEN 18 | Fitness 145) ---
+  A: spr(0,-32)
+  B: tile(-48,-32)
+  X: tile(48,-32)
+  Y: NOT(tile(48,-16))
+  Up: tile(-80,96)
+  Down: spr(0,0)
+  Left: tile(-96,48)
+  Right: ADD(AND(OR(LT(MUL(tile(-16,-96), spr(32,-48)), OR(tile(96,0), tile(32,-32))), MAX(GT(tile(32,48), spr(-80,-32)), MIN(tile(-48,-80), tile(-48,0)))), TANH(LT(MAX(tile(80,80), spr(64,0)), NOT(tile(80,-48))))), ADD(MUL(NOT(IF(spr(48,-64), tile(-80,96), tile(64,96))), MIN(MUL(spr(-80,-80), spr(16,80)), NOT(spr(-48,32)))), spr(32,-48)))
+------------------------------------------------------------------------
+
+Gen 19 | MaxF=145.0 MeanF=141.8 StdF=8.7 MeanSize=45.1 BestSize=46
+--- MELHOR POLITICA SIMBOLICA (GEN 19 | Fitness 145) ---
+  A: spr(0,-32)
+  B: tile(-48,-32)
+  X: tile(48,-32)
+  Y: NOT(tile(48,-16))
+  Up: tile(-80,96)
+  Down: spr(0,0)
+  Left: tile(-96,48)
+  Right: ADD(AND(OR(LT(MUL(tile(-16,-96), spr(32,-48)), OR(tile(96,0), tile(32,-32))), MAX(GT(tile(32,48), spr(-80,-32)), MIN(tile(-48,-80), tile(-48,0)))), TANH(LT(MAX(tile(80,80), spr(64,0)), NOT(tile(80,-48))))), ADD(MUL(NOT(IF(spr(48,-64), tile(-80,96), tile(64,96))), MIN(MUL(spr(-80,-80), spr(16,80)), NOT(spr(-48,32)))), spr(32,-48)))
+------------------------------------------------------------------------
+
+Gen 20 | MaxF=145.0 MeanF=141.4 StdF=9.6 MeanSize=44.8 BestSize=46
+--- MELHOR POLITICA SIMBOLICA (GEN 20 | Fitness 145) ---
+  A: spr(0,-32)
+  B: tile(-48,-32)
+  X: tile(48,-32)
+  Y: NOT(tile(48,-16))
+  Up: tile(-80,96)
+  Down: spr(0,0)
+  Left: tile(-96,48)
+  Right: ADD(AND(OR(LT(MUL(tile(-16,-96), spr(32,-48)), OR(tile(96,0), tile(32,-32))), MAX(GT(tile(32,48), spr(-80,-32)), MIN(tile(-48,-80), tile(-48,0)))), TANH(LT(MAX(tile(80,80), spr(64,0)), NOT(tile(80,-48))))), ADD(MUL(NOT(IF(spr(48,-64), tile(-80,96), tile(64,96))), MIN(MUL(spr(-80,-80), spr(16,80)), NOT(spr(-48,32)))), spr(32,-48)))
+------------------------------------------------------------------------
+
+Gen 21 | MaxF=145.0 MeanF=144.1 StdF=3.9 MeanSize=45.0 BestSize=46
+--- MELHOR POLITICA SIMBOLICA (GEN 21 | Fitness 145) ---
+  A: spr(0,-32)
+  B: tile(-48,-32)
+  X: tile(48,-32)
+  Y: NOT(tile(48,-16))
+  Up: tile(-80,96)
+  Down: spr(0,0)
+  Left: tile(-96,48)
+  Right: ADD(AND(OR(LT(MUL(tile(-16,-96), spr(32,-48)), OR(tile(96,0), tile(32,-32))), MAX(GT(tile(32,48), spr(-80,-32)), MIN(tile(-48,-80), tile(-48,0)))), TANH(LT(MAX(tile(80,80), spr(64,0)), NOT(tile(80,-48))))), ADD(MUL(NOT(IF(spr(48,-64), tile(-80,96), tile(64,96))), MIN(MUL(spr(-80,-80), spr(16,80)), NOT(spr(-48,32)))), spr(32,-48)))
+------------------------------------------------------------------------
+

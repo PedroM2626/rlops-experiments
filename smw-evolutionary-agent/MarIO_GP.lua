@@ -1,25 +1,25 @@
 -- =============================================================================
 -- MarI/O-GP  —  Genetic Programming Agent for Super Mario World
 -- =============================================================================
--- Autor: Baseado em MarI/O de SethBling (NEAT); extensão GP por este projeto.
--- Paradigma: Programação Genética com árvores de expressão (Koza, 1992).
+-- Author: based on SethBling's MarI/O (NEAT); the GP extension comes from this project.
+-- Paradigm: Genetic Programming with expression trees (Koza, 1992).
 --
--- Cada indivíduo na população é um conjunto de ÁRVORES DE PROGRAMA — uma por
--- botão de saída (A, B, X, Y, Up, Down, Left, Right).
--- Cada árvore mapeia o estado perceptual (grade de tiles 13x13 + sprites)
--- para uma decisão booleana (pressionar ou não o botão).
+-- Each individual in the population is a set of PROGRAM TREES — one per
+-- output button (A, B, X, Y, Up, Down, Left, Right).
+-- Each tree maps the perceptual state (13x13 tile grid + sprites)
+-- onto a boolean decision (whether or not to press the button).
 --
--- Operadores genéticos implementados:
---   (1) Crossover de subárvore (Koza 1992, §6.2)
---   (2) Mutação de ponto        — substitui um nó pelo mesmo aridade
---   (3) Mutação de hoist        — sobe uma subárvore (combate bloat)
---   (4) Mutação de expansão     — terminal -> nova subárvore aleatória
---   (5) Mutação de colapso      — subárvore -> terminal aleatório
+-- Genetic operators implemented:
+--   (1) Subtree crossover    (Koza 1992, §6.2)
+--   (2) Point mutation       — replaces a node with another of the same arity
+--   (3) Hoist mutation       — promotes a subtree upwards (counters bloat)
+--   (4) Expansion mutation   — terminal -> new random subtree
+--   (5) Collapse mutation    — subtree -> random terminal
 --
--- Pressão de parsimônia: penalidade proporcional ao tamanho total das árvores
--- para controlar crescimento excessivo (bloat).
+-- Parsimony pressure: penalty proportional to the total tree size,
+-- used to control excessive growth (bloat).
 --
--- Referências:
+-- References:
 --   Koza, J.R. (1992). Genetic Programming. MIT Press.
 --   Poli, R., Langdon, W.B., McPhee, N.F. (2008). A Field Guide to GP. Lulu.
 --   Stanley, K.O., Miikkulainen, R. (2002). Evolving Neural Networks through
@@ -27,7 +27,7 @@
 -- =============================================================================
 
 -- ---------------------------------------------------------------------------
--- 0. DETECÇÃO DE JOGO E CONFIGURAÇÃO DE BOTÕES
+-- 0. GAME DETECTION AND BUTTON CONFIGURATION
 -- ---------------------------------------------------------------------------
 if gameinfo.getromname() == "Super Mario World (USA)" then
     Filename = "DP1.state"
@@ -38,55 +38,55 @@ elseif gameinfo.getromname() == "Super Mario Bros." then
 end
 
 -- ---------------------------------------------------------------------------
--- 1. HIPERPARÂMETROS GP
+-- 1. GP HYPERPARAMETERS
 -- ---------------------------------------------------------------------------
 
--- Percepção: grade de tiles NxN ao redor de Mario (mesmo que NEAT)
+-- Perception: NxN tile grid around Mario (same as NEAT)
 BoxRadius        = 6
 InputSize        = (BoxRadius*2+1)*(BoxRadius*2+1)
 
--- Parâmetros populacionais
-GP_Population        = 40        -- tamanho da população (otimizado para convergência em turbo)
-GP_TournamentSize    = 5         -- tamanho do torneio para seleção
-GP_CrossoverChance   = 0.80      -- probabilidade de crossover vs. reprodução assexuada
-GP_MaxDepthInit      = 5         -- profundidade máxima na inicialização (Ramped Half-and-Half)
-GP_MaxDepth          = 10        -- limite máximo de profundidade (evita bloat extremo)
-GP_MaxNodes          = 200       -- limite máximo de nós por indivíduo
+-- Population parameters
+GP_Population        = 40        -- population size (tuned for convergence under turbo)
+GP_TournamentSize    = 5         -- tournament size for selection
+GP_CrossoverChance   = 0.80      -- probability of crossover vs. asexual reproduction
+GP_MaxDepthInit      = 5         -- maximum depth during initialization (Ramped Half-and-Half)
+GP_MaxDepth          = 10        -- hard depth limit (avoids extreme bloat)
+GP_MaxNodes          = 200       -- maximum number of nodes per individual
 
--- Taxas de mutação (aplicadas sequencialmente ao filho após crossover/cópia)
-GP_MutPoint          = 0.10      -- P(mutação de ponto)
-GP_MutHoist          = 0.05      -- P(mutação de hoist)
-GP_MutExpansion      = 0.05      -- P(mutação de expansão)
-GP_MutCollapse       = 0.05      -- P(mutação de colapso)
-GP_MutSubtree        = 0.10      -- P(substituir subárvore aleatória)
+-- Mutation rates (applied sequentially to the child after crossover/copy)
+GP_MutPoint          = 0.10      -- P(point mutation)
+GP_MutHoist          = 0.05      -- P(hoist mutation)
+GP_MutExpansion      = 0.05      -- P(expansion mutation)
+GP_MutCollapse       = 0.05      -- P(collapse mutation)
+GP_MutSubtree        = 0.10      -- P(replacing a subtree at random)
 
--- Parsimônia: penalidade por nó acima do limiar
-GP_ParsePenaltyStart = 50        -- a partir deste tamanho, penalizar
-GP_ParsePenaltyRate  = 0.5       -- fitness reduzido em X por nó extra
+-- Parsimony: penalty per node above the threshold
+GP_ParsePenaltyStart = 50        -- start penalizing beyond this size
+GP_ParsePenaltyRate  = 0.5       -- fitness reduced by X per extra node
 
--- Controle de execução
+-- Execution control
 TimeoutConstant  = 20
-StaleSpecies     = 15            -- gerações sem melhora para eliminar espécie
-GP_MaxGeneration = 10000         -- limite de gerações (0 = ilimitado)
+StaleSpecies     = 15            -- generations without improvement before a species is removed
+GP_MaxGeneration = 10000         -- generation limit (0 = unlimited)
 
 -- ---------------------------------------------------------------------------
--- 2. PRIMITIVAS DA LINGUAGEM GP
+-- 2. GP LANGUAGE PRIMITIVES
 -- ---------------------------------------------------------------------------
 
--- Funções binárias (aridade 2): recebem dois valores e retornam um valor
--- Funções unárias (aridade 1)
--- Terminais (aridade 0): folhas da árvore
+-- Binary functions (arity 2): take two values and return a value
+-- Unary functions (arity 1)
+-- Terminals (arity 0): leaves of the tree
 
--- Definição formal do conjunto de funções F:
+-- Formal definition of the function set F:
 -- { IF(cond,vtrue,vfalse), AND, OR, NOT, GT, LT, ADD, MUL, MAX, MIN, TANH }
--- Notas:
---   - IF: aridade 3 — se cond > 0 retorna vtrue, caso contrário vfalse
---   - Todas as funções operam sobre valores reais em [-1, 1]
---   - Resultados booleanos são codificados como 1.0 (true) e -1.0 (false)
---   - O threshold de decisão de saída é 0: >0 pressiona o botão
+-- Notes:
+--   - IF: arity 3 — returns vtrue when cond > 0, otherwise vfalse
+--   - All functions operate on real values in [-1, 1]
+--   - Boolean results are encoded as 1.0 (true) and -1.0 (false)
+--   - The output decision threshold is 0: >0 presses the button
 
 FUNCTIONS = {
-    -- nome, aridade, função de avaliação
+    -- name, arity, evaluation function
     { name="IF",   arity=3, eval=function(a,b,c) if a > 0 then return b else return c end end },
     { name="AND",  arity=2, eval=function(a,b)   return (a > 0 and b > 0) and 1 or -1 end },
     { name="OR",   arity=2, eval=function(a,b)   return (a > 0 or  b > 0) and 1 or -1 end },
@@ -103,7 +103,7 @@ FUNCTIONS = {
     end },
 }
 
--- Funções agrupadas por aridade para seleção eficiente
+-- Functions grouped by arity for efficient selection
 FUNCTIONS_BY_ARITY = {}
 for _, f in ipairs(FUNCTIONS) do
     if FUNCTIONS_BY_ARITY[f.arity] == nil then
@@ -112,14 +112,14 @@ for _, f in ipairs(FUNCTIONS) do
     table.insert(FUNCTIONS_BY_ARITY[f.arity], f)
 end
 
--- Terminais: cada terminal é uma função de índice -> valor em [-1, 1]
--- Gerados dinamicamente a partir da grade de percepção
+-- Terminals: each terminal is a function of index -> value in [-1, 1]
+-- Generated dynamically from the perception grid
 TERMINALS = {}
 
--- Terminais de tile: tile(dx, dy) ∈ {-1, 0, 1}
+-- Tile terminals: tile(dx, dy) ∈ {-1, 0, 1}
 for dy = -BoxRadius, BoxRadius do
     for dx = -BoxRadius, BoxRadius do
-        local ldx, ldy = dx, dy  -- captura local para closure
+        local ldx, ldy = dx, dy  -- local capture for the closure
         table.insert(TERMINALS, {
             name  = string.format("tile(%d,%d)", ldx*16, ldy*16),
             eval  = function(percept) return percept.tiles[ldy+BoxRadius+1][ldx+BoxRadius+1] end
@@ -127,7 +127,7 @@ for dy = -BoxRadius, BoxRadius do
     end
 end
 
--- Terminais de sprite (presença de inimigo na célula)
+-- Sprite terminals (enemy presence in the cell)
 for dy = -BoxRadius, BoxRadius do
     for dx = -BoxRadius, BoxRadius do
         local ldx, ldy = dx, dy
@@ -138,20 +138,20 @@ for dy = -BoxRadius, BoxRadius do
     end
 end
 
--- Terminais constantes
+-- Constant terminals
 table.insert(TERMINALS, { name="C_1",  eval=function(p) return  1.0 end })
 table.insert(TERMINALS, { name="C_0",  eval=function(p) return  0.0 end })
 table.insert(TERMINALS, { name="C_N1", eval=function(p) return -1.0 end })
 
 -- ---------------------------------------------------------------------------
--- 3. ESTRUTURA DA ÁRVORE GP
+-- 3. GP TREE STRUCTURE
 -- ---------------------------------------------------------------------------
 
--- Nó da árvore GP:
+-- GP tree node:
 --   node.type     = "function" | "terminal"
---   node.func     = referência à entrada em FUNCTIONS (se function)
---   node.terminal = referência à entrada em TERMINALS (se terminal)
---   node.children = { nó1, nó2, ... }  (tamanho = func.arity)
+--   node.func     = reference to the entry in FUNCTIONS (if function)
+--   node.terminal = reference to the entry in TERMINALS (if terminal)
+--   node.children = { node1, node2, ... }  (length = func.arity)
 
 function newNode_Function(func)
     return { type="function", func=func, children={} }
@@ -161,7 +161,7 @@ function newNode_Terminal(term)
     return { type="terminal", terminal=term, children={} }
 end
 
--- Cópia profunda de um nó e sua subárvore
+-- Deep copy of a node and its subtree
 function copyNode(node)
     local n2 = { type=node.type, func=node.func, terminal=node.terminal, children={} }
     for i=1,#node.children do
@@ -170,7 +170,7 @@ function copyNode(node)
     return n2
 end
 
--- Conta o número de nós em uma árvore
+-- Counts the number of nodes in a tree
 function countNodes(node)
     local c = 1
     for i=1,#node.children do
@@ -179,7 +179,7 @@ function countNodes(node)
     return c
 end
 
--- Calcula a profundidade de uma árvore
+-- Computes the depth of a tree
 function treeDepth(node)
     if #node.children == 0 then return 0 end
     local maxd = 0
@@ -190,7 +190,7 @@ function treeDepth(node)
     return maxd + 1
 end
 
--- Representa a árvore como string (S-expression)
+-- Renders the tree as a string (S-expression)
 function treeToString(node, depth)
     depth = depth or 0
     if node.type == "terminal" then
@@ -207,7 +207,7 @@ function treeToString(node, depth)
     end
 end
 
--- Avalia uma árvore dado um percept (mapa de entradas)
+-- Evaluates a tree given a percept (input map)
 function evalTree(node, percept)
     if node.type == "terminal" then
         return node.terminal.eval(percept)
@@ -221,13 +221,13 @@ function evalTree(node, percept)
 end
 
 -- ---------------------------------------------------------------------------
--- 4. GERAÇÃO DE ÁRVORES ALEATÓRIAS
+-- 4. RANDOM TREE GENERATION
 -- ---------------------------------------------------------------------------
 
--- Método "Ramped Half-and-Half" (Koza 1992):
---   - Metade das árvores geradas pelo método FULL (até depth máxima)
---   - Metade pelo método GROW (até depth máxima, mas pode parar antes)
--- Garante diversidade estrutural na população inicial.
+-- "Ramped Half-and-Half" method (Koza 1992):
+--   - Half of the trees are built with the FULL method (up to maximum depth)
+--   - Half with the GROW method (up to maximum depth, but it may stop earlier)
+-- This guarantees structural diversity in the initial population.
 
 function randomFunction()
     return FUNCTIONS[math.random(#FUNCTIONS)]
@@ -245,8 +245,8 @@ function randomFunctionByArity(arity)
     return nil
 end
 
--- Gera uma árvore pelo método FULL: todos os nós até 'depth' são funções;
--- nós em 'depth' são terminais.
+-- Generates a tree with the FULL method: all nodes up to 'depth' are functions;
+-- nodes at 'depth' are terminals.
 function generateFull(depth)
     if depth <= 0 then
         return newNode_Terminal(randomTerminal())
@@ -260,15 +260,15 @@ function generateFull(depth)
     end
 end
 
--- Gera uma árvore pelo método GROW: pode parar em qualquer ponto com
--- probabilidade proporcional ao número de terminais vs. primitivas totais.
+-- Generates a tree with the GROW method: it may stop at any point with a
+-- probability proportional to the number of terminals vs. total primitives.
 function generateGrow(depth)
     if depth <= 0 then
         return newNode_Terminal(randomTerminal())
     end
     local totalPrimitives = #FUNCTIONS + #TERMINALS
     if math.random() < #TERMINALS / totalPrimitives then
-        -- Escolhe terminal (folha antecipada)
+        -- Choose a terminal (early leaf)
         return newNode_Terminal(randomTerminal())
     else
         local f = randomFunction()
@@ -280,7 +280,7 @@ function generateGrow(depth)
     end
 end
 
--- Gera uma árvore aleatória usando Ramped Half-and-Half
+-- Generates a random tree using Ramped Half-and-Half
 function generateRandomTree(maxDepth)
     if math.random(2) == 1 then
         return generateFull(math.random(1, maxDepth))
@@ -290,16 +290,16 @@ function generateRandomTree(maxDepth)
 end
 
 -- ---------------------------------------------------------------------------
--- 5. INDIVÍDUO GP (CONJUNTO DE ÁRVORES — UMA POR BOTÃO)
+-- 5. GP INDIVIDUAL (SET OF TREES — ONE PER BUTTON)
 -- ---------------------------------------------------------------------------
 
 function newIndividual()
     local ind = {}
-    ind.trees    = {}    -- uma árvore por botão de saída
+    ind.trees    = {}    -- one tree per output button
     ind.fitness  = 0
-    ind.size     = 0     -- total de nós em todas as árvores
-    ind.evalFitness = 0  -- fitness bruto antes da parsimônia
-    ind.generation  = 0  -- geração em que foi criado (para tracking)
+    ind.size     = 0     -- total nodes across all trees
+    ind.evalFitness = 0  -- raw fitness before parsimony
+    ind.generation  = 0  -- generation in which it was created (for tracking)
     return ind
 end
 
@@ -332,8 +332,8 @@ function computeIndividualSize(ind)
     return total
 end
 
--- Avalia todas as árvores de um indivíduo dado um percept; retorna o
--- mapa de botões a pressionar.
+-- Evaluates every tree of an individual given a percept; returns the
+-- map of buttons to press.
 function evaluateIndividual(ind, percept)
     local outputs = {}
     for b=1,#ButtonNames do
@@ -344,10 +344,10 @@ function evaluateIndividual(ind, percept)
 end
 
 -- ---------------------------------------------------------------------------
--- 6. OPERADORES GENÉTICOS
+-- 6. GENETIC OPERATORS
 -- ---------------------------------------------------------------------------
 
--- 6.1  Listagem de todos os nós de uma árvore (para seleção de ponto de corte)
+-- 6.1  Listing of every node of a tree (for crossover point selection)
 function listNodes(node, lst)
     lst = lst or {}
     table.insert(lst, node)
@@ -357,14 +357,14 @@ function listNodes(node, lst)
     return lst
 end
 
--- 6.2  CROSSOVER DE SUBÁRVORE (Koza 1992)
--- Troca dois subárvores selecionados aleatoriamente entre pai1 e pai2.
--- Retorna dois filhos.
+-- 6.2  SUBTREE CROSSOVER (Koza 1992)
+-- Swaps two subtrees picked at random between parent1 and parent2.
+-- Returns two children.
 function crossover(ind1, ind2)
     local child1 = copyIndividual(ind1)
     local child2 = copyIndividual(ind2)
 
-    -- Seleciona aleatoriamente um botão para realizar o crossover
+    -- Pick a button at random on which to perform the crossover
     local b = math.random(#ButtonNames)
 
     local nodes1 = listNodes(child1.trees[b])
@@ -374,11 +374,11 @@ function crossover(ind1, ind2)
         return child1, child2
     end
 
-    -- Seleciona pontos de corte aleatórios
+    -- Select random crossover points
     local n1 = nodes1[math.random(#nodes1)]
     local n2 = nodes2[math.random(#nodes2)]
 
-    -- Troca as subárvores (preservando profundidade máxima)
+    -- Swap the subtrees (preserving the maximum depth)
     local saved1_children  = n1.children
     local saved1_type      = n1.type
     local saved1_func      = n1.func
@@ -394,16 +394,16 @@ function crossover(ind1, ind2)
     n2.func     = saved1_func
     n2.terminal = saved1_terminal
 
-    -- Verificar se excede profundidade máxima; se sim, reverter
+    -- Check whether the maximum depth is exceeded; if so, revert
     if treeDepth(child1.trees[b]) > GP_MaxDepth or countNodes(child1.trees[b]) > GP_MaxNodes then
-        -- Reverter child1
+        -- Revert child1
         n1.children = saved1_children
         n1.type     = saved1_type
         n1.func     = saved1_func
         n1.terminal = saved1_terminal
     end
     if treeDepth(child2.trees[b]) > GP_MaxDepth or countNodes(child2.trees[b]) > GP_MaxNodes then
-        -- Reverter child2
+        -- Revert child2
         n2.children = saved1_children
         n2.type     = saved1_type
         n2.func     = saved1_func
@@ -415,8 +415,8 @@ function crossover(ind1, ind2)
     return child1, child2
 end
 
--- 6.3  MUTAÇÃO DE PONTO
--- Substitui um nó por outro da mesma aridade (função→função, terminal→terminal).
+-- 6.3  POINT MUTATION
+-- Replaces a node with another of the same arity (function->function, terminal->terminal).
 function mutatePoint(ind)
     local b = math.random(#ButtonNames)
     local nodes = listNodes(ind.trees[b])
@@ -430,12 +430,12 @@ function mutatePoint(ind)
     end
 end
 
--- 6.4  MUTAÇÃO DE HOIST (Poli et al. 2008 §4.2.3)
--- Substitui um nó por um de seus descendentes (reduz tamanho da árvore).
+-- 6.4  HOIST MUTATION (Poli et al. 2008 §4.2.3)
+-- Replaces a node with one of its descendants (reduces the tree size).
 function mutateHoist(ind)
     local b = math.random(#ButtonNames)
     local nodes = listNodes(ind.trees[b])
-    -- Filtra apenas nós que têm filhos (não-terminais)
+    -- Keep only the nodes that have children (non-terminals)
     local candidates = {}
     for _, n in ipairs(nodes) do
         if #n.children > 0 then
@@ -444,11 +444,11 @@ function mutateHoist(ind)
     end
     if #candidates == 0 then return end
     local n = candidates[math.random(#candidates)]
-    -- Seleciona um filho e uma subárvore do filho
+    -- Pick one child and a subtree of that child
     local child = n.children[math.random(#n.children)]
     local childNodes = listNodes(child)
     local replacement = childNodes[math.random(#childNodes)]
-    -- Substitui n pelo replacement (in-place)
+    -- Replace n with the replacement (in-place)
     n.type     = replacement.type
     n.func     = replacement.func
     n.terminal = replacement.terminal
@@ -456,12 +456,12 @@ function mutateHoist(ind)
     ind.size = computeIndividualSize(ind)
 end
 
--- 6.5  MUTAÇÃO DE EXPANSÃO
--- Substitui um terminal por uma nova subárvore pequena.
+-- 6.5  EXPANSION MUTATION
+-- Replaces a terminal with a new small subtree.
 function mutateExpansion(ind)
     local b = math.random(#ButtonNames)
     local nodes = listNodes(ind.trees[b])
-    -- Filtra terminais
+    -- Keep the terminals
     local candidates = {}
     for _, n in ipairs(nodes) do
         if n.type == "terminal" then
@@ -470,8 +470,8 @@ function mutateExpansion(ind)
     end
     if #candidates == 0 then return end
     local n = candidates[math.random(#candidates)]
-    if treeDepth(ind.trees[b]) >= GP_MaxDepth then return end  -- não expande se já no limite
-    local newSubtree = generateGrow(math.random(1, 2))  -- subárvore pequena
+    if treeDepth(ind.trees[b]) >= GP_MaxDepth then return end  -- do not expand if already at the limit
+    local newSubtree = generateGrow(math.random(1, 2))  -- small subtree
     n.type     = newSubtree.type
     n.func     = newSubtree.func
     n.terminal = newSubtree.terminal
@@ -479,14 +479,14 @@ function mutateExpansion(ind)
     ind.size = computeIndividualSize(ind)
 end
 
--- 6.6  MUTAÇÃO DE COLAPSO
--- Substitui uma subárvore interna por um terminal aleatório.
+-- 6.6  COLLAPSE MUTATION
+-- Replaces an internal subtree with a random terminal.
 function mutateCollapse(ind)
     local b = math.random(#ButtonNames)
     local nodes = listNodes(ind.trees[b])
-    -- Filtra nós internos (não raiz, para preservar a raiz)
+    -- Keep internal nodes (not the root, so the root is preserved)
     local candidates = {}
-    for i=2, #nodes do  -- i=2: pula raiz
+    for i=2, #nodes do  -- i=2: skips the root
         if nodes[i].type == "function" then
             table.insert(candidates, nodes[i])
         end
@@ -501,12 +501,12 @@ function mutateCollapse(ind)
     ind.size = computeIndividualSize(ind)
 end
 
--- 6.7  MUTAÇÃO DE SUBÁRVORE
--- Substitui uma subárvore inteira por uma nova subárvore gerada aleatoriamente.
+-- 6.7  SUBTREE MUTATION
+-- Replaces an entire subtree with a new subtree generated at random.
 function mutateSubtree(ind)
     local b = math.random(#ButtonNames)
     if math.random(2) == 1 then
-        -- Substitui a raiz inteira
+        -- Replaces the whole root
         ind.trees[b] = generateRandomTree(GP_MaxDepthInit)
     else
         local nodes = listNodes(ind.trees[b])
@@ -514,7 +514,7 @@ function mutateSubtree(ind)
             ind.trees[b] = generateRandomTree(GP_MaxDepthInit)
             return
         end
-        local n = nodes[math.random(2, #nodes)]  -- pula raiz
+        local n = nodes[math.random(2, #nodes)]  -- skips the root
         local newSub = generateRandomTree(math.random(1, 3))
         n.type     = newSub.type
         n.func     = newSub.func
@@ -524,7 +524,7 @@ function mutateSubtree(ind)
     ind.size = computeIndividualSize(ind)
 end
 
--- Aplica todos os operadores de mutação a um indivíduo
+-- Applies every mutation operator to an individual
 function mutateIndividual(ind)
     if math.random() < GP_MutPoint then     mutatePoint(ind)     end
     if math.random() < GP_MutHoist then     mutateHoist(ind)     end
@@ -535,10 +535,10 @@ function mutateIndividual(ind)
 end
 
 -- ---------------------------------------------------------------------------
--- 7. SELEÇÃO POR TORNEIO
+-- 7. TOURNAMENT SELECTION
 -- ---------------------------------------------------------------------------
--- Torneio determinístico: seleciona K indivíduos aleatoriamente e retorna
--- o melhor. Pressão seletiva controlada por GP_TournamentSize.
+-- Deterministic tournament: selects K individuals at random and returns
+-- the best one. Selection pressure is controlled by GP_TournamentSize.
 
 function tournamentSelect(population)
     local best = nil
@@ -552,11 +552,11 @@ function tournamentSelect(population)
 end
 
 -- ---------------------------------------------------------------------------
--- 8. APLICAÇÃO DE PARSIMÔNIA
+-- 8. APPLYING PARSIMONY
 -- ---------------------------------------------------------------------------
--- Penaliza indivíduos com muitos nós para controlar o crescimento de bloat.
--- fitness_penalizado = fitness_bruto - parsimony_penalty * max(0, size - threshold)
--- Referência: Poli et al. (2008), §4.3 — Lexicographic Parsimony Pressure
+-- Penalizes individuals with many nodes to control bloat growth.
+-- penalized_fitness = raw_fitness - parsimony_penalty * max(0, size - threshold)
+-- Reference: Poli et al. (2008), §4.3 — Lexicographic Parsimony Pressure
 
 function applyParsimony(ind)
     local excess = math.max(0, ind.size - GP_ParsePenaltyStart)
@@ -564,7 +564,7 @@ function applyParsimony(ind)
 end
 
 -- ---------------------------------------------------------------------------
--- 9. PERCEPÇÃO DO AMBIENTE (compatível com MarIO.lua)
+-- 9. ENVIRONMENT PERCEPTION (compatible with MarIO.lua)
 -- ---------------------------------------------------------------------------
 
 function getPositions()
@@ -638,12 +638,12 @@ function getSpritePositions()
     return {}
 end
 
--- Constrói o percept: uma tabela com tiles e sprites indexados
+-- Builds the percept: a table of indexed tiles and sprites
 function buildPercept()
     getPositions()
     local sprites = getSpritePositions()
 
-    -- Inicializa grids
+    -- Initialize the grids
     local tileGrid   = {}
     local spriteGrid = {}
     for row=1, BoxRadius*2+1 do
@@ -651,11 +651,11 @@ function buildPercept()
         spriteGrid[row] = {}
         for col=1, BoxRadius*2+1 do
             tileGrid[row][col]   = 0
-            spriteGrid[row][col] = -1  -- -1 = sem sprite
+            spriteGrid[row][col] = -1  -- -1 = no sprite
         end
     end
 
-    -- Preenche tiles
+    -- Fill in the tiles
     for dy=-BoxRadius,BoxRadius do
         for dx=-BoxRadius,BoxRadius do
             local row = dy + BoxRadius + 1
@@ -667,7 +667,7 @@ function buildPercept()
         end
     end
 
-    -- Preenche sprites
+    -- Fill in the sprites
     for _, sp in ipairs(sprites) do
         for dy=-BoxRadius,BoxRadius do
             for dx=-BoxRadius,BoxRadius do
@@ -686,7 +686,7 @@ function buildPercept()
 end
 
 -- ---------------------------------------------------------------------------
--- 10. POOL GP E GERENCIAMENTO DE GERAÇÃO
+-- 10. GP POOL AND GENERATION MANAGEMENT
 -- ---------------------------------------------------------------------------
 
 function newGPPool()
@@ -696,11 +696,11 @@ function newGPPool()
     p.maxFitness  = 0
     p.currentInd  = 1
     p.currentFrame = 0
-    p.logEntries  = {}   -- histórico de métricas por geração
+    p.logEntries  = {}   -- per-generation metrics history
     return p
 end
 
--- Estatísticas da população atual
+-- Statistics of the current population
 function computePopStats()
     local n = #gpPool.population
     if n == 0 then return 0, 0, 0, 0 end
@@ -712,7 +712,7 @@ function computePopStats()
     end
     local meanF = sumF / n
     local meanS = sumS / n
-    -- Desvio padrão
+    -- Standard deviation
     local varF = 0
     for _, ind in ipairs(gpPool.population) do
         varF = varF + (ind.fitness - meanF)^2
@@ -721,24 +721,24 @@ function computePopStats()
     return meanF, stdF, maxF, meanS
 end
 
--- Evolui uma nova geração usando elitismo + torneio + crossover + mutação
+-- Evolves a new generation using elitism + tournament + crossover + mutation
 function newGPGeneration()
-    -- Aplica parsimônia a todos os indivíduos
+    -- Apply parsimony to every individual
     for _, ind in ipairs(gpPool.population) do
         applyParsimony(ind)
     end
 
-    -- Ordena por fitness decrescente
+    -- Sort by descending fitness
     table.sort(gpPool.population, function(a,b) return a.fitness > b.fitness end)
 
-    -- Atualiza fitness máximo
+    -- Update the maximum fitness
     if gpPool.population[1] and gpPool.population[1].fitness > gpPool.maxFitness then
         gpPool.maxFitness = gpPool.population[1].fitness
-        -- Salva o melhor indivíduo
+        -- Save the best individual
         writeGPFile("best_gp_gen" .. gpPool.generation .. ".gppool")
     end
 
-    -- Log de métricas
+    -- Metrics log
     local meanF, stdF, maxF, meanS = computePopStats()
     local logEntry = string.format(
         "Gen %d | MaxF=%.1f MeanF=%.1f StdF=%.1f MeanSize=%.1f BestSize=%d",
@@ -748,13 +748,13 @@ function newGPGeneration()
     table.insert(gpPool.logEntries, logEntry)
     console.writeline(logEntry)
 
-    -- Gravação explícita no arquivo de log do treinamento para acesso externo
+    -- Explicit write to the training log file for external access
     local resFile = io.open("gp_training_results.txt", "a")
     if resFile then
         resFile:write(logEntry .. "\n")
         local bestInd = gpPool.population[1]
         if bestInd then
-            resFile:write("--- MELHOR POLITICA SIMBOLICA (GEN " .. gpPool.generation .. " | Fitness " .. math.floor(bestInd.fitness) .. ") ---\n")
+            resFile:write("--- BEST SYMBOLIC POLICY (GEN " .. gpPool.generation .. " | Fitness " .. math.floor(bestInd.fitness) .. ") ---\n")
             for b=1, #ButtonNames do
                 resFile:write("  " .. ButtonNames[b] .. ": " .. treeToString(bestInd.trees[b]) .. "\n")
             end
@@ -764,14 +764,14 @@ function newGPGeneration()
         resFile:close()
     end
 
-    -- Elitismo: preserva os 2 melhores sem modificação
+    -- Elitism: keep the best 2 unchanged
     local eliteCount = 2
     local newPop = {}
     for i=1, math.min(eliteCount, #gpPool.population) do
         table.insert(newPop, copyIndividual(gpPool.population[i]))
     end
 
-    -- Preenche o restante com torneio + crossover + mutação
+    -- Fill the rest with tournament + crossover + mutation
     while #newPop < GP_Population do
         local p1 = tournamentSelect(gpPool.population)
         local child
@@ -794,7 +794,7 @@ function newGPGeneration()
         end
     end
 
-    -- Trunca se necessário
+    -- Truncate if needed
     while #newPop > GP_Population do
         table.remove(newPop)
     end
@@ -815,7 +815,7 @@ function initializeGPPool()
 end
 
 -- ---------------------------------------------------------------------------
--- 11. CONTROLE DE EXECUÇÃO
+-- 11. EXECUTION CONTROL
 -- ---------------------------------------------------------------------------
 
 function clearJoypad()
@@ -842,7 +842,7 @@ function evaluateGPCurrent()
     local percept = buildPercept()
     gpController = evaluateIndividual(ind, percept)
 
-    -- Conflitos L/R e U/D
+    -- L/R and U/D conflicts
     if gpController["P1 Left"] and gpController["P1 Right"] then
         gpController["P1 Left"]  = false
         gpController["P1 Right"] = false
@@ -855,7 +855,7 @@ function evaluateGPCurrent()
 end
 
 -- ---------------------------------------------------------------------------
--- 12. PERSISTÊNCIA (SALVAR / CARREGAR POOL GP)
+-- 12. PERSISTENCE (SAVE / LOAD GP POOL)
 -- ---------------------------------------------------------------------------
 
 function nodeToString(node)
@@ -873,7 +873,7 @@ end
 function writeGPFile(filename)
     local file = io.open(filename, "w")
     if not file then
-        console.writeline("ERRO: Não foi possível abrir arquivo para escrita: " .. filename)
+        console.writeline("ERROR: Could not open the file for writing: " .. filename)
         return
     end
     file:write(gpPool.generation .. "\n")
@@ -888,7 +888,7 @@ function writeGPFile(filename)
             file:write(nodeToString(ind.trees[b]) .. "\n")
         end
     end
-    -- Log de métricas
+    -- Metrics log
     file:write("LOG_START\n")
     for _, entry in ipairs(gpPool.logEntries) do
         file:write(entry .. "\n")
@@ -897,16 +897,16 @@ function writeGPFile(filename)
     file:close()
 end
 
--- Encontra um terminal pelo nome
+-- Finds a terminal by name
 function findTerminalByName(name)
     for _, t in ipairs(TERMINALS) do
         if t.name == name then return t end
     end
-    -- Terminal desconhecido: retorna zero
+    -- Unknown terminal: return zero
     return { name=name, eval=function(p) return 0 end }
 end
 
--- Encontra uma função pelo nome
+-- Finds a function by name
 function findFunctionByName(fname)
     for _, f in ipairs(FUNCTIONS) do
         if f.name == fname then return f end
@@ -916,11 +916,11 @@ end
 
 function parseNode(s, pos)
     pos = pos or 1
-    local typeChar = s:sub(pos, pos)  -- 'T' ou 'F'
-    pos = pos + 2  -- pula 'T:' ou 'F:'
+    local typeChar = s:sub(pos, pos)  -- 'T' or 'F'
+    pos = pos + 2  -- skip 'T:' or 'F:'
 
     if typeChar == "T" then
-        -- Lê nome do terminal até '|' ou '\0'
+        -- Read the terminal name up to '|' or '\0'
         local endPos = s:find("|", pos, true)
         local name
         if endPos then
@@ -933,11 +933,11 @@ function parseNode(s, pos)
         local term = findTerminalByName(name)
         return newNode_Terminal(term), pos
     elseif typeChar == "F" then
-        -- Lê nome da função
+        -- Read the function name
         local colonPos = s:find(":", pos, true)
         local fname = s:sub(pos, colonPos-1)
         pos = colonPos + 1
-        -- Lê aridade
+        -- Read the arity
         local pipeOrEnd = s:find("|", pos, true)
         local arityStr
         if pipeOrEnd then
@@ -950,7 +950,7 @@ function parseNode(s, pos)
         local arity = tonumber(arityStr) or 0
         local func = findFunctionByName(fname)
         if not func then
-            -- Fallback: terminal constante
+            -- Fallback: constant terminal
             return newNode_Terminal(findTerminalByName("C_0")), pos
         end
         local node = newNode_Function(func)
@@ -968,7 +968,7 @@ end
 function loadGPFile(filename)
     local file = io.open(filename, "r")
     if not file then
-        console.writeline("ERRO: Arquivo não encontrado: " .. filename)
+        console.writeline("ERROR: File not found: " .. filename)
         return
     end
     gpPool = newGPPool()
@@ -989,7 +989,7 @@ function loadGPFile(filename)
                 ind.trees[b] = generateRandomTree(GP_MaxDepthInit)
             end
         end
-        -- Garante que todos os botões têm árvores
+        -- Ensure every button has a tree
         for b=numTrees+1, #ButtonNames do
             ind.trees[b] = generateRandomTree(GP_MaxDepthInit)
         end
@@ -1010,22 +1010,22 @@ function loadGPPool()
 end
 
 -- ---------------------------------------------------------------------------
--- 13. EXIBIÇÃO VISUAL (GUI)
+-- 13. VISUAL DISPLAY (GUI)
 -- ---------------------------------------------------------------------------
 
--- Exibe o melhor indivíduo da geração atual com suas expressões simbólicas
+-- Displays the best individual of the current generation with its symbolic expressions
 function displayGP(ind)
     if ind == nil then return end
 
-    -- Painel de fundo
+    -- Background panel
     gui.drawBox(0, 0, 300, 200, 0xC0000000, 0xC0111111)
 
-    -- Título
+    -- Title
     gui.drawText(4, 2, "MarI/O-GP  Gen:" .. gpPool.generation, 0xFFFFFF00, 10)
     gui.drawText(4, 14, "MaxFit:" .. math.floor(gpPool.maxFitness) ..
                         "  Size:" .. ind.size, 0xFFFFFF00, 10)
 
-    -- Exibe a grade de tiles (igual ao NEAT)
+    -- Displays the tile grid (same as NEAT)
     local percept = buildPercept()
     local gridX, gridY = 4, 30
     local cellSize = 4
@@ -1039,11 +1039,11 @@ function displayGP(ind)
             local sv = percept.sprites[row][col]
             local color
             if sv == 1 then
-                color = 0xFFFF0000  -- vermelho = inimigo
+                color = 0xFFFF0000  -- red = enemy
             elseif tv == 1 then
-                color = 0xFFAAAAAA  -- cinza = tile sólido
+                color = 0xFFAAAAAA  -- grey = solid tile
             else
-                color = 0xFF222222  -- vazio
+                color = 0xFF222222  -- empty
             end
             local px = gridX + (col-1)*cellSize
             local py = gridY + (row-1)*cellSize
@@ -1051,7 +1051,7 @@ function displayGP(ind)
         end
     end
 
-    -- Exibe o estado dos botões ativos
+    -- Displays the state of the active buttons
     local btnX = gridX + (BoxRadius*2+1)*cellSize + 8
     local btnY = 30
     for b=1, #ButtonNames do
@@ -1060,25 +1060,25 @@ function displayGP(ind)
         gui.drawText(btnX, btnY + (b-1)*12, ButtonNames[b], color, 10)
     end
 
-    -- Exibe a expressão simbólica do primeiro botão (Right — mais informativo)
-    -- Truncada para caber na tela
+    -- Displays the symbolic expression of the main button (Right — the most informative)
+    -- Truncated so that it fits on screen
     local exprY = 140
     gui.drawText(4, exprY, "Right:", 0xFFAAAAFF, 9)
-    local expr = treeToString(ind.trees[#ButtonNames])  -- último = Right
+    local expr = treeToString(ind.trees[#ButtonNames])  -- last one = Right
     if #expr > 55 then expr = expr:sub(1, 52) .. "..." end
     gui.drawText(4, exprY+10, expr, 0xFFFFFFFF, 8)
 
-    -- Barra de progresso da geração
+    -- Generation progress bar
     local total = GP_Population
     local measured = gpPool.currentInd - 1
     local pct = total > 0 and math.floor(measured/total*100) or 0
     gui.drawText(4, exprY+22,
-        "Avaliando " .. gpPool.currentInd .. "/" .. total ..
+        "Evaluating " .. gpPool.currentInd .. "/" .. total ..
         " (" .. pct .. "%)", 0xFFCCCCCC, 8)
 end
 
 -- ---------------------------------------------------------------------------
--- 14. PLAY TOP  — executa o melhor indivíduo encontrado
+-- 14. PLAY TOP  — runs the best individual found
 -- ---------------------------------------------------------------------------
 
 function gpPlayTop()
@@ -1089,22 +1089,22 @@ function gpPlayTop()
     initializeGPRun()
 end
 
--- Imprime a expressão do melhor indivíduo no console
+-- Prints the expression of the best individual to the console
 function gpPrintBest()
     table.sort(gpPool.population, function(a,b) return a.fitness > b.fitness end)
     local best = gpPool.population[1]
     if best == nil then return end
-    console.writeline("=== MELHOR INDIVIDUO GP (Gen " .. gpPool.generation .. ") ===")
-    console.writeline("Fitness: " .. best.fitness .. "  Tamanho: " .. best.size)
+    console.writeline("=== BEST GP INDIVIDUAL (Gen " .. gpPool.generation .. ") ===")
+    console.writeline("Fitness: " .. best.fitness .. "  Size: " .. best.size)
     for b=1, #ButtonNames do
-        console.writeline("Botao " .. ButtonNames[b] .. ":")
+        console.writeline("Button " .. ButtonNames[b] .. ":")
         console.writeline("  " .. treeToString(best.trees[b]))
     end
-    console.writeline("=== FIM ===")
+    console.writeline("=== END ===")
 end
 
 -- ---------------------------------------------------------------------------
--- 15. FORMULÁRIO DE CONTROLE
+-- 15. CONTROL FORM
 -- ---------------------------------------------------------------------------
 
 function onExitGP()
@@ -1131,14 +1131,14 @@ gpPrintButton     = forms.button(gpForm, "Print Best", gpPrintBest,     110, 158
 gpHideBanner      = forms.checkbox(gpForm, "Hide Banner", 5, 185)
 
 -- ---------------------------------------------------------------------------
--- 16. LOOP PRINCIPAL
+-- 16. MAIN LOOP
 -- ---------------------------------------------------------------------------
 
 gpController = {}
 gpRightmost  = 0
 gpTimeout    = TimeoutConstant
 
--- Acelera emulação para treinamento turbo
+-- Speed up emulation for turbo training
 pcall(function() client.speedmode(600) end)
 
 while true do
@@ -1149,19 +1149,19 @@ while true do
 
     local ind = gpPool.population[gpPool.currentInd]
 
-    -- Exibição visual
+    -- Visual display
     if forms.ischecked(gpShowNetwork) then
         displayGP(ind)
     end
 
-    -- Avaliação da rede (a cada 5 frames para performance)
+    -- Network evaluation (every 5 frames for performance)
     if gpPool.currentFrame % 5 == 0 then
         evaluateGPCurrent()
     end
 
     joypad.set(gpController)
 
-    -- Lógica de timeout e fitness
+    -- Timeout and fitness logic
     getPositions()
     if marioX > gpRightmost then
         gpRightmost = marioX
@@ -1172,7 +1172,7 @@ while true do
 
     local timeoutBonus = gpPool.currentFrame / 4
     if gpTimeout + timeoutBonus <= 0 then
-        -- Calcula fitness do indivíduo atual
+        -- Compute the fitness of the current individual
         local fitness = gpRightmost - gpPool.currentFrame / 2
         if gameinfo.getromname() == "Super Mario World (USA)" and gpRightmost > 4816 then
             fitness = fitness + 1000
@@ -1199,7 +1199,7 @@ while true do
             " Size:"  .. ind.size
         )
 
-        -- Avança para o próximo indivíduo
+        -- Advance to the next individual
         gpPool.currentInd = gpPool.currentInd + 1
         if gpPool.currentInd > #gpPool.population then
             newGPGeneration()
@@ -1207,7 +1207,7 @@ while true do
         initializeGPRun()
     end
 
-    -- HUD de informações
+    -- Information HUD
     if not forms.ischecked(gpHideBanner) then
         local pct = #gpPool.population > 0
             and math.floor((gpPool.currentInd-1) / #gpPool.population * 100)

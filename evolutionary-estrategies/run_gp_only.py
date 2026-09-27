@@ -1,6 +1,6 @@
 """
-Script separado para rodar apenas a Família 2 (GP) em CartPole e Acrobot.
-Mais lento por ser interpretado em Python.
+Separate script that runs only Family 2 (GP) on CartPole and Acrobot.
+Slower because it is interpreted in Python.
 """
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -22,7 +22,7 @@ ENVS    = ["CartPole-v1", "Acrobot-v1"]
 
 def main():
     print("=" * 60)
-    print("  Familia 2 (Programas) — LinearGP + CartesianGP")
+    print("  Family 2 (Programs) — LinearGP + CartesianGP")
     print("=" * 60)
 
     results_by_env = {}
@@ -58,15 +58,15 @@ def main():
             results_env.append(res)
         results_by_env[env_name] = results_env
 
-    print(f"\nConcluido em {time.time()-t0:.1f}s")
+    print(f"\nFinished in {time.time()-t0:.1f}s")
 
-    # Carrega resultados F1+F3 se existirem
+    # Load the F1+F3 results if they exist
     json_path = os.path.join(OUT_DIR, "raw_results.json")
     if os.path.exists(json_path):
-        print("Mesclando com resultados F1+F3 existentes...")
-        # Salva somente GP por enquanto
-    
-    # Salva resultados GP
+        print("Merging with the existing F1+F3 results...")
+        # Only the GP results are saved for now
+
+    # Save the GP results
     gp_json = {}
     for env, res_list in results_by_env.items():
         gp_json[env] = []
@@ -85,10 +85,10 @@ def main():
     os.makedirs(OUT_DIR, exist_ok=True)
     with open(out_path, "w") as f:
         json.dump(gp_json, f, indent=2)
-    print(f"Salvo: {out_path}")
+    print(f"Saved: {out_path}")
 
-    # Tabela
-    print(f"\n{'Algoritmo':<14} {'Ambiente':<28} {'Best Fitness':>14} {'Tempo (s)':>10}")
+    # Table
+    print(f"\n{'Algorithm':<14} {'Environment':<28} {'Best Fitness':>14} {'Time (s)':>10}")
     print("-" * 70)
     for env, res_list in results_by_env.items():
         for r in res_list:

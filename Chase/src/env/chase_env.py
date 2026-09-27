@@ -1,5 +1,5 @@
 """
-Chase/TAG game environment - "Pega-Pega"
+Chase/TAG game environment.
 The AI agent must survive as long as possible while being chased by a floating capsule.
 """
 

@@ -1,20 +1,20 @@
 """
-Script de Validação Científica Rigorosa: 100 Episódios de Teste Out-of-Sample.
+Rigorous Scientific Validation script: 100 Out-of-Sample Test Episodes.
 
-Executa o protocolo acadêmico completo:
-  1. Treinamento com semente 42 (G=30 gerações para F1/F3, G=15 para F2)
-  2. Extração do vetor ótimo de parâmetros / programa elite
-  3. Avaliação de validação em N=100 episódios de teste independentes (semente 9999)
-  4. Cálculo de métricas de dispersão, ruído, confiança e viés do vencedor:
-     - Média ± SEM
+Runs the full academic protocol:
+  1. Training with seed 42 (G=30 generations for F1/F3, G=15 for F2)
+  2. Extraction of the optimal parameter vector / elite program
+  3. Validation over N=100 independent test episodes (seed 9999)
+  4. Computation of dispersion, noise, confidence and winner's-bias metrics:
+     - Mean ± SEM
      - 95% Bootstrap Confidence Interval (B=2000)
-     - Mediana e IQR
-     - Desvio Padrão
+     - Median and IQR
+     - Standard Deviation
      - Signal-to-Noise Ratio (SNR)
-     - Coeficiente de Variação (CV)
-     - Lacuna de Otimismo / Winner's Curse (f_train - R_test)
-     - Taxa de Sucesso (%)
-  5. Geração de gráficos estatísticos (boxplots e barras de erro)
+     - Coefficient of Variation (CV)
+     - Optimism Gap / Winner's Curse (f_train - R_test)
+     - Success Rate (%)
+  5. Generation of the statistical plots (boxplots and error bars)
 """
 import sys
 import os
@@ -74,9 +74,9 @@ def build_gp_algorithms(obs_dim: int, act_dim: int):
 
 def main():
     print("=" * 80)
-    print("  PROTOCOLO DE VALIDAÇÃO CIENTÍFICA: 100 EPISÓDIOS DE TESTE OUT-OF-SAMPLE")
-    print(f"  Episódios de Teste: {N_TEST_EPISODES} | Semente de Teste: {TEST_SEED}")
-    print("  Métricas: Média, SEM, Bootstrap CI 95%, SNR, CV, Optimism Gap, Success Rate")
+    print("  RIGOROUS SCIENTIFIC VALIDATION PROTOCOL: 100 OUT-OF-SAMPLE TEST EPISODES")
+    print(f"  Test Episodes: {N_TEST_EPISODES} | Test Seed: {TEST_SEED}")
+    print("  Metrics: Mean, SEM, 95% Bootstrap CI, SNR, CV, Optimism Gap, Success Rate")
     print("=" * 80)
 
     envs = ["CartPole-v1", "Acrobot-v1", "Pendulum-v1", "MountainCarContinuous-v0"]
@@ -87,18 +87,18 @@ def main():
         obs_dim = meta["obs_dim"]
         act_dim = meta["act_dim"]
         print(f"\n{'-'*80}")
-        print(f"  Ambiente: {env_name} (obs={obs_dim}, act={act_dim})")
+        print(f"  Environment: {env_name} (obs={obs_dim}, act={act_dim})")
         print(f"{'-'*80}")
 
-        # 1. Compila avaliador JAX de 100 episódios para o ambiente
+        # 1. Compile the JAX evaluator for 100 episodes on this environment
         test_eval_jax = make_test_eval_fn(env_name, n_episodes=N_TEST_EPISODES)
         test_rng = jax.random.PRNGKey(TEST_SEED)
 
-        # 2. Treina e valida Famílias 1 e 3
+        # 2. Train and validate Families 1 and 3
         for alg_cfg in build_param_algorithms(pop=32):
             algo_name = alg_cfg["name"]
             family = alg_cfg["family"]
-            print(f"  -> Treinando [F{family}] {algo_name} (30 gerações)...", end="", flush=True)
+            print(f"  -> Training [F{family}] {algo_name} (30 generations)...", end="", flush=True)
 
             t_train_start = time.time()
             res = run_param_based_v2(
@@ -113,13 +113,13 @@ def main():
             )
             t_train = time.time() - t_train_start
             f_train_best = float(res.best_fitness[-1])
-            print(f" Treino: {t_train:.1f}s (Best Train: {f_train_best:.2f})")
+            print(f" Train: {t_train:.1f}s (Best Train: {f_train_best:.2f})")
 
-            # Avaliação de Teste com 100 episódios
+            # Test evaluation over 100 episodes
             best_params_jnp = jnp.array(res.best_params)
             returns_test = np.array(test_eval_jax(best_params_jnp, test_rng))
 
-            # Cálculo formal de métricas
+            # Formal computation of the metrics
             stats = compute_statistical_metrics(returns_test, f_train_best=f_train_best, env_name=env_name)
             record = {
                 "algorithm": algo_name,
@@ -129,18 +129,18 @@ def main():
                 "train_time_s": round(t_train, 2),
             }
             validation_records.append(record)
-            print(f"     [TESTE 100 eps] Média={stats['test_mean']:>8.2f} ± {stats['test_sem']:<5.2f} | "
+            print(f"     [TEST 100 eps] Mean={stats['test_mean']:>8.2f} ± {stats['test_sem']:<5.2f} | "
                   f"CI95%=[{stats['ci95_low']:>7.2f}, {stats['ci95_high']:>7.2f}] | "
-                  f"Mediana={stats['test_median']:>7.2f} | Std={stats['test_std']:>6.2f} | "
+                  f"Median={stats['test_median']:>7.2f} | Std={stats['test_std']:>6.2f} | "
                   f"SNR={stats['snr']:>5.2f} | Gap={stats['optimism_gap']:>6.2f} | "
-                  f"Sucesso={stats['success_rate_pct']:>5.1f}%")
+                  f"Success={stats['success_rate_pct']:>5.1f}%")
 
-        # 3. Família 2 (LinearGP e CartesianGP) nos ambientes discretos
+        # 3. Family 2 (LinearGP and CartesianGP) on the discrete environments
         if env_name in ["CartPole-v1", "Acrobot-v1"]:
             for alg_cfg in build_gp_algorithms(obs_dim, act_dim):
                 algo_name = alg_cfg["name"]
                 family = 2
-                print(f"  -> Treinando [F2] {algo_name} (15 gerações)...", end="", flush=True)
+                print(f"  -> Training [F2] {algo_name} (15 generations)...", end="", flush=True)
 
                 t_train_start = time.time()
                 res = run_program_based(
@@ -155,9 +155,9 @@ def main():
                 )
                 t_train = time.time() - t_train_start
                 f_train_best = float(res.best_fitness[-1])
-                print(f" Treino: {t_train:.1f}s (Best Train: {f_train_best:.2f})")
+                print(f" Train: {t_train:.1f}s (Best Train: {f_train_best:.2f})")
 
-                # Teste 100 episódios
+                # Test over 100 episodes
                 returns_test = evaluate_program_100(res.policy_fn, env_name, n_episodes=N_TEST_EPISODES, seed=TEST_SEED)
                 stats = compute_statistical_metrics(returns_test, f_train_best=f_train_best, env_name=env_name)
                 record = {
@@ -168,21 +168,21 @@ def main():
                     "train_time_s": round(t_train, 2),
                 }
                 validation_records.append(record)
-                print(f"     [TESTE 100 eps] Média={stats['test_mean']:>8.2f} ± {stats['test_sem']:<5.2f} | "
+                print(f"     [TEST 100 eps] Mean={stats['test_mean']:>8.2f} ± {stats['test_sem']:<5.2f} | "
                       f"CI95%=[{stats['ci95_low']:>7.2f}, {stats['ci95_high']:>7.2f}] | "
-                      f"Mediana={stats['test_median']:>7.2f} | Std={stats['test_std']:>6.2f} | "
+                      f"Median={stats['test_median']:>7.2f} | Std={stats['test_std']:>6.2f} | "
                       f"SNR={stats['snr']:>5.2f} | Gap={stats['optimism_gap']:>6.2f} | "
-                      f"Sucesso={stats['success_rate_pct']:>5.1f}%")
+                      f"Success={stats['success_rate_pct']:>5.1f}%")
 
-    # Salva JSON completo (incluindo arrays brutos para reamostragem/gráficos)
+    # Save the full JSON (including raw arrays for resampling/plots)
     json_path = os.path.join(OUT_DIR, "validation_100_results.json")
     with open(json_path, "w") as f:
         json.dump(validation_records, f, indent=2)
     with open(os.path.join(ART_DIR, "validation_100_results.json"), "w") as f:
         json.dump(validation_records, f, indent=2)
-    print(f"\n[OK] Salvo JSON: {json_path}")
+    print(f"\n[OK] Saved JSON: {json_path}")
 
-    # Salva CSV resumido
+    # Save the summary CSV
     csv_path = os.path.join(OUT_DIR, "validation_100_summary.csv")
     fieldnames = [
         "algorithm", "family", "environment", "f_train_best", "test_mean", "test_sem",
@@ -197,17 +197,17 @@ def main():
         writer = csv.DictWriter(f, fieldnames=fieldnames, extrasaction="ignore")
         writer.writeheader()
         writer.writerows(validation_records)
-    print(f"[OK] Salvo CSV: {csv_path}")
+    print(f"[OK] Saved CSV: {csv_path}")
 
-    # 4. Geração de Gráficos Estatísticos Rigorosos
-    print("\nGerando gráficos estatísticos de validação...")
+    # 4. Generate the rigorous statistical plots
+    print("\nGenerating the validation statistical plots...")
     _generate_statistical_plots(validation_records)
 
-    # 5. Imprime Tabela Markdown Acadêmica
+    # 5. Print the academic summary table
     print("\n" + "=" * 115)
-    print("TABELA CONSOLIDADA DE VALIDAÇÃO ESTÍSTICA (100 EPISÓDIOS OUT-OF-SAMPLE)")
+    print("CONSOLIDATED STATISTICAL VALIDATION TABLE (100 OUT-OF-SAMPLE EPISODES)")
     print("=" * 115)
-    print(f"{'Algoritmo':<13} {'Fam':<4} {'Ambiente':<24} {'Train Best':>11} {'Test Mean ± SEM':>18} {'95% Bootstrap CI':>21} {'SNR':>6} {'Gap':>8} {'Sucesso%':>9}")
+    print(f"{'Algorithm':<13} {'Fam':<4} {'Environment':<24} {'Train Best':>11} {'Test Mean ± SEM':>18} {'95% Bootstrap CI':>21} {'SNR':>6} {'Gap':>8} {'Success %':>9}")
     print("-" * 115)
     for r in validation_records:
         mean_sem = f"{r['test_mean']:.1f} ± {r['test_sem']:.1f}"
@@ -217,21 +217,21 @@ def main():
 
 
 def _generate_statistical_plots(records):
-    """Gera visualizações estatísticas (barras com erro SEM, boxplots e métricas de ruído)."""
+    """Generate the statistical visualizations (SEM error bars, boxplots and noise metrics)."""
     envs = list(dict.fromkeys(r["environment"] for r in records))
     
-    # Cores por família
+    # Colors by family
     COLORS = {1: "#E63946", 2: "#457B9D", 3: "#52B788"}
 
-    # 1. Gráfico de Barras com Intervalo de Confiança 95%
+    # 1. Bar chart with 95% confidence intervals
     fig, axes = plt.subplots(2, 2, figsize=(15, 11), facecolor="#0d1117")
     axes = axes.flatten()
 
     for idx, env in enumerate(envs):
         ax = axes[idx]
         ax.set_facecolor("#161b22")
-        ax.set_title(f"{env} — Retorno Médio em Teste (N=100 eps ± 95% CI)", color="white", fontsize=11, fontweight="bold", pad=8)
-        ax.set_ylabel("Retorno Acumulado", color="#8b949e", fontsize=9)
+        ax.set_title(f"{env} — Mean Test Return (N=100 eps ± 95% CI)", color="white", fontsize=11, fontweight="bold", pad=8)
+        ax.set_ylabel("Cumulative Return", color="#8b949e", fontsize=9)
         ax.tick_params(colors="#8b949e", labelsize=8)
         for spine in ax.spines.values(): spine.set_edgecolor("#30363d")
         ax.grid(True, axis="y", color="#21262d", linewidth=0.5, linestyle="--")
@@ -248,7 +248,7 @@ def _generate_statistical_plots(records):
                       color=colors, alpha=0.85, edgecolor="#0d1117", linewidth=0.5,
                       error_kw=dict(ecolor="white", lw=1.2, capthick=1.2))
 
-        # Adiciona rótulo de texto com média e SNR
+        # Add a text label with the mean and the SNR
         for i, (m, r) in enumerate(zip(means, sub_records)):
             offset = abs(m) * 0.05 if m != 0 else 5.0
             va = "bottom" if m >= 0 else "top"
@@ -265,15 +265,15 @@ def _generate_statistical_plots(records):
     plt.savefig(out_path, dpi=150, bbox_inches="tight", facecolor=fig.get_facecolor())
     plt.savefig(art_path, dpi=150, bbox_inches="tight", facecolor=fig.get_facecolor())
     plt.close()
-    print(f"[plot] Salvo: {out_path}")
-    print(f"[plot] Salvo: {art_path}")
+    print(f"[plot] Saved: {out_path}")
+    print(f"[plot] Saved: {art_path}")
 
-    # 2. Gráfico do Viés de Otimismo (Winner's Curse: Treino vs Teste)
+    # 2. Optimism-bias plot (Winner's Curse: Train vs Test)
     fig2, ax2 = plt.subplots(figsize=(13, 6), facecolor="#0d1117")
     ax2.set_facecolor("#161b22")
-    ax2.set_title("Lacuna de Otimismo (Winner's Curse): Fitness Treino (2 rollouts) vs Teste Real (100 rollouts)",
+    ax2.set_title("Optimism Gap (Winner's Curse): Train Fitness (2 rollouts) vs True Test Return (100 rollouts)",
                   color="white", fontsize=12, fontweight="bold", pad=10)
-    ax2.set_ylabel("Lacuna de Otimismo: Δ = f_train - R_test", color="#8b949e", fontsize=10)
+    ax2.set_ylabel("Optimism Gap: Δ = f_train - R_test", color="#8b949e", fontsize=10)
     ax2.tick_params(colors="#8b949e")
     for spine in ax2.spines.values(): spine.set_edgecolor("#30363d")
     ax2.grid(True, axis="y", color="#21262d", linewidth=0.5, linestyle="--")
@@ -298,8 +298,8 @@ def _generate_statistical_plots(records):
     plt.savefig(out_gap, dpi=150, bbox_inches="tight", facecolor=fig2.get_facecolor())
     plt.savefig(art_gap, dpi=150, bbox_inches="tight", facecolor=fig2.get_facecolor())
     plt.close()
-    print(f"[plot] Salvo: {out_gap}")
-    print(f"[plot] Salvo: {art_gap}")
+    print(f"[plot] Saved: {out_gap}")
+    print(f"[plot] Saved: {art_gap}")
 
 
 if __name__ == "__main__":

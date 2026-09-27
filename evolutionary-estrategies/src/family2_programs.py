@@ -1,29 +1,29 @@
 """
-Família 2 — Programas (Program Synthesis / Genetic Programming)
+Family 2 — Programs (Program Synthesis / Genetic Programming)
 
-Dois algoritmos que evoluem programas (sequências de instruções) em vez de
-vetores de parâmetros reais:
+Two algorithms that evolve programs (sequences of instructions) instead of
+vectors of real-valued parameters:
 
-  1. LinearGP — Genetic Programming Linear (Brameier & Banzhaf 2007)
-     Cada indivíduo é uma sequência de instrções do tipo:
+  1. LinearGP — Linear Genetic Programming (Brameier & Banzhaf 2007)
+     Each individual is a sequence of instructions of the form:
          r[dst] = op(r[src1], r[src2])
-     onde op ∈ {add, sub, mul, tanh, sin, cos, abs, noop, cond_gt, max}
-     Os registradores de entrada são inicializados com a observação.
-     Os registradores de saída são lidos para produzir a ação.
+     where op ∈ {add, sub, mul, tanh, sin, cos, abs, noop, cond_gt, max}
+     The input registers are initialized with the observation.
+     The output registers are read to produce the action.
 
-  2. CartesianGP — Genetic Programming Cartesiano (Miller & Thomson 2000)
-     O programa é representado como um grafo acíclico dirigido (DAG)
-     de largura C_cols e altura 1 (CGP clássico unidimensional).
-     Cada nó tem: [op, conn1, conn2].
-     Apenas os nós conectados à saída são avaliados (genes neutros ignorados).
+  2. CartesianGP — Cartesian Genetic Programming (Miller & Thomson 2000)
+     The program is represented as a directed acyclic graph (DAG)
+     of width C_cols and height 1 (classical one-dimensional CGP).
+     Each node has: [op, conn1, conn2].
+     Only the nodes connected to the output are evaluated (neutral genes are ignored).
 
-Ambos os algoritmos usam GA clássico (seleção por torneio + mutação) como
-mecanismo evolutivo, pois crossover estruturado em programas é delicado.
+Both algorithms use a classic GA (tournament selection + mutation) as the
+evolutionary mechanism, since structured crossover over programs is delicate.
 
-IMPORTANTE: Para integração com gymnax, o "phenotype" é sempre um vetor
-de parâmetros reais que controla a ação — os programas evoluem funções que
-mapeiam observações em ações, mas internamente usam instruções discretas.
-A aptidão é avaliada diretamente nos ambientes gymnax.
+IMPORTANT: to integrate with gymnax, the "phenotype" is always a vector of
+real parameters that controls the action — the programs evolve functions that
+map observations into actions, but internally they use discrete instructions.
+Fitness is evaluated directly on the gymnax environments.
 
 Interface:
     init(rng)     -> state
@@ -40,10 +40,10 @@ import numpy as np
 
 
 # ---------------------------------------------------------------------------
-# Operações disponíveis para os programas (operadores primitivos)
+# Operations available to the programs (primitive operators)
 # ---------------------------------------------------------------------------
 
-# IDs de operadores (inteiros)
+# Operator IDs (integers)
 OP_ADD  = 0
 OP_SUB  = 1
 OP_MUL  = 2
@@ -51,13 +51,13 @@ OP_TANH = 3
 OP_SIN  = 4
 OP_COS  = 5
 OP_ABS  = 6
-OP_NOOP = 7     # identidade: r[dst] = r[src1]
+OP_NOOP = 7     # identity: r[dst] = r[src1]
 OP_MAX  = 8
 OP_MIN  = 9
 N_OPS   = 10
 
 def apply_op(op_id: int, a: float, b: float) -> float:
-    """Aplica operador binário/unário."""
+    """Applies a binary/unary operator."""
     ops = [
         a + b, a - b, a * b, np.tanh(a), np.sin(a), np.cos(a),
         np.abs(a), a, np.maximum(a, b), np.minimum(a, b)
@@ -78,28 +78,28 @@ class LGPState(NamedTuple):
 
 class LinearGP:
     """
-    Genetic Programming Linear (Brameier & Banzhaf, 2007).
+    Linear Genetic Programming (Brameier & Banzhaf, 2007).
 
-    Representação de instrução: (op, dst, src1, src2) — 4 inteiros.
-    - op   : operador em {0..N_OPS-1}
-    - dst  : registrador destino em {0..n_regs-1}
-    - src1, src2: registradores fonte em {0..n_regs-1}
+    Instruction representation: (op, dst, src1, src2) — 4 integers.
+    - op   : operator in {0..N_OPS-1}
+    - dst  : destination register in {0..n_regs-1}
+    - src1, src2: source registers in {0..n_regs-1}
 
-    Os primeiros obs_dim registradores são inicializados com a observação.
-    Os últimos act_dim registradores são lidos como saída.
+    The first obs_dim registers are initialized with the observation.
+    The last act_dim registers are read as the output.
 
-    Evolução: torneio binário + mutação pontual de instruções.
-    Crossover: single-point no nível de instrução.
+    Evolution: binary tournament + point mutation of instructions.
+    Crossover: single-point at the instruction level.
 
-    Referência:
+    Reference:
         Brameier, M. F., & Banzhaf, W. (2007). Linear genetic programming.
         Springer Science & Business Media.
     """
 
     def __init__(self, obs_dim: int, act_dim: int,
                  pop_size: int = 64,
-                 prog_len: int = 64,       # número de instruções por programa
-                 n_extra_regs: int = 16,   # registradores auxiliares
+                 prog_len: int = 64,       # number of instructions per program
+                 n_extra_regs: int = 16,   # auxiliary registers
                  mut_rate: float = 0.15,
                  cx_prob: float = 0.7):
         self.obs_dim      = obs_dim
@@ -110,11 +110,11 @@ class LinearGP:
         self.n_extra_regs = n_extra_regs
         self.mut_rate     = mut_rate
         self.cx_prob      = cx_prob
-        # Índices dos registradores de saída
+        # Indices of the output registers
         self.out_start    = obs_dim + n_extra_regs
 
     def _rand_program(self, rng: jax.Array) -> np.ndarray:
-        """Gera um programa aleatório [prog_len, 4] como ndarray NumPy."""
+        """Generates a random program [prog_len, 4] as a NumPy ndarray."""
         ops  = np.random.randint(0, N_OPS,     self.prog_len)
         dst  = np.random.randint(0, self.n_regs, self.prog_len)
         src1 = np.random.randint(0, self.n_regs, self.prog_len)
@@ -122,7 +122,7 @@ class LinearGP:
         return np.stack([ops, dst, src1, src2], axis=1).astype(np.int32)
 
     def init(self, rng: jax.Array, **kwargs) -> LGPState:
-        # Programas como arrays NumPy (execução interpretada)
+        # Programs as NumPy arrays (interpreted execution)
         np.random.seed(int(jax.random.randint(rng, (), 0, 2**30, dtype=jnp.int32)))
         programs = np.stack([self._rand_program(rng) for _ in range(self.pop_size)])
         return LGPState(
@@ -135,8 +135,8 @@ class LinearGP:
 
     def execute_program(self, program: np.ndarray, obs: np.ndarray) -> np.ndarray:
         """
-        Executa um programa LGP dado uma observação.
-        Retorna os registradores de saída.
+        Executes an LGP program given an observation.
+        Returns the output registers.
         """
         regs = np.zeros(self.n_regs, dtype=np.float32)
         regs[:self.obs_dim] = obs[:self.obs_dim]
@@ -150,17 +150,17 @@ class LinearGP:
         return regs[self.out_start: self.out_start + self.act_dim]
 
     def get_policy_fn(self, program: np.ndarray) -> Callable:
-        """Retorna função política: obs -> ação (discreta ou contínua)."""
+        """Returns the policy function: obs -> action (discrete or continuous)."""
         def policy(obs: np.ndarray) -> np.ndarray:
             return self.execute_program(program, obs)
         return policy
 
     def _mutate_program(self, prog: np.ndarray) -> np.ndarray:
-        """Mutação pontual: cada instrução muta com probabilidade mut_rate."""
+        """Point mutation: each instruction mutates with probability mut_rate."""
         prog = prog.copy()
         for i in range(len(prog)):
             if np.random.random() < self.mut_rate:
-                gene = np.random.randint(0, 4)  # qual gene da instrução mutar
+                gene = np.random.randint(0, 4)  # which gene of the instruction to mutate
                 if gene == 0:
                     prog[i, 0] = np.random.randint(0, N_OPS)
                 elif gene == 1:
@@ -172,14 +172,14 @@ class LinearGP:
         return prog
 
     def _crossover(self, a: np.ndarray, b: np.ndarray) -> np.ndarray:
-        """Single-point crossover entre dois programas."""
+        """Single-point crossover between two programs."""
         if np.random.random() < self.cx_prob:
             pt = np.random.randint(1, self.prog_len)
             return np.concatenate([a[:pt], b[pt:]], axis=0)
         return a.copy()
 
     def tell(self, state: LGPState, fitness: jnp.ndarray) -> LGPState:
-        """Seleção por torneio + reprodução + mutação."""
+        """Tournament selection + reproduction + mutation."""
         fitness_np = np.array(fitness)
         programs   = np.array(state.programs)
         pop_size   = self.pop_size
@@ -194,7 +194,7 @@ class LinearGP:
             best_prog = np.array(state.best_program)
             best_fit_ = state.best_fitness
 
-        # Torneio binário
+        # Binary tournament
         def tournament(k=2):
             idxs = np.random.choice(pop_size, k, replace=False)
             return idxs[np.argmax(fitness_np[idxs])]
@@ -206,7 +206,7 @@ class LinearGP:
             child = self._crossover(pa, pb)
             child = self._mutate_program(child)
             new_programs.append(child)
-        new_programs.append(best_prog)  # elitismo
+        new_programs.append(best_prog)  # elitism
 
         return LGPState(
             programs     = jnp.array(np.stack(new_programs)),
@@ -225,7 +225,7 @@ class LinearGP:
 # ===========================================================================
 
 class CGPState(NamedTuple):
-    programs:     jnp.ndarray  # [pop_size, n_nodes+act_dim, 3]  (op, c1, c2) por nó; últimos act_dim são índices de saída
+    programs:     jnp.ndarray  # [pop_size, n_nodes+act_dim, 3]  (op, c1, c2) per node; the last act_dim entries are output indices
     fitness:      jnp.ndarray
     best_program: jnp.ndarray
     best_fitness: jnp.ndarray
@@ -235,22 +235,22 @@ class CartesianGP:
     """
     Cartesian Genetic Programming (Miller & Thomson 2000).
 
-    Grafo DAG de C_cols colunas (1 linha). Cada nó computacional tem
-    codificação [op, conn1, conn2] onde conn ∈ {0..obs_dim+col-1}
-    (só pode conectar a nós anteriores — garantia de aciclicidade).
+    DAG graph with C_cols columns (1 row). Each computational node has
+    encoding [op, conn1, conn2] where conn ∈ {0..obs_dim+col-1}
+    (it may only connect to earlier nodes — acyclicity is guaranteed).
 
-    Os últimos act_dim genes codificam os índices de saída.
+    The last act_dim genes encode the output indices.
 
-    Evolução: (1+λ) ES — um pai gera λ filhos mutados; sobrevive o melhor.
+    Evolution: (1+λ) ES — one parent produces λ mutated offspring; the best one survives.
 
-    Referência:
+    Reference:
         Miller, J. F., & Thomson, P. (2000). Cartesian genetic programming.
         In European Conference on Genetic Programming (pp. 121–132). Springer.
     """
 
     def __init__(self, obs_dim: int, act_dim: int,
-                 pop_size: int = 8,   # (1+λ): 1 pai + 7 filhos típico
-                 n_cols: int = 40,    # número de nós computacionais
+                 pop_size: int = 8,   # (1+λ): typically 1 parent + 7 offspring
+                 n_cols: int = 40,    # number of computational nodes
                  mut_rate: float = 0.05):
         self.obs_dim  = obs_dim
         self.act_dim  = act_dim
@@ -258,19 +258,19 @@ class CartesianGP:
         self.n_cols   = n_cols
         self.mut_rate = mut_rate
         self.n_nodes  = n_cols  # 1 linha, n_cols colunas
-        # Total de genes: n_nodes * 3  +  act_dim (saídas)
+        # Total number of genes: n_nodes * 3  +  act_dim (outputs)
         self.prog_genes = n_cols * 3 + act_dim
 
     def _rand_program(self) -> np.ndarray:
-        """Programa CGP: [n_nodes*3 + act_dim] inteiros."""
+        """CGP program: [n_nodes*3 + act_dim] integers."""
         prog = np.zeros(self.prog_genes, dtype=np.int32)
         obs = self.obs_dim
         for col in range(self.n_cols):
-            max_conn = obs + col  # só conexões para trás
+            max_conn = obs + col  # only backward connections
             prog[col*3 + 0] = np.random.randint(0, N_OPS)
             prog[col*3 + 1] = np.random.randint(0, max(1, max_conn))
             prog[col*3 + 2] = np.random.randint(0, max(1, max_conn))
-        # Genes de saída: índice de qualquer nó (input ou computacional)
+        # Output genes: index of any node (input or computational)
         for i in range(self.act_dim):
             prog[self.n_cols*3 + i] = np.random.randint(0, obs + self.n_cols)
         return prog
@@ -287,9 +287,9 @@ class CartesianGP:
         )
 
     def execute_program(self, prog: np.ndarray, obs: np.ndarray) -> np.ndarray:
-        """Avalia o grafo CGP para uma observação."""
+        """Evaluates the CGP graph for one observation."""
         obs = obs.astype(np.float32)
-        # Buffer: inputs primeiro, depois nós computacionais
+        # Buffer: inputs first, then the computational nodes
         buf = np.zeros(self.obs_dim + self.n_cols, dtype=np.float32)
         buf[:self.obs_dim] = np.clip(obs, -10.0, 10.0)
 
@@ -305,7 +305,7 @@ class CartesianGP:
             if not np.isnan(result) and not np.isinf(result):
                 buf[self.obs_dim + col] = result
 
-        # Lê saídas
+        # Read the outputs
         out_idxs = prog[self.n_cols*3: self.n_cols*3 + self.act_dim]
         out_idxs = np.clip(out_idxs, 0, self.obs_dim + self.n_cols - 1)
         return buf[out_idxs]
@@ -316,7 +316,7 @@ class CartesianGP:
         return policy
 
     def _mutate(self, prog: np.ndarray) -> np.ndarray:
-        """Mutação pontual respeitando a restrição de conectividade."""
+        """Point mutation that respects the connectivity constraint."""
         prog = prog.copy()
         obs = self.obs_dim
         for col in range(self.n_cols):
@@ -333,7 +333,7 @@ class CartesianGP:
         return prog
 
     def tell(self, state: CGPState, fitness: jnp.ndarray) -> CGPState:
-        """(1+λ) ES: o melhor sobrevive e gera pop_size-1 filhos."""
+        """(1+λ) ES: the best individual survives and produces pop_size-1 offspring."""
         fitness_np = np.array(fitness)
         programs   = np.array(state.programs)
 

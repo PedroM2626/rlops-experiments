@@ -1,6 +1,6 @@
 """
-Visualização dos resultados do benchmark.
-Gera gráficos publicáveis comparando as 3 famílias em cada ambiente.
+Visualization of the benchmark results.
+Generates publication-ready plots comparing the 3 families in each environment.
 """
 from __future__ import annotations
 import os
@@ -12,17 +12,17 @@ import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 from matplotlib.lines import Line2D
 
-# Paleta e estilos por família
+# Palette and per-family styles
 FAMILY_COLORS = {
-    1: ["#E63946", "#FF6B6B", "#FF8FA3"],     # Vermelhos — Diretas
-    2: ["#457B9D", "#A8DADC"],                # Azuis   — Programas
-    3: ["#2D6A4F", "#52B788"],               # Verdes  — EDA/Modelos
+    1: ["#E63946", "#FF6B6B", "#FF8FA3"],     # Reds   — Direct
+    2: ["#457B9D", "#A8DADC"],                # Blues  — Programs
+    3: ["#2D6A4F", "#52B788"],               # Greens — EDA/Models
 }
 
 FAMILY_NAMES = {
-    1: "Família 1 — Soluções Diretas",
-    2: "Família 2 — Programas",
-    3: "Família 3 — EDA/Modelos",
+    1: "Family 1 — Direct Solutions",
+    2: "Family 2 — Programs",
+    3: "Family 3 — EDA/Models",
 }
 
 LINESTYLES = {
@@ -47,7 +47,7 @@ MARKERS = {
 
 
 def _smooth(x, w=5):
-    """Suavização por média móvel."""
+    """Moving-average smoothing."""
     if len(x) < w:
         return np.array(x)
     kernel = np.ones(w) / w
@@ -57,8 +57,8 @@ def _smooth(x, w=5):
 
 def plot_learning_curves(results_by_env: Dict, out_dir: str, smooth_w: int = 5):
     """
-    Para cada ambiente, plota curvas de aprendizado (best fitness × geração)
-    com envelopes de desvio padrão (quando disponível via múltiplas seeds).
+    For each environment, plots the learning curves (best fitness × generation)
+    with standard-deviation envelopes (when available from multiple seeds).
     """
     os.makedirs(out_dir, exist_ok=True)
     envs = list(results_by_env.keys())
@@ -72,8 +72,8 @@ def plot_learning_curves(results_by_env: Dict, out_dir: str, smooth_w: int = 5):
     for ax, env in zip(axes, envs):
         ax.set_facecolor("#161b22")
         ax.set_title(env, color="white", fontsize=11, pad=8)
-        ax.set_xlabel("Geração", color="#8b949e", fontsize=9)
-        ax.set_ylabel("Melhor Fitness (média)", color="#8b949e", fontsize=9)
+        ax.set_xlabel("Generation", color="#8b949e", fontsize=9)
+        ax.set_ylabel("Best Fitness (mean)", color="#8b949e", fontsize=9)
         ax.tick_params(colors="#8b949e", labelsize=8)
         for spine in ax.spines.values():
             spine.set_edgecolor("#30363d")
@@ -101,19 +101,19 @@ def plot_learning_curves(results_by_env: Dict, out_dir: str, smooth_w: int = 5):
                   facecolor="#21262d", edgecolor="#30363d", loc="lower right")
         ax.grid(True, color="#21262d", linewidth=0.5, linestyle="--")
 
-    plt.suptitle("Benchmark Evolutivo — 3 Famílias × Ambientes RL (JAX)",
+    plt.suptitle("Evolutionary Benchmark — 3 Families × RL Environments (JAX)",
                  color="white", fontsize=14, fontweight="bold", y=1.02)
     plt.tight_layout()
     path = os.path.join(out_dir, "learning_curves.png")
     plt.savefig(path, dpi=150, bbox_inches="tight", facecolor=fig.get_facecolor())
     plt.close()
-    print(f"[plot] Salvo: {path}")
+    print(f"[plot] Saved: {path}")
     return path
 
 
 def plot_family_comparison(results_by_env: Dict, out_dir: str):
     """
-    Gráfico de barras agrupadas: performance final por algoritmo × ambiente.
+    Grouped bar chart: final performance per algorithm × environment.
     """
     envs    = list(results_by_env.keys())
     all_res = [r for res_list in results_by_env.values() for r in res_list]
@@ -161,8 +161,8 @@ def plot_family_comparison(results_by_env: Dict, out_dir: str):
     ax.set_xticks(x)
     ax.set_xticklabels([e.replace("-v", "\nv") for e in envs],
                        color="#8b949e", fontsize=9)
-    ax.set_ylabel("Fitness Final (melhor indivíduo)", color="#8b949e")
-    ax.set_title("Comparação de Performance Final — 3 Famílias × Ambientes",
+    ax.set_ylabel("Final Fitness (best individual)", color="#8b949e")
+    ax.set_title("Final Performance Comparison — 3 Families × Environments",
                  color="white", fontsize=13, fontweight="bold")
     ax.tick_params(colors="#8b949e")
     for spine in ax.spines.values():
@@ -177,13 +177,13 @@ def plot_family_comparison(results_by_env: Dict, out_dir: str):
     path = os.path.join(out_dir, "family_comparison.png")
     plt.savefig(path, dpi=150, bbox_inches="tight", facecolor=fig.get_facecolor())
     plt.close()
-    print(f"[plot] Salvo: {path}")
+    print(f"[plot] Saved: {path}")
     return path
 
 
 def plot_time_profile(results_by_env: Dict, out_dir: str):
     """
-    Gráfico de dispersão: tempo total de treino × fitness final.
+    Scatter plot: total training time × final fitness.
     """
     fig, ax = plt.subplots(figsize=(9, 6), facecolor="#0d1117")
     ax.set_facecolor("#161b22")
@@ -218,9 +218,9 @@ def plot_time_profile(results_by_env: Dict, out_dir: str):
                         textcoords="offset points", xytext=(5, 5),
                         fontsize=7, color=color, alpha=0.8)
 
-    ax.set_xlabel("Tempo Total de Treino (s)", color="#8b949e", fontsize=10)
-    ax.set_ylabel("Fitness Final (melhor)", color="#8b949e", fontsize=10)
-    ax.set_title("Trade-off: Tempo de Cômputo × Performance",
+    ax.set_xlabel("Total Training Time (s)", color="#8b949e", fontsize=10)
+    ax.set_ylabel("Final Fitness (best)", color="#8b949e", fontsize=10)
+    ax.set_title("Trade-off: Compute Time × Performance",
                  color="white", fontsize=12, fontweight="bold")
     ax.tick_params(colors="#8b949e")
     for spine in ax.spines.values():
@@ -233,12 +233,12 @@ def plot_time_profile(results_by_env: Dict, out_dir: str):
     path = os.path.join(out_dir, "time_vs_performance.png")
     plt.savefig(path, dpi=150, bbox_inches="tight", facecolor=fig.get_facecolor())
     plt.close()
-    print(f"[plot] Salvo: {path}")
+    print(f"[plot] Saved: {path}")
     return path
 
 
 def save_results_csv(results_by_env: Dict, out_dir: str):
-    """Salva resultados em CSV para análise posterior."""
+    """Saves the results to CSV for later analysis."""
     import csv
     os.makedirs(out_dir, exist_ok=True)
     path = os.path.join(out_dir, "results_summary.csv")
@@ -257,5 +257,5 @@ def save_results_csv(results_by_env: Dict, out_dir: str):
                     r.n_evals,
                     len(r.generations),
                 ])
-    print(f"[csv]  Salvo: {path}")
+    print(f"[csv]  Saved: {path}")
     return path

@@ -1,3 +1,7 @@
+"""Post-processing: boxplot of the final reward per library over every seed on disk.
+Reads the results/<ENV_TAG>/*.json written by the train_*.py scripts, pools them by library
+(stripping the _seedN suffix) and reports the Kruskal-Wallis omnibus test in the chart title.
+"""
 import json
 import glob
 import re
@@ -14,10 +18,10 @@ OUT_PATH = f"/mnt/user-data/outputs/ppo_boxplot_{ENV_TAG}.png"
 
 labels = {
     "stable_baselines3": "Stable-\nBaselines3",
-    "cleanrl_style_pytorch": "PyTorch puro\n(estilo CleanRL)",
-    "jax_pure": "JAX puro",
+    "cleanrl_style_pytorch": "Pure PyTorch\n(CleanRL style)",
+    "jax_pure": "Pure JAX",
     "rllib": "RLlib\n(Ray)",
-    "cleanrl_original": "CleanRL\n(oficial)",
+    "cleanrl_original": "CleanRL\n(official)",
 }
 colors = {
     "stable_baselines3": "#4C72B0",
@@ -52,9 +56,9 @@ for i, d in enumerate(data):
     x = np.random.normal(i + 1, 0.05, size=len(d))
     ax.scatter(x, d, alpha=0.5, s=18, color="black", zorder=3)
 
-ax.axhline(500, color="gray", linestyle="--", alpha=0.4, label="Max possível (500)")
-ax.set_ylabel("Reward final (média últimos 20 episódios)")
-ax.set_title(f"Distribuição de reward final por lib (n={n_seeds} seeds cada)\n"
+ax.axhline(500, color="gray", linestyle="--", alpha=0.4, label="Max possible (500)")
+ax.set_ylabel("Final reward (mean of the last 20 episodes)")
+ax.set_title(f"Distribution of final reward per library (n={n_seeds} seeds each)\n"
              f"Kruskal-Wallis: H={h_stat:.2f}, p={p_kw:.4f}")
 ax.legend(loc="lower right")
 ax.grid(alpha=0.3, axis="y")

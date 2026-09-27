@@ -1,16 +1,16 @@
 """
-Módulo de Avaliação Estatística Rigorosa e Validação Out-of-Sample.
+Rigorous Statistical Evaluation and Out-of-Sample Validation module.
 
-Executa avaliação estrita de políticas treinadas em N=100 episódios de teste
-com sementes pseudoaleatórias independentes e não vistas durante o treino.
+Runs a strict evaluation of the trained policies over N=100 test episodes with
+independent pseudo-random seeds that were never seen during training.
 
-Calcula métricas estatísticas formais conforme o estado da arte em RL
+Computes formal statistical metrics according to the state of the art in RL
 (Henderson et al. 2018; Machado et al. 2018; Agarwal et al. 2021):
-  - Tendência Central: Média Amostral e Mediana
-  - Dispersão e Incerteza: Desvio Padrão, Variância, SEM, Bootstrap CI 95%, IQR
-  - Métricas de Ruído/Confiabilidade: Signal-to-Noise Ratio (SNR), Coeficiente de Variação (CV)
-  - Generalização vs Sobreajuste: Lacuna de Otimismo / Winner's Curse (f_train - R_test)
-  - Taxa de Conclusão / Sucesso de Tarefa (Success Rate)
+  - Central tendency: sample mean and median
+  - Dispersion and uncertainty: standard deviation, variance, SEM, 95% bootstrap CI, IQR
+  - Noise/reliability metrics: Signal-to-Noise Ratio (SNR), Coefficient of Variation (CV)
+  - Generalization vs overfitting: optimism gap / winner's curse (f_train - R_test)
+  - Task completion / success rate (Success Rate)
 """
 from __future__ import annotations
 import numpy as np
@@ -22,16 +22,17 @@ from src.environments import ENV_META, forward_mlp, param_count
 
 
 SUCCESS_THRESHOLDS = {
-    "CartPole-v1":              475.0,   # Critério padrão Gym (sustentação de 475+ passos)
-    "Acrobot-v1":              -100.0,   # Pelo menos -100 steps para atingir a barra
-    "Pendulum-v1":             -200.0,   # Estabilização próxima ao equilíbrio vertical
-    "MountainCarContinuous-v0":  90.0,   # Transposição completa do vale e topo atingido
+    "CartPole-v1":              475.0,   # Standard Gym criterion (holding for 475+ steps)
+    "Acrobot-v1":              -100.0,   # At least -100 steps to reach the target bar
+    "Pendulum-v1":             -200.0,   # Stabilization close to the upright equilibrium
+    "MountainCarContinuous-v0":  90.0,   # Full traversal of the valley with the peak reached
 }
 
 
 def make_test_eval_fn(env_name: str, n_episodes: int = 100) -> Callable:
     """
-    Retorna função JIT compilada que avalia uma política em n_episodes independentes:
+    Returns a JIT-compiled function that evaluates a policy over n_episodes
+    independent episodes:
         test_eval(flat_params, rng) -> returns [n_episodes]
     """
     import gymnax
@@ -77,7 +78,7 @@ def make_test_eval_fn(env_name: str, n_episodes: int = 100) -> Callable:
 
 def evaluate_program_100(policy_fn: Callable, env_name: str,
                          n_episodes: int = 100, seed: int = 99999) -> np.ndarray:
-    """Avalia um programa simbólico (GP) em n_episodes de teste em Python."""
+    """Evaluates a symbolic (GP) program over n_episodes test episodes in Python."""
     import gymnax
     env, env_params = gymnax.make(env_name)
     meta      = ENV_META[env_name]
@@ -120,21 +121,21 @@ def compute_statistical_metrics(
     seed: int = 1234,
 ) -> Dict[str, Any]:
     """
-    Calcula métricas rigorosas de validação sobre a distribuição empírica de 100 retornos.
+    Computes rigorous validation metrics over the empirical distribution of 100 returns.
     """
     returns = np.asarray(returns, dtype=np.float64)
     n = len(returns)
 
-    # 1. Medidas de Tendência Central
+    # 1. Measures of central tendency
     mean_val   = float(np.mean(returns))
     median_val = float(np.median(returns))
 
-    # 2. Medidas de Dispersão
+    # 2. Measures of dispersion
     std_val = float(np.std(returns, ddof=1)) if n > 1 else 0.0
     var_val = float(np.var(returns, ddof=1)) if n > 1 else 0.0
     sem_val = float(std_val / np.sqrt(n))   if n > 0 else 0.0
 
-    # 3. Intervalo de Confiança 95% via Bootstrap Não-Paramétrico (Agarwal et al. 2021)
+    # 3. 95% confidence interval via non-parametric bootstrap (Agarwal et al. 2021)
     rng_np = np.random.default_rng(seed)
     boot_means = np.empty(n_bootstraps)
     for b in range(n_bootstraps):
@@ -143,26 +144,26 @@ def compute_statistical_metrics(
     ci95_low  = float(np.percentile(boot_means, 2.5))
     ci95_high = float(np.percentile(boot_means, 97.5))
 
-    # 4. Estatísticas de Ordem e Separatrizes
+    # 4. Order statistics and quantiles
     q25 = float(np.percentile(returns, 25))
     q75 = float(np.percentile(returns, 75))
     iqr_val = q75 - q25
     min_val = float(np.min(returns))
     max_val = float(np.max(returns))
 
-    # 5. Métricas de Ruído e Estabilidade
+    # 5. Noise and stability metrics
     # SNR = |μ| / (σ + ε)
     snr_val = float(abs(mean_val) / (std_val + 1e-8))
-    # Coeficiente de Variação (Dispersão relativa) = σ / (|μ| + ε)
+    # Coefficient of variation (relative dispersion) = σ / (|μ| + ε)
     cv_val = float(std_val / (abs(mean_val) + 1e-8))
-    # Fração de Variância Estocástica (Noise Fraction)
+    # Fraction of stochastic variance (noise fraction)
     noise_fraction = float(var_val / (var_val + mean_val**2 + 1e-8))
 
-    # 6. Taxa de Sucesso
+    # 6. Success rate
     threshold = SUCCESS_THRESHOLDS.get(env_name, 0.0)
     success_rate = float(np.mean(returns >= threshold)) * 100.0
 
-    # 7. Lacuna de Otimismo (Winner's Curse / Selection Bias)
+    # 7. Optimism gap (winner's curse / selection bias)
     optimism_gap = float(f_train_best - mean_val) if f_train_best is not None else 0.0
 
     return {

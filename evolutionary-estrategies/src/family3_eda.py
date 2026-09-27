@@ -1,27 +1,28 @@
 """
-Família 3 — Modelos / EDA (Estimation of Distribution Algorithms)
+Family 3 — Models / EDA (Estimation of Distribution Algorithms)
 
-Algoritmos que aprendem e adaptam explicitamente distribuições de probabilidade sobre o
-espaço de busca. Diferente das abordagens de soluções diretas (que mutam e cruzam indivíduos-pais
-preservados ao longo das gerações), em EDAs os indivíduos são apenas amostras estocásticas
-temporárias geradas pela distribuição atual e descartadas integralmente a cada geração.
-O que evolui é a própria distribuição de probabilidade:
+Algorithms that explicitly learn and adapt probability distributions over the
+search space. Unlike direct-solution approaches (which mutate and recombine
+preserved parent individuals across generations), in EDAs the individuals are
+only transient stochastic samples drawn from the current distribution and are
+discarded entirely at every generation.
+What evolves is the probability distribution itself:
 
   1. CMA-ES — Covariance Matrix Adaptation Evolution Strategy (Hansen & Ostermeier 2001).
-              Apesar do nome histórico de "Evolution Strategy", CMA-ES possui a assinatura
-              estrutural canônica de um EDA contínuo de segunda ordem: mantém e adapta um vetor
-              de média μ e uma matriz de covariância completa Σ (via rank-1 update com caminho
-              de evolução p_c e rank-μ update ponderado), além do controle de step-size σ (CSA
-              com caminho p_σ). A cada geração, toda a população é amostrada do zero a partir
-              de N(μ, σ² Σ) e descartada após a avaliação. É reconhecido na literatura de EDA
-              como um dos algoritmos de distribuição estimada mais sofisticados existentes.
+              Despite the historical name "Evolution Strategy", CMA-ES carries the
+              canonical structural signature of a second-order continuous EDA: it keeps and
+              adapts a mean vector μ and a full covariance matrix Σ (via a rank-1 update with
+              the evolution path p_c and a weighted rank-μ update), plus step-size control σ (CSA
+              with path p_σ). At each generation, the whole population is sampled from scratch
+              from N(μ, σ² Σ) and discarded after evaluation. It is recognized in the EDA
+              literature as one of the most sophisticated estimated-distribution algorithms available.
 
   2. PBIL   — Population-Based Incremental Learning (Baluja 1994; Sebag & Ducoulombier 1998).
-              EDA com modelo de distribuição marginal independente (univariada). Mantém um
-              vetor de médias μ e desvios padrão σ por gene, atualizados incrementalmente
-              a partir das estatísticas das top-k amostras mais bem sucedidas.
+              EDA with an independent marginal distribution model (univariate). It keeps a
+              vector of means μ and per-gene standard deviations σ, updated incrementally
+              from the statistics of the top-k best performing samples.
 
-Interface comum:
+Common interface:
     init(rng, n_params) -> state
     ask(state, rng)     -> (population [pop_size, n_params], state)
     tell(state, ...)    -> state
@@ -34,27 +35,27 @@ import jax.numpy as jnp
 
 
 # ===========================================================================
-# 1. CMA-ES — Covariance Matrix Adaptation Evolution Strategy (EDA de 2ª Ordem)
+# 1. CMA-ES — Covariance Matrix Adaptation Evolution Strategy (second-order EDA)
 # ===========================================================================
 
 class CMAState(NamedTuple):
-    mean:         jnp.ndarray  # [n_params] vetor de média μ
-    sigma:        jnp.ndarray  # escalar step-size global σ
-    C:            jnp.ndarray  # [n_params, n_params] matriz de covariância adaptativa Σ
-    p_sigma:      jnp.ndarray  # [n_params] caminho de evolução conjugado (step-size)
-    p_c:          jnp.ndarray  # [n_params] caminho de evolução anisotrópico (covariância)
-    eigenvalues:  jnp.ndarray  # [n_params] autovalores de C (eixos principais)
-    eigenvectors: jnp.ndarray  # [n_params, n_params] autovetores de C (matriz de rotação B)
-    best_params:  jnp.ndarray  # [n_params] melhor solução global observada
-    best_fitness: jnp.ndarray  # escalar
+    mean:         jnp.ndarray  # [n_params] mean vector μ
+    sigma:        jnp.ndarray  # global step-size scalar σ
+    C:            jnp.ndarray  # [n_params, n_params] adaptive covariance matrix Σ
+    p_sigma:      jnp.ndarray  # [n_params] conjugated evolution path (step-size)
+    p_c:          jnp.ndarray  # [n_params] anisotropic evolution path (covariance)
+    eigenvalues:  jnp.ndarray  # [n_params] eigenvalues of C (principal axes)
+    eigenvectors: jnp.ndarray  # [n_params, n_params] eigenvectors of C (rotation matrix B)
+    best_params:  jnp.ndarray  # [n_params] best global solution observed so far
+    best_fitness: jnp.ndarray  # scalar
     generation:   jnp.ndarray
     count_eval:   jnp.ndarray
 
 class CMAES:
     """
-    CMA-ES completo com adaptação de matriz de covariância e controle de passo acumulativo (CSA).
+    Full CMA-ES with covariance matrix adaptation and cumulative step-length control (CSA).
 
-    Referência:
+    References:
         Hansen, N., & Ostermeier, A. (2001). Completely derandomized self-adaptation
         in evolution strategies. Evolutionary Computation, 9(2), 159-195.
 
@@ -69,18 +70,18 @@ class CMAES:
         self.sigma0 = sigma0
 
     def _hyperparams(self, n: int):
-        """Calcula hiperparâmetros canônicos dependentes da dimensão n (Hansen 2016, §3)."""
+        """Computes the canonical hyper-parameters that depend on dimension n (Hansen 2016, §3)."""
         lam   = self.pop_size_override or (4 + int(3 * jnp.log(n)))
         mu    = lam // 2
         w_raw = jnp.log(mu + 0.5) - jnp.log(jnp.arange(1, mu + 1))
         w     = w_raw / w_raw.sum()
         mueff = 1.0 / (w ** 2).sum()
 
-        # Adaptação de sigma (CSA)
+        # Sigma adaptation (CSA)
         c_sigma = (mueff + 2) / (n + mueff + 5)
         d_sigma = 1 + 2 * max(0, jnp.sqrt((mueff - 1) / (n + 1)) - 1) + c_sigma
 
-        # Adaptação de C (CMA)
+        # Adaptation of C (CMA)
         c_c  = (4 + mueff / n) / (n + 4 + 2 * mueff / n)
         c_1  = 2 / ((n + 1.3) ** 2 + mueff)
         c_mu = min(1 - c_1, 2 * (mueff - 2 + 1 / mueff) / ((n + 2) ** 2 + mueff))
@@ -111,12 +112,12 @@ class CMAES:
         hp  = self._hp
         lam = hp["lam"]
         n   = self._n
-        # Amostragem da distribuição Gaussiana multivariada N(μ, σ² C):
-        # x_k = mean + sigma * B * D * z_k, onde C = B * D² * B^T
+        # Sampling from the multivariate Gaussian distribution N(μ, σ² C):
+        # x_k = mean + sigma * B * D * z_k, where C = B * D² * B^T
         z   = jax.random.normal(rng, (lam, n))
         D   = jnp.sqrt(jnp.maximum(state.eigenvalues, 1e-10))
-        y   = z * D[None, :]               # escala pelos autovalores (eixos elipsoidais)
-        y   = (state.eigenvectors @ y.T).T  # rotaciona pelos autovetores
+        y   = z * D[None, :]               # scale by the eigenvalues (ellipsoidal axes)
+        y   = (state.eigenvectors @ y.T).T  # rotate by the eigenvectors
         pop = state.mean[None, :] + state.sigma * y
         return pop, state
 
@@ -127,22 +128,22 @@ class CMAES:
         mu  = hp["mu"]
         w   = hp["w"]
 
-        # Atualiza melhor indivíduo observado
+        # Update the best individual observed
         best_idx     = jnp.argmax(fitness)
         best_fitness = jnp.where(fitness[best_idx] > state.best_fitness,
                                  fitness[best_idx], state.best_fitness)
         best_params  = jnp.where(fitness[best_idx] > state.best_fitness,
                                  population[best_idx], state.best_params)
 
-        # Ordena por fitness (descendente) e seleciona top-mu
+        # Sort by fitness (descending) and select the top-mu
         order    = jnp.argsort(-fitness)
         selected = population[order[:mu]]  # [mu, n]
 
-        # Atualização da média da distribuição (recombinação intermediária ponderada)
+        # Update of the distribution mean (weighted intermediate recombination)
         new_mean = (w[:, None] * selected).sum(axis=0)
         step     = (new_mean - state.mean) / state.sigma
 
-        # Adaptação cumulativa do comprimento de passo (CSA — Cumulative Step-length Adaptation)
+        # Cumulative step-length adaptation (CSA — Cumulative Step-length Adaptation)
         c_sigma = hp["c_sigma"]
         mueff   = hp["mueff"]
         chi_n   = jnp.sqrt(n) * (1 - 1 / (4 * n) + 1 / (21 * n ** 2))
@@ -151,13 +152,13 @@ class CMAES:
         new_p_sigma = ((1 - c_sigma) * state.p_sigma
                        + jnp.sqrt(c_sigma * (2 - c_sigma) * mueff) * invsqrtC_step)
 
-        # Atualização do step-size σ
+        # Step-size σ update
         new_sigma = state.sigma * jnp.exp(
             (c_sigma / hp["d_sigma"]) * (jnp.linalg.norm(new_p_sigma) / chi_n - 1)
         )
         new_sigma = jnp.clip(new_sigma, 1e-6, 10.0)
 
-        # Adaptação da matriz de covariância (CMA — Covariance Matrix Adaptation)
+        # Covariance matrix adaptation (CMA — Covariance Matrix Adaptation)
         c_c     = hp["c_c"]
         h_sigma = (jnp.linalg.norm(new_p_sigma) / jnp.sqrt(1 - (1 - c_sigma) ** (2 * (state.count_eval + 1)))
                    < (1.4 + 2 / (n + 1)) * chi_n).astype(float)
@@ -169,13 +170,13 @@ class CMAES:
         y_mu = (selected - state.mean[None, :]) / state.sigma  # [mu, n]
         rank_mu = (w[:, None, None] * (y_mu[:, :, None] * y_mu[:, None, :])).sum(axis=0)
         
-        # Atualização combinada: memória prévia + rank-one update (p_c) + rank-mu update (amostras)
+        # Combined update: previous memory + rank-one update (p_c) + rank-mu update (samples)
         new_C = ((1 - c_1 - c_mu) * state.C
                  + c_1 * (new_p_c[:, None] * new_p_c[None, :] + (1 - h_sigma) * c_c * (2 - c_c) * state.C)
                  + c_mu * rank_mu)
-        new_C = (new_C + new_C.T) / 2  # garante simetria numérica estrita
+        new_C = (new_C + new_C.T) / 2  # guarantees strict numerical symmetry
 
-        # Eigendecomposição da matriz de covariância C = B D² B^T
+        # Eigendecomposition of the covariance matrix C = B D² B^T
         eigenvalues, eigenvectors = jnp.linalg.eigh(new_C)
         eigenvalues  = jnp.maximum(eigenvalues, 1e-10)
 
@@ -202,32 +203,32 @@ class CMAES:
 
 
 # ===========================================================================
-# 2. PBIL Contínuo — Population-Based Incremental Learning (EDA Univariado)
+# 2. Continuous PBIL — Population-Based Incremental Learning (univariate EDA)
 # ===========================================================================
 
 class PBILState(NamedTuple):
-    mu:           jnp.ndarray   # [n_params] média da distribuição Gaussiana por parâmetro
-    sigma:        jnp.ndarray   # [n_params] desvio padrão por parâmetro
+    mu:           jnp.ndarray   # [n_params] mean of the Gaussian distribution per parameter
+    sigma:        jnp.ndarray   # [n_params] standard deviation per parameter
     best_params:  jnp.ndarray
     best_fitness: jnp.ndarray
     generation:   jnp.ndarray
 
 class PBIL:
     """
-    Population-Based Incremental Learning para espaço contínuo.
+    Population-Based Incremental Learning for continuous spaces.
 
-    O PBIL original (Baluja 1994) operava em espaço binário mantendo
-    um vetor de probabilidades marginais P atualizado incrementalmente:
+    The original PBIL (Baluja 1994) operated on binary spaces by maintaining
+    a vector of marginal probabilities P that is updated incrementally:
         P ← (1−lr)*P + lr * best_solution
 
-    Esta versão para domínio contínuo mantém e adapta um vetor de médias μ
-    e desvios padrão σ por gene (distribuição Gaussiana com covariância diagonal):
-        μ ← (1−lr)*μ + lr * média_ponderada(top-k soluções)
-        σ ← (1−lr_σ)*σ + lr_σ * std(top-k soluções) + σ_min
+    This version for the continuous domain keeps and adapts a vector of means μ
+    and per-gene standard deviations σ (a Gaussian distribution with diagonal covariance):
+        μ ← (1−lr)*μ + lr * weighted_mean(top-k solutions)
+        σ ← (1−lr_σ)*σ + lr_σ * std(top-k solutions) + σ_min
 
-    com perturbação de mutação no próprio modelo de probabilidade.
+    with mutation perturbation applied to the probability model itself.
 
-    Referências:
+    References:
         Baluja, S. (1994). Population-based incremental learning.
         Technical Report CMU-CS-94-163, Carnegie Mellon University.
 
@@ -245,8 +246,8 @@ class PBIL:
         self.top_k       = max(1, int(pop_size * top_k_frac))
         self.sigma_init  = sigma_init
         self.sigma_min   = sigma_min
-        self.mut_prob    = mut_prob    # prob. de mutação no modelo de probabilidade
-        self.mut_shift   = mut_shift   # magnitude da perturbação
+        self.mut_prob    = mut_prob    # mutation prob. on the probability model
+        self.mut_shift   = mut_shift   # magnitude of the perturbation
 
     def init(self, rng: jax.Array, n_params: int) -> PBILState:
         return PBILState(
@@ -265,27 +266,27 @@ class PBIL:
 
     def tell(self, state: PBILState, fitness: jnp.ndarray,
              population: jnp.ndarray, rng: jax.Array) -> PBILState:
-        # Seleciona top-k amostras por fitness
+        # Selects the top-k samples by fitness
         top_indices = jnp.argsort(-fitness)[:self.top_k]
         top_pop     = population[top_indices]           # [top_k, n]
 
         top_mu    = top_pop.mean(axis=0)
         top_sigma = top_pop.std(axis=0)
 
-        # Atualização do modelo paramétrico
+        # Update of the parametric model
         new_mu    = (1 - self.lr) * state.mu + self.lr * top_mu
         new_sigma = jnp.maximum(
             (1 - self.lr_sigma) * state.sigma + self.lr_sigma * top_sigma,
             self.sigma_min
         )
 
-        # Mutação no modelo (perturbação estocástica da distribuição)
+        # Mutation on the model (stochastic perturbation of the distribution)
         rng, r_mask, r_shift = jax.random.split(rng, 3)
         mask     = jax.random.uniform(r_mask, new_mu.shape) < self.mut_prob
         shift    = jax.random.normal(r_shift, new_mu.shape) * self.mut_shift
         new_mu   = jnp.where(mask, new_mu + shift, new_mu)
 
-        # Elite global
+        # Global elite
         best_idx     = jnp.argmax(fitness)
         best_fitness = jnp.where(fitness[best_idx] > state.best_fitness,
                                  fitness[best_idx], state.best_fitness)

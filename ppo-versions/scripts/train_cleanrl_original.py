@@ -1,7 +1,7 @@
-"""Roda o script ppo.py oficial do repositório CleanRL (github.com/vwxyzjn/cleanrl,
-branch master) como subprocesso, passando os MESMOS hiperparâmetros usados nas
-outras 3 implementações. Isso é a implementação de verdade deles, não uma
-reprodução -- diferente do 'cleanrl_style_pytorch' que é só inspirada no estilo.
+"""Runs the official ppo.py script from the CleanRL repository (github.com/vwxyzjn/cleanrl,
+master branch) as a subprocess, passing the SAME hyperparameters used by the
+other 3 implementations. This is their real implementation, not a
+reproduction -- unlike 'cleanrl_style_pytorch', which is merely inspired by its style.
 """
 import re
 import subprocess
@@ -26,8 +26,8 @@ def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
 
 
 class Agent(nn.Module):
-    """Réplica exata da classe Agent do cleanrl_original_ppo.py, só pra carregar
-    os pesos salvos e avaliar -- não participa do treino."""
+    """Exact replica of the Agent class in cleanrl_original_ppo.py, used only to load
+    the saved weights and evaluate -- it takes no part in training."""
 
     def __init__(self, obs_dim, act_dim):
         super().__init__()
@@ -67,9 +67,9 @@ def main():
         "--ent-coef", str(cfg["ent_coef"]),
         "--vf-coef", str(cfg["vf_coef"]),
         "--max-grad-norm", str(cfg["max_grad_norm"]),
-        "--no-anneal-lr",     # nossas outras 3 libs usam LR constante -- desliga pra comparar igual
-        "--no-clip-vloss",    # nenhuma das outras 3 clipa a value loss -- desliga pra comparar igual
-        "--no-cuda",          # CPU, igual às outras (sem GPU no benchmark)
+        "--no-anneal-lr",     # our other 3 libs use a constant LR -- disabled for an identical comparison
+        "--no-clip-vloss",    # none of the other 3 clips the value loss -- disabled for an identical comparison
+        "--no-cuda",          # CPU, same as the others (no GPU in the benchmark)
         "--no-torch-deterministic",
     ]
 
@@ -80,7 +80,7 @@ def main():
     if proc.returncode != 0:
         print("STDOUT:", proc.stdout[-3000:])
         print("STDERR:", proc.stderr[-3000:])
-        raise RuntimeError(f"cleanrl_original falhou com código {proc.returncode}")
+        raise RuntimeError(f"cleanrl_original failed with code {proc.returncode}")
 
     episodes = []
     for line in proc.stdout.splitlines():
@@ -88,7 +88,7 @@ def main():
         if m:
             episodes.append((int(m.group(1)), float(m.group(2))))
 
-    # mesma suavização (janela de 20 episódios) usada nas outras implementações
+    # same smoothing (20-episode window) used by the other implementations
     smoothed = []
     window = []
     for ts, r in episodes:

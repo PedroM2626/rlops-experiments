@@ -1,5 +1,5 @@
-"""PPO minimalista estilo CleanRL: implementação direta, sem framework de RL por cima.
-Só PyTorch + gymnasium. Isso deixa visível TODA decisão de implementação."""
+"""Minimalist CleanRL-style PPO: a direct implementation, with no RL framework on top.
+Just PyTorch + gymnasium. That makes every single implementation decision visible."""
 import time
 import sys
 sys.path.insert(0, "/home/claude/ppo-benchmark/scripts")
@@ -158,7 +158,7 @@ def main():
 
     elapsed = time.time() - t0
 
-    # suaviza reward_history em janelas de 20 episódios pra comparação mais limpa
+    # smooths reward_history over 20-episode windows for a cleaner comparison
     smoothed = []
     if reward_history:
         window = []

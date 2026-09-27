@@ -1,27 +1,27 @@
-"""Igual ao train_jax_tuned_kl.py (normalização, rede 128x128, LR annealing,
-KL dinâmica, vf-clip), MAIS a correção de bootstrap em episódios truncados
-que ficou como suspeito nº1 no README.
+"""Same as train_jax_tuned_kl.py (normalization, 128x128 network, LR annealing,
+dynamic KL, vf-clip), PLUS the bootstrap fix for truncated episodes
+that was flagged as suspect no. 1 in the README.
 
-O problema: `done = terminated OR truncated` trata os dois casos igual, mas
-são semanticamente diferentes:
-- terminated=True: o MDP realmente acabou (ex: a nave crashou). Não existe
-  reward futuro -- bootstrap deveria ser 0.
-- truncated=True (mas terminated=False): o episódio foi cortado por um
-  limite de tempo artificial (TimeLimit). O agente NÃO chegou a um estado
-  terminal de verdade -- o valor futuro é reachable e deveria ser
-  bootstrapado com V(última observação), não zerado.
+The problem: `done = terminated OR truncated` treats both cases the same, but
+they are semantically different:
+- terminated=True: the MDP really ended (e.g. the ship crashed). There is no
+  future reward -- bootstrap should be 0.
+- truncated=True (but terminated=False): the episode was cut short by an
+  artificial time limit (TimeLimit). The agent did NOT reach a real
+  terminal state -- the future value is reachable and should be
+  bootstrapped with V(last observation), not zeroed out.
 
-Gymnasium (autoreset_mode=NEXT_STEP, o padrão) já retorna a observação REAL
-final no step em que trunc vira True -- o reset só acontece na chamada
-seguinte. Ou seja, já tínhamos o dado certo (`val_buf[t+1]` já é
-V(observação final real) nesse caso) -- só não estávamos usando: a máscara
-`nextnonterminal` zerava esse bootstrap pra QUALQUER done, terminated ou
+Gymnasium (autoreset_mode=NEXT_STEP, the default) already returns the REAL
+final observation on the step where trunc turns True -- the reset only happens on the
+following call. In other words, we already had the right data (`val_buf[t+1]` already is
+V(real final observation) in that case) -- we just weren't using it: the
+`nextnonterminal` mask zeroed that bootstrap for ANY done, terminated or
 truncated.
 
-A correção usa duas máscaras separadas na recursão do GAE:
-- uma pra zerar o bootstrap de valor (só em terminated de verdade)
-- outra pra parar a propagação do lastgaelam através de qualquer fronteira
-  de episódio (terminated OU truncated -- isso continua igual)
+The fix uses two separate masks in the GAE recursion:
+- one to zero the value bootstrap (only on a real terminated)
+- another to stop lastgaelam from propagating across any episode
+  boundary (terminated OR truncated -- that part stays as it was)
 """
 import time
 import sys
@@ -41,7 +41,7 @@ RLLIB_INITIAL_KL_COEFF = 0.2
 
 
 class RunningMeanStd:
-    """Welford/Chan's algorithm -- média e variância rodantes, atualizadas em batch."""
+    """Welford/Chan's algorithm -- running mean and variance, updated in batches."""
     def __init__(self, shape=()):
         self.mean = np.zeros(shape, dtype=np.float64)
         self.var = np.ones(shape, dtype=np.float64)
@@ -126,7 +126,7 @@ def ppo_loss(params, obs, actions, old_logp, old_value, advantages, returns, kl_
     pg2 = -adv * jnp.clip(ratio, 1 - cfg["clip_coef"], 1 + cfg["clip_coef"])
     pg_loss = jnp.maximum(pg1, pg2).mean()
 
-    # value function clipping, igual ao clipping de política só que pro crítico
+    # value function clipping, like policy clipping but for the critic
     v_clipped = old_value + jnp.clip(value - old_value, -RLLIB_VF_CLIP_PARAM, RLLIB_VF_CLIP_PARAM)
     v_loss_unclipped = (value - returns) ** 2
     v_loss_clipped = (v_clipped - returns) ** 2
@@ -134,8 +134,8 @@ def ppo_loss(params, obs, actions, old_logp, old_value, advantages, returns, kl_
 
     ent_loss = entropy.mean()
 
-    # penalidade de KL: estimador de Schulman (k3), baixa variância, não exige
-    # os logits antigos completos -- só old_logp da ação amostrada
+    # KL penalty: Schulman's (k3) estimator, low variance, and it doesn't need
+    # the full old logits -- just old_logp of the sampled action
     approx_kl = jnp.mean((ratio - 1) - logratio)
 
     loss = (pg_loss - cfg["ent_coef"] * ent_loss + cfg["vf_coef"] * v_loss
@@ -164,7 +164,7 @@ def main():
     minibatch_size = batch_size // cfg["minibatches"]
     num_updates = TOTAL_TIMESTEPS // batch_size
 
-    # LR com annealing linear -- optax schedule
+    # LR with linear annealing -- optax schedule
     lr_schedule = optax.linear_schedule(
         init_value=cfg["lr"], end_value=0.0, transition_steps=num_updates * cfg["n_epochs"] * cfg["minibatches"]
     )
@@ -192,8 +192,8 @@ def main():
     obs_rms.update(raw_obs)
     next_obs = normalize_obs(raw_obs, obs_rms)
     next_done = np.zeros(n_envs, dtype=np.float32)
-    next_term = np.zeros(n_envs, dtype=np.float32)  # só terminated de verdade, não truncated
-    ep_returns = np.zeros(n_envs)  # retorno RAW (não-normalizado), pra log comparável com as outras libs
+    next_term = np.zeros(n_envs, dtype=np.float32)  # only real terminated, not truncated
+    ep_returns = np.zeros(n_envs)  # RAW (unnormalized) return, so the log stays comparable with the other libs
     reward_history = []
     global_step = 0
 
@@ -220,23 +220,23 @@ def main():
             raw_obs, raw_reward, terminated, truncated, infos = envs.step(action_np)
             done = np.logical_or(terminated, truncated)
 
-            # normalização de reward: divide pelo std do retorno descontado rodante
+            # reward normalization: divide by the running std of the discounted return
             running_ret = running_ret * cfg["gamma"] + raw_reward
             ret_rms.update(running_ret.reshape(-1, 1).squeeze(-1) if running_ret.ndim else running_ret)
             norm_reward = np.clip(raw_reward / np.sqrt(ret_rms.var + 1e-8), -10.0, 10.0)
 
             obs_rms.update(raw_obs)
-            # NOTA: com autoreset_mode=NEXT_STEP (padrão do Gymnasium atual),
-            # `raw_obs` no step em que trunc vira True é a observação REAL final
-            # (o reset só acontece na chamada seguinte) -- é exatamente isso que
-            # permite bootstrapar corretamente com V(raw_obs) mais abaixo.
+            # NOTE: with autoreset_mode=NEXT_STEP (the default of current Gymnasium),
+            # `raw_obs` on the step where trunc turns True is the REAL final observation
+            # (the reset only happens on the following call) -- that is exactly what
+            # lets us bootstrap correctly with V(raw_obs) further below.
             next_obs = normalize_obs(raw_obs, obs_rms)
 
             act_buf[step] = action_np
             logp_buf[step] = np.array(logp)
             val_buf[step] = np.array(value)
             rew_buf[step] = norm_reward
-            ep_returns += raw_reward  # log continua em escala RAW, comparável com as outras libs
+            ep_returns += raw_reward  # log stays on the RAW scale, comparable with the other libs
 
             for i, d in enumerate(done):
                 if d:
@@ -254,8 +254,8 @@ def main():
         lastgaelam = 0
         for t in reversed(range(n_steps)):
             if t == n_steps - 1:
-                nextnonterminal_bootstrap = 1.0 - next_term    # só zera em terminated de verdade
-                nextnonterminal_propagate = 1.0 - next_done    # zera em terminated OU truncated
+                nextnonterminal_bootstrap = 1.0 - next_term    # only zeroes on a real terminated
+                nextnonterminal_propagate = 1.0 - next_done    # zeroes on terminated OR truncated
                 nextvalues = next_value
             else:
                 nextnonterminal_bootstrap = 1.0 - term_buf[t + 1]
@@ -286,8 +286,8 @@ def main():
                 )
                 kl_this_update.append(float(approx_kl))
 
-        # ajuste dinâmico do coeficiente de KL, igual ao RLlib: sobe se passou
-        # do alvo, desce se ficou bem abaixo -- reavaliado a cada iteração de coleta+update
+        # dynamic adjustment of the KL coefficient, like RLlib: it goes up when the target
+        # is exceeded and down when it stays well below -- re-evaluated at each collection+update iteration
         mean_kl = float(np.mean(kl_this_update))
         if mean_kl > 1.5 * RLLIB_KL_TARGET:
             kl_coeff *= 1.5
@@ -309,7 +309,7 @@ def main():
     save_result("jax_tuned_kl_trunc", elapsed, smoothed)
     envs.close()
 
-    # congela obs_rms no estado final de treino -- avaliação usa as MESMAS estatísticas
+    # freeze obs_rms at its final training state -- evaluation uses the SAME statistics
     eval_key = [key]
 
     def act_fn(obs):

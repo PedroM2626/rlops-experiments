@@ -1,489 +1,489 @@
-# PPO Benchmark: comparando implementações de PPO entre si
+# PPO Benchmark: comparing PPO implementations against each other
 
-Este projeto nasceu de uma pergunta simples — "o PPO de uma lib é
-diferente do de outra?" — e virou uma investigação de várias sessões sobre
-reprodutibilidade, variância estatística e o que realmente explica
-diferenças de desempenho entre implementações de RL. Este README documenta
-tanto os **resultados experimentais** (Partes 1-12, cada uma um
-experimento concreto) quanto as **conclusões conceituais** que foram
-surgindo pelo caminho (seção logo abaixo).
+This project was born from a simple question — "is one library's PPO
+different from another's?" — and it turned into a multi-session investigation
+of reproducibility, statistical variance, and what really explains
+performance differences between RL implementations. This README documents
+both the **experimental results** (Parts 1-12, each one a concrete
+experiment) and the **conceptual conclusions** that emerged along the way
+(section right below).
 
-Se você só quer o resultado mais recente e mais forte: vá direto pra
-**Parte 12**. Se quer entender o raciocínio completo, leia em ordem — cada
-parte parte do que a anterior descobriu (ou deixou sem resposta).
-
----
-
-## Conceitos e conclusões centrais (o "porquê" por trás dos experimentos)
-
-### 1. Por que a mesma lógica de PPO dá resultados diferentes em libs diferentes
-
-O algoritmo no papel é o mesmo, mas cada implementação decide sozinha uma
-porção de detalhes que o paper não especifica: como inicializar os pesos,
-se normaliza observação/reward, como trata `value function clipping`, se
-usa penalidade de KL, como faz bootstrap em episódios truncados, ordem das
-operações de ponto flutuante, qual gerador de números aleatórios usa. Cada
-uma dessas escolhas é invisível até você ir atrás dela.
-
-### 2. Isso seria pior (não melhor) entre linguagens diferentes
-
-Mesmo mantendo "a mesma lógica" escrita à mão, PyTorch, JAX e uma
-hipotética implementação em Rust divergiriam ainda mais, por motivos
-estruturais:
-- **RNG diferente**: mesmo seed não gera a mesma sequência de números em
-  Mersenne Twister (PyTorch), Threefry (JAX) ou PCG (Rust stdlib).
-- **Ponto flutuante não é associativo**: `(a+b)+c ≠ a+(b+c)`. A ordem que
-  cada linguagem soma um vetor (loop sequencial vs SIMD vs redução em
-  árvore) muda o resultado no último bit.
-- **BLAS diferente por baixo dos panos** (OpenBLAS, MKL, Accelerate) muda
-  estratégia de tiling e arredondamento.
-- Como RL é um sistema com **loop de feedback** (a ação de agora muda o
-  estado de amanhã), uma diferença de ponto flutuante no 15º dígito no
-  passo 1 pode virar uma política inteiramente diferente depois de
-  centenas de milhares de passos -- efeito borboleta.
-
-### 3. Versionamento quebra reprodutibilidade, ao vivo, mais de uma vez nesta conversa
-
-- O pacote `cleanrl` no PyPI (v0.4.8, de 2021) não roda mais com o
-  `gym`/`gymnasium` atuais.
-- O script oficial `ppo.py` do CleanRL (baixado direto do GitHub, versão
-  atual) também quebrou: a API de vetor de envs do Gymnasium mudou de
-  `infos["final_info"]` pra `infos["episode"]` + máscara `infos["_episode"]`
-  a partir do Gymnasium 1.0.
-- Tianshou 2.0 reescreveu inteiramente sua API (`policy` → `algorithm`).
-- TorchRL renomeou `SyncDataCollector` → `Collector`.
-- O próprio ambiente de execução deste projeto foi resetado no meio do
-  trabalho (Parte 10), exigindo reinstalar tudo do zero.
-
-Isso não é falta de sorte -- é a regra, não a exceção, quando você depende
-de bibliotecas de terceiros em rápida evolução.
-
-### 4. Seeds dominam quando o efeito é pequeno; recuam quando o efeito é grande
-
-No CartPole (tarefa fácil), com 20 seeds, quase toda "diferença entre
-libs" que parecia real com 5 seeds virou ruído estatístico (só 1 de 10
-pares sobreviveu à correção de Bonferroni). No LunarLander (tarefa mais
-difícil), a mesma metodologia revelou diferenças reais e fortes. A lição:
-**tarefas fáceis fazem qualquer política convergir perto do teto rápido,
-sobrando só ruído** -- contra-intuitivamente, o ambiente "mais simples e
-controlado" foi onde a variância de seed mais enganou.
-
-### 5. A pergunta certa antes de rodar o teste estatístico
-
-Mann-Whitney U testa deslocamento de mediana/ranking. Não detecta
-diferença de variância. Quando a pergunta era "a variância mudou?" (Parte
-6, `n_envs=1` vs `n_envs=8` no SB3), precisamos do teste de Levene, não
-Mann-Whitney -- mesmo com o desvio padrão quadruplicando, Mann-Whitney não
-via a diferença. **Escolher o teste errado responde a pergunta errada,
-mesmo com dados perfeitamente bons.**
-
-### 6. Correções múltiplas custam caro
-
-Cada nova comparação que você testa no mesmo conjunto de dados aperta o
-alpha corrigido de Bonferroni pra todas as outras. Isso literalmente
-derrubou a significância de um resultado da Parte 5 quando adicionamos
-mais uma implementação na Parte 7 -- não porque o resultado mudou, mas
-porque o número de comparações simultâneas subiu.
-
-### 7. "Do zero" não é sinônimo de "otimizado"
-
-Implementações "from scratch" (JAX puro, PyTorch puro) carregavam
-hiperparâmetros genéricos herdados do CartPole, nunca tunados pro
-LunarLander. Quando adicionamos técnicas padrão (normalização de
-obs/reward, rede maior, LR annealing -- Parte 4) o mesmo código saiu de
-pior-que-todo-mundo pra competitivo. **A pergunta "biblioteca X é melhor"
-esconde a pergunta mais importante: "configurada como?"** -- confirmado de
-forma definitiva na Parte 11, onde o SB3 com os hiperparâmetros oficiais
-do RL Zoo bateu todo o resto, incluindo o RLlib.
-
-### 8. Nenhuma vantagem de biblioteca sobreviveu a uma reformulação de regime
-
-Ao longo do projeto, quase toda alegação "lib X é melhor/mais estável"
-sobreviveu só dentro do regime exato onde foi medida:
-- SB3 era a mais estável no nosso benchmark, a segunda mais instável no
-  projeto de outra pessoa -- causa isolada: `n_envs` (Parte 6).
-- RLlib parecia ter uma vantagem estrutural no LunarLander -- parte dela
-  veio de 2 mecanismos específicos (KL dinâmico + vf-clip, Parte 5), mas
-  não toda.
-- A mesma correção de bootstrap em truncamento foi irrelevante num
-  ambiente (LunarLander) e decisiva no outro (CartPole, Partes 7-8).
-- TorchRL e Tianshou, duas libs maduras de produção, caíram no meio do
-  pelotão **com hiperparâmetros genéricos** (Parte 10) -- mas essa
-  colocação também não era fixa: com os hiperparâmetros do Zoo (Parte 12),
-  o Tianshou virou o melhor de todos, e o TorchRL o pior.
-- O SB3 genérico (pior do pelotão) e o SB3 com config real de produção
-  (melhor do pelotão nas Partes 3-10) são literalmente a mesma biblioteca
-  (Parte 11) -- a maior amplitude do projeto até aquele ponto veio de
-  trocar CONFIGURAÇÃO, não framework.
-- **O exemplo mais extremo: o RLlib, isolado no topo em 3 partes
-  diferentes (3, 5, 10), caiu pra penúltimo lugar assim que TODAS as
-  implementações -- não só o SB3 -- receberam os hiperparâmetros do Zoo
-  (Parte 12).** A vantagem que parecia ser "do RLlib" era, em grande
-  parte, "de rodar bem configurado enquanto o resto rodava mal
-  configurado".
-
-**A conclusão que sobra de tudo isso:** "biblioteca X é melhor/mais
-estável" não é uma afirmação verdadeira ou falsa por si só -- é uma
-afirmação incompleta até você especificar tarefa, dificuldade, budget,
-seeds e configuração. A única coisa que resiste a esse escrutínio é a
-versão já qualificada: "nessas condições específicas, medido assim, essa
-combinação teve esse resultado."
+If you only want the most recent and strongest result: go straight to
+**Part 12**. If you want the full line of reasoning, read it in order — each
+part starts from what the previous one found (or left unanswered).
 
 ---
 
-## Ambiente de execução (Python + versões exatas)
+## Core concepts and central conclusions (the "why" behind the experiments)
+
+### 1. Why the same PPO logic gives different results in different libraries
+
+The algorithm on paper is the same, but each implementation decides on its own a
+chunk of details the paper doesn't specify: how to initialize the weights,
+whether it normalizes observations/rewards, how it treats
+`value function clipping`, whether it uses a KL penalty, how it bootstraps
+truncated episodes, the order of the floating-point operations, which random
+number generator it uses. Each of these choices stays invisible until you look.
+
+### 2. This would be worse (not better) across different languages
+
+Even keeping "the same logic" written by hand, PyTorch, JAX and a
+hypothetical Rust implementation would diverge even more, for structural
+reasons:
+- **Different RNG**: the same seed does not produce the same number sequence
+  in Mersenne Twister (PyTorch), Threefry (JAX) or PCG (Rust stdlib).
+- **Floating point is not associative**: `(a+b)+c ≠ a+(b+c)`. The order each
+  language uses to sum a vector (sequential loop vs SIMD vs tree reduction)
+  changes the result in the last bit.
+- **A different BLAS under the hood** (OpenBLAS, MKL, Accelerate) changes the
+  tiling strategy and the rounding.
+- Since RL is a system with a **feedback loop** (today's action changes
+  tomorrow's state), a floating-point difference in the 15th digit at step 1
+  can turn into an entirely different policy after hundreds of thousands of
+  steps -- butterfly effect.
+
+### 3. Versioning breaks reproducibility, live, more than once in this conversation
+
+- The `cleanrl` package on PyPI (v0.4.8, from 2021) no longer runs with the
+  current `gym`/`gymnasium`.
+- CleanRL's official `ppo.py` (downloaded straight from GitHub, current
+  version) also broke: Gymnasium's vectorized env API changed from
+  `infos["final_info"]` to `infos["episode"]` + the `infos["_episode"]` mask
+  starting with Gymnasium 1.0.
+- Tianshou 2.0 completely rewrote its API (`policy` → `algorithm`).
+- TorchRL renamed `SyncDataCollector` → `Collector`.
+- This project's own execution environment was reset mid-work (Part 10),
+  forcing a full reinstall from scratch.
+
+That isn't bad luck -- it's the rule, not the exception, when you depend on
+fast-moving third-party libraries.
+
+### 4. Seeds dominate when the effect is small; they back off when the effect is large
+
+On CartPole (easy task), with 20 seeds, almost every "difference between
+libs" that looked real with 5 seeds turned out to be statistical noise (only
+1 of 10 pairs survived the Bonferroni correction). On LunarLander (harder
+task), the same methodology revealed real and strong differences. The lesson:
+**easy tasks make any policy converge near the ceiling quickly, leaving only
+noise behind** -- counter-intuitively, the "simpler and more controlled"
+environment was the one where seed variance fooled us the most.
+
+### 5. The right question to ask before running the statistical test
+
+Mann-Whitney U tests a shift in median/ranking. It does not detect a variance
+difference. When the question was "did the variance change?" (Part 6,
+`n_envs=1` vs `n_envs=8` in SB3), we needed Levene's test, not Mann-Whitney
+-- even with the standard deviation quadrupling, Mann-Whitney didn't see the
+difference. **Picking the wrong test answers the wrong question, even with
+perfectly good data.**
+
+### 6. Multiple-comparison corrections are costly
+
+Every new comparison you test on the same dataset tightens the Bonferroni
+corrected alpha for all the others. This literally knocked a Part 5 result out
+of significance when we added one more implementation in Part 7 -- not because
+the result changed, but because the number of simultaneous comparisons went
+up.
+
+### 7. "From scratch" is not a synonym for "optimized"
+
+The "from scratch" implementations (pure JAX, pure PyTorch) carried generic
+hyperparameters inherited from CartPole, never tuned for LunarLander. When we
+added standard techniques (obs/reward normalization, a larger network, LR
+annealing -- Part 4), the same code went from worse-than-everyone to
+competitive. **The question "is library X better" hides the more important
+question: "configured how?"** -- confirmed definitively in Part 11, where SB3
+with the official RL Zoo hyperparameters beat the rest of the field,
+including RLlib.
+
+### 8. No library advantage survived a change of regime
+
+Throughout the project, almost every claim that "lib X is better/more stable"
+survived only inside the exact regime where it was measured:
+- SB3 was the most stable in our benchmark, the second most unstable in
+  someone else's project -- isolated cause: `n_envs` (Part 6).
+- RLlib seemed to have a structural advantage on LunarLander -- part of it
+  came from 2 specific mechanisms (dynamic KL + vf-clip, Part 5), but not all
+  of it.
+- The same truncation-bootstrap correction was irrelevant in one environment
+  (LunarLander) and decisive in the other (CartPole, Parts 7-8).
+- TorchRL and Tianshou, two mature production libs, landed in the middle of
+  the pack **with generic hyperparameters** (Part 10) -- but that placement
+  wasn't fixed either: with the Zoo hyperparameters (Part 12), Tianshou became
+  the best of all, and TorchRL the worst.
+- Generic SB3 (worst of the pack) and SB3 with a real production config (best
+  of the pack in Parts 3-10) are literally the same library (Part 11) -- the
+  biggest swing of the project up to that point came from changing
+  CONFIGURATION, not the framework.
+- **The most extreme example: RLlib, alone at the top in 3 different parts
+  (3, 5, 10), dropped to second-to-last as soon as ALL the implementations
+  -- not just SB3 -- got the Zoo hyperparameters (Part 12).** The advantage
+  that looked like it belonged "to RLlib" was, to a large extent, the
+  advantage "of running well configured while everyone else ran badly
+  configured".
+
+**The conclusion that survives all of this:** "library X is better/more
+stable" is not a statement that is true or false on its own -- it's an
+incomplete statement until you specify task, difficulty, budget, seeds and
+configuration. The only thing that stands up to that scrutiny is the already
+qualified version: "under these specific conditions, measured this way, this
+combination got this result."
+
+---
+
+## Execution environment (Python + exact versions)
 
 ```
 Python 3.12.3
 Ubuntu 24.04.4 LTS, x86_64
-CPU only (sem GPU)
+CPU only (no GPU)
 ```
 
-Ver `requirements.txt` para as versões exatas de cada dependência
+See `requirements.txt` for the exact version of each dependency
 (gymnasium, stable-baselines3, torch, jax, ray, torchrl, tianshou, etc.).
-Reproduzir com `pip install -r requirements.txt`. Isso é um snapshot
-datado -- sem pin de versão, os números vão mudar com o tempo (ver seção
-"Conceitos", item 3).
+Reproduce with `pip install -r requirements.txt`. This is a dated snapshot --
+without version pins, the numbers will change over time (see the "Concepts"
+section, item 3).
 
-## Estrutura do projeto
+## Project structure
 
 ```
 scripts/
-  common.py                     # config compartilhada, evaluate_policy, save_result
-  train_sb3.py                  # SB3, hiperparâmetros genéricos
-  train_sb3_n1.py                # SB3, mesma config mas n_envs=1
-  train_sb3_zoo.py               # SB3, hiperparâmetros OFICIAIS do RL Zoo (Parte 11)
-  train_cleanrl.py               # PyTorch puro, estilo CleanRL
-  train_cleanrl_original.py      # wrapper que roda o ppo.py OFICIAL do CleanRL via subprocess
-  cleanrl_original_ppo.py        # o próprio script, baixado do GitHub e patcheado
-  train_jax.py                   # JAX puro, genérico
-  train_jax_tuned.py             # JAX + normalização obs/reward, rede maior, LR annealing
-  train_jax_tuned_kl.py          # + KL penalty dinâmica + value function clipping
-  train_jax_tuned_kl_trunc.py    # + bootstrap correto em episódios truncados
-  train_rllib.py                 # RLlib (Ray) real
+  common.py                     # shared config, evaluate_policy, save_result
+  train_sb3.py                  # SB3, generic hyperparameters
+  train_sb3_n1.py                # SB3, same config but n_envs=1
+  train_sb3_zoo.py               # SB3, OFFICIAL RL Zoo hyperparameters (Part 11)
+  train_cleanrl.py               # pure PyTorch, CleanRL style
+  train_cleanrl_original.py      # wrapper that runs the OFFICIAL CleanRL ppo.py via subprocess
+  cleanrl_original_ppo.py        # the script itself, downloaded from GitHub and patched
+  train_jax.py                   # pure JAX, generic
+  train_jax_tuned.py             # JAX + obs/reward normalization, larger network, LR annealing
+  train_jax_tuned_kl.py          # + dynamic KL penalty + value function clipping
+  train_jax_tuned_kl_trunc.py    # + correct bootstrap on truncated episodes
+  train_rllib.py                 # real RLlib (Ray)
   train_tianshou.py              # Tianshou 2.x
   train_torchrl.py               # TorchRL
-  compare.py / boxplot.py / stats_test.py / eval_stats.py   # análise e estatística
-results/            # curvas de treino (JSON), por ambiente
-results_eval/       # resultados de avaliação (N episódios por checkpoint), por ambiente
+  compare.py / boxplot.py / stats_test.py / eval_stats.py   # analysis and statistics
+results/            # training curves (JSON), per environment
+results_eval/       # evaluation results (N episodes per checkpoint), per environment
 ```
 
 ---
 
-# Parte 1: primeira comparação (SB3, PyTorch puro, JAX puro) -- CartPole-v1
+# Part 1: first comparison (SB3, pure PyTorch, pure JAX) -- CartPole-v1
 
-Motivação inicial: "o PPO de uma lib é diferente do de outra, mesmo com os
-mesmos hiperparâmetros?" Comparação com 1 seed, depois 5 seeds, hiperparâmetros
-de treino alinhados manualmente entre as 3 implementações (`common.py`).
+Initial motivation: "is one lib's PPO different from another's, even with the
+same hyperparameters?" Comparison with 1 seed, then 5 seeds, training
+hyperparameters manually aligned across the 3 implementations (`common.py`).
 
-Resultado inicial (1 seed) sugeria diferenças de até ~100 pontos entre
-libs. Isso motivou a pergunta natural: **isso é diferença real de
-implementação, ou é ruído de seed que 1 amostra não consegue separar?**
+The initial result (1 seed) suggested differences of up to ~100 points between
+libs. That motivated the natural question: **is this a real implementation
+difference, or is it seed noise that 1 sample cannot separate?**
 
-# Parte 2: alinhando hiperparâmetros de arquitetura, não só de treino
+# Part 2: aligning architecture hyperparameters, not only training ones
 
-Hiperparâmetros de treino (lr, gamma, clip, etc.) já estavam alinhados,
-mas arquitetura e inicialização de pesos, não. Alinhamos:
-- Arquitetura: 2 camadas de 64, tanh, nas 4 libs (RLlib usava [256,256] por
-  padrão).
-- Redes separadas ator/crítico (RLlib compartilhava por padrão).
-- Inicialização ortogonal com gains diferenciados por camada (√2 hidden,
-  0.01 saída do ator, 1.0 saída do crítico) -- replicando a convenção do
-  CleanRL/SB3.
-- Adam epsilon = 1e-5 em todas.
+Training hyperparameters (lr, gamma, clip, etc.) were already aligned, but
+architecture and weight initialization were not. We aligned:
+- Architecture: 2 layers of 64, tanh, in the 4 libs (RLlib used [256,256] by
+  default).
+- Separate actor/critic networks (RLlib shared them by default).
+- Orthogonal initialization with differentiated per-layer gains (√2 hidden,
+  0.01 actor output, 1.0 critic output) -- replicating the CleanRL/SB3
+  convention.
+- Adam epsilon = 1e-5 in all of them.
 
-Depois disso, adicionamos o CleanRL oficial (baixado do GitHub, não o pip
-antigo) como 5ª implementação -- e precisou de um patch pra rodar com
-Gymnasium atual (ver "Conceitos", item 3).
+After that, we added the official CleanRL (downloaded from GitHub, not the old
+pip version) as a 5th implementation -- and it needed a patch to run with the
+current Gymnasium (see "Concepts", item 3).
 
-**5 seeds** não bastaram pra separar diferença real de ruído. Rodamos
-**20 seeds** no CartPole-v1 (150k timesteps cada) e aplicamos:
+**5 seeds** were not enough to separate real difference from noise. We ran
+**20 seeds** on CartPole-v1 (150k timesteps each) and applied:
 
-- **Kruskal-Wallis**: `H=10.289, p=0.0358` -- alguma diferença existe no
-  conjunto.
-- **Mann-Whitney U pairwise com Bonferroni** (10 pares, alpha corrigido =
-  0.005): **só 1 de 10 pares foi significativo** (SB3 vs PyTorch puro,
-  p=0.0018). Todos os outros 9, incluindo qualquer lib vs CleanRL oficial,
-  eram estatisticamente indistinguíveis dado o ruído de seed.
+- **Kruskal-Wallis**: `H=10.289, p=0.0358` -- some difference exists in the
+  set as a whole.
+- **Pairwise Mann-Whitney U with Bonferroni** (10 pairs, corrected alpha =
+  0.005): **only 1 of 10 pairs was significant** (SB3 vs pure PyTorch,
+  p=0.0018). All the other 9, including any lib vs official CleanRL, were
+  statistically indistinguishable given the seed noise.
 
-**Conclusão da Parte 2:** no CartPole, a "diferença entre libs" que parecia
-óbvia com poucos seeds era, na esmagadora maioria, ruído de seed -- não
-diferença real de implementação. A única coisa que sobrou (SB3 com desvio
-padrão 2-3x menor que as outras 4) não era sobre performance, era sobre
-**consistência**: `std=26.4` pro SB3 contra `62-83` nas outras 4.
+**Part 2 conclusion:** on CartPole, the "difference between libs" that looked
+obvious with a few seeds was, overwhelmingly, seed noise -- not a real
+implementation difference. The only thing that survived (SB3 with a standard
+deviation 2-3x smaller than the other 4) was not about performance, it was
+about **consistency**: `std=26.4` for SB3 vs `62-83` in the other 4.
 
-# Parte 3: ambiente mais difícil (LunarLander-v3)
+# Part 3: a harder environment (LunarLander-v3)
 
-Escolhido porque CartPole "fácil demais" estava mascarando diferenças
-reais atrás de ruído de seed. LunarLander-v3 (discreto -- mantido
-Categorical em vez de reescrever pra ação contínua), 8 seeds, 300k
+Chosen because the "too easy" CartPole was masking real differences behind
+seed noise. LunarLander-v3 (discrete -- kept Categorical instead of rewriting
+for continuous actions), 8 seeds, 300k
 timesteps.
 
-> **Nota de correção (auditoria posterior):** uma auditoria numérica
-> completa do projeto (rodada depois da Parte 12, comparando cada tabela
-> deste README contra os arquivos JSON brutos) descobriu que os arquivos
-> de seeds 1-8 de `jax_pure`, `cleanrl_style_pytorch` e
-> `stable_baselines3` no `results/LunarLander-v3/` tinham sido
-> **sobrescritos** em algum momento posterior do projeto por uma run de
-> **1.000.000 de steps** (não os 300k originais desta Parte) -- só
-> `rllib` e `cleanrl_original` ainda tinham o budget correto (~300k). Os
-> dados originais dessas 3 implementações estão irrecuperavelmente
-> perdidos. Refizemos as 8 seeds dessas 3 implementações do zero, com o
-> budget correto (300k), e a tabela abaixo reflete os dados **verificados
-> e corretos** -- que mudam a conclusão original desta parte de forma
-> real, não só cosmética (ver "O que mudou" no fim desta seção).
+> **Correction note (later audit):** a full numerical audit of the project
+> (run after Part 12, comparing every table in this README against the raw
+> JSON files) found that the seed 1-8 files of `jax_pure`,
+> `cleanrl_style_pytorch` and
+> `stable_baselines3` in `results/LunarLander-v3/` had been
+> **overwritten** at some later point in the project by a run of
+> **1,000,000 steps** (not the 300k original to this Part) -- only
+> `rllib` and `cleanrl_original` still had the correct budget (~300k). The
+> original data for those 3 implementations is irrecoverably lost.
+> We redid the 8 seeds of those 3 implementations from scratch, with the
+> correct budget (300k), and the table below reflects the **verified and
+> correct** data -- which change this part's original conclusion in a real
+> way, not just a cosmetic one (see "What changed" at the end of this section).
 
-Resultado (dados verificados):
+Result (verified data):
 
-| Lib | Média | Desvio padrão |
+| Lib | Mean | Std dev |
 |---|---|---|
 | RLlib (Ray) | 47.7 | 56.7 |
-| JAX puro | 26.5 | 10.3 |
-| PyTorch puro (estilo CleanRL) | 26.1 | 32.3 |
+| Pure JAX | 26.5 | 10.3 |
+| Pure PyTorch (CleanRL style) | 26.1 | 32.3 |
 | Stable-Baselines3 | 14.5 | 24.8 |
-| CleanRL (oficial) | -38.0 | 26.0 |
+| CleanRL (official) | -38.0 | 26.0 |
 
 **Kruskal-Wallis: `H=14.627, p=0.0055`.**
 
-Mann-Whitney (Bonferroni, alpha corrigido=0.0050): **4 de 10 pares
-significativos** -- e os 4 envolvem o **CleanRL oficial**, não o RLlib:
+Mann-Whitney (Bonferroni, corrected alpha=0.0050): **4 of 10 pairs
+significant** -- and all 4 involve **official CleanRL**, not RLlib:
 
-| Par | p-valor | Significativo? |
+| Pair | p-value | Significant? |
 |---|---|---|
-| CleanRL oficial vs JAX puro | 0.0006 | SIM |
-| RLlib vs CleanRL oficial | 0.0047 | SIM |
-| SB3 vs CleanRL oficial | 0.0047 | SIM |
-| CleanRL oficial vs PyTorch puro | 0.0047 | SIM |
-| (demais 6 pares) | 0.28-0.65 | não |
+| Official CleanRL vs pure JAX | 0.0006 | YES |
+| RLlib vs official CleanRL | 0.0047 | YES |
+| SB3 vs official CleanRL | 0.0047 | YES |
+| Official CleanRL vs pure PyTorch | 0.0047 | YES |
+| (the other 6 pairs) | 0.28-0.65 | no |
 
-## O que mudou com a correção
+## What changed with the correction
 
-A versão original (com dados corrompidos) desta seção dizia que "o RLlib
-tinha uma vantagem real e estatisticamente robusta" sobre as outras 4.
-**Isso não se sustenta nos dados corretos.** Com os dados verificados,
-RLlib é estatisticamente indistinguível de SB3, PyTorch puro e JAX puro --
-a única implementação que realmente se destaca (pra pior) é o **CleanRL
-oficial**, não identificado antes por causa da corrupção dos outros 3
-conjuntos de dados.
+The original version of this section (with corrupted data) said that "RLlib had
+a real and statistically robust advantage" over the other 4.
+**That does not hold on the correct data.** With the verified data, RLlib is
+statistically indistinguishable from SB3, pure PyTorch and pure JAX -- the only
+implementation that really stands out (for the worse) is **official CleanRL**,
+not identified before because of the corruption of the other 3
+datasets.
 
-Isso é relevante porque as Partes 4 e 5 foram motivadas pela ideia
-"RLlib parece ter uma vantagem especial no LunarLander, vamos investigar
-por quê" -- uma motivação que a Parte 3 original (com dados ruins) parecia
-confirmar com força estatística, mas que não se sustenta na Parte 3
-corrigida. Isso NÃO invalida os resultados das Partes 4-12 em si (cada uma
-foi auditada separadamente contra os arquivos `results_eval/` e todas
-batem exatamente com o que está documentado) -- mas significa que a
-justificativa inicial pra perseguir esse fio ("RLlib parece
-sistematicamente melhor com 8 seeds") era mais fraca do que o texto
-original sugeria. A vantagem real do RLlib só aparece de forma robusta
-mais adiante, com 1 seed + 50 avaliações (Parte 4) e com os testes formais
-das Partes 5-10 -- não já na Parte 3.
+This is relevant because Parts 4 and 5 were motivated by the idea
+"RLlib seems to have a special advantage on LunarLander, let's investigate
+why" -- a motivation that the original Part 3 (with bad data) seemed to
+confirm with statistical force, but that does not hold in the corrected Part 3.
+This does NOT invalidate the results of Parts 4-12 themselves (each one was
+audited separately against the `results_eval/` files and all of them match
+exactly what is documented) -- but it means the initial justification for
+pulling that thread ("RLlib looks systematically better with 8 seeds") was
+weaker than the original text suggested. RLlib's real advantage only shows up
+robustly further ahead, with 1 seed + 50 evaluations (Part 4) and with the
+formal tests of Parts 5-10 -- not
+already in Part 3.
 
-# Parte 4: 1 seed de treino, múltiplos episódios de avaliação (mais barato)
+# Part 4: 1 training seed, multiple evaluation episodes (cheaper)
 
 
-Ideia do usuário pra economizar compute: em vez de treinar N vezes com
-seeds diferentes (caro), treinar **uma vez** com budget maior (1M
-timesteps) e avaliar essa política fixa em 50 episódios -- mede
-consistência de *avaliação*, não reprodutibilidade de *treino* (pergunta
-diferente e complementar).
+User's idea to save compute: instead of training N times with different seeds
+(expensive), train **once** with a bigger budget (1M timesteps) and evaluate
+that fixed policy over 50 episodes -- it measures consistency of
+*evaluation*, not reproducibility of *training* (a different and
+complementary question).
 
-Resultado (seed=42, 1M steps, 50 episódios):
+Result (seed=42, 1M steps, 50 episodes):
 
-| Lib | Média eval | Desvio padrão |
+| Lib | Mean eval | Std dev |
 |---|---|---|
 | RLlib | 158.9 | 115.5 |
-| CleanRL oficial | -52.8 | 126.5 |
-| PyTorch puro | -55.7 | 76.2 |
-| JAX puro | -57.8 | 39.3 |
+| CleanRL (official) | -52.8 | 126.5 |
+| Pure PyTorch | -55.7 | 76.2 |
+| Pure JAX | -57.8 | 39.3 |
 | Stable-Baselines3 | -85.3 | 30.0 |
 
-Kruskal-Wallis: `p≈0.0000`. **5 de 10 pares significativos** (mais forte
-que a versão multi-seed). Achado novo: JAX puro vs SB3 virou significativo
-aqui, o que não acontecia com variância de treino -- sugere que parte do
-"ruído" da Parte 2 mascarava uma diferença real e mais sutil.
+Kruskal-Wallis: `p≈0.0000`. **5 of 10 pairs significant** (stronger than the
+multi-seed version). New finding: pure JAX vs SB3 became significant here,
+which didn't happen with training variance -- suggesting that part of the
+"noise" of Part 2 was masking a real and subtler difference.
 
-## Testando se era customização de tarefa, não a lib (`train_jax_tuned.py`)
+## Testing whether it was task customization, not the lib (`train_jax_tuned.py`)
 
-Hipótese do usuário: implementações "do zero" nunca foram *tunadas* pro
-LunarLander -- carregavam a receita genérica do CartPole. Adicionamos, só
-no JAX puro:
-1. Normalização de observação (running mean/std, estilo VecNormalize).
-2. Normalização de reward (reward dividido pelo std rodante do retorno
-   descontado).
-3. Rede maior: 128x128 em vez de 64x64.
-4. Learning rate com annealing linear até 0.
+User's hypothesis: the "from scratch" implementations had never been *tuned*
+for LunarLander -- they carried the generic CartPole recipe. We added, only in
+pure JAX:
+1. Observation normalization (running mean/std, VecNormalize style).
+2. Reward normalization (reward divided by the running std of the discounted
+   return).
+3. Larger network: 128x128 instead of 64x64.
+4. Learning rate with linear annealing down to 0.
 
-Resultado: **-57.8 → +45.1**, estatisticamente muito acima das 4
-implementações genéricas. **Não fechou o gap com o RLlib** (ainda
-p<0.0001). Testamos se era porque o RLlib normaliza observação por
-padrão -- não é: `observation_filter` default do RLlib é `NoFilter`.
+Result: **-57.8 → +45.1**, statistically far above the 4 generic
+implementations. **It did not close the gap with RLlib** (still
+p<0.0001). We tested whether that was because RLlib normalizes observations by
+default -- it does not: RLlib's default `observation_filter` is `NoFilter`.
 
-# Parte 5: KL dinâmico + value function clipping (`train_jax_tuned_kl.py`)
+# Part 5: dynamic KL + value function clipping (`train_jax_tuned_kl.py`)
 
-Motivado por um projeto externo enviado pelo usuário com uma reimplementação
-"estilo RLlib" (não é o `ray` de verdade) que apostava nesses 2 mecanismos.
-Adicionamos só isso ao `jax_tuned`:
+Motivated by an external project sent by the user with an "RLlib style"
+reimplementation (not the real `ray`) that bet on these 2 mechanisms. We added
+only this to `jax_tuned`:
 - **Value function clipping** (`RLLIB_VF_CLIP_PARAM=10.0`).
-- **Penalidade de KL dinâmica** (`RLLIB_KL_TARGET=0.01`,
-  `RLLIB_INITIAL_KL_COEFF=0.2`, ajustada a cada iteração pela mesma regra
-  do RLlib: ×1.5 se KL > 1.5x o alvo, ×0.5 se < 0.67x o alvo).
+- **Dynamic KL penalty** (`RLLIB_KL_TARGET=0.01`,
+  `RLLIB_INITIAL_KL_COEFF=0.2`, adjusted at each iteration by the same rule
+  RLlib uses: ×1.5 if KL > 1.5x the target, ×0.5 if < 0.67x the target).
 
-Resultado: **45.1 → 104.9** (p=0.0022 vs jax_tuned). O gap com o RLlib
-caiu de 113.8 pontos pra 54.0 -- **esses 2 mecanismos explicam
-aproximadamente metade** da vantagem restante do RLlib. Mas RLlib ainda
-venceu de forma significativa (p=0.0001) -- sobrava ~54 pontos sem
-explicação.
+Result: **45.1 → 104.9** (p=0.0022 vs jax_tuned). The gap with RLlib dropped
+from 113.8 points to 54.0 -- **these 2 mechanisms explain roughly
+half** of RLlib's remaining advantage. But RLlib still won significantly
+(p=0.0001) -- ~54 points were still
+unexplained.
 
-# Parte 6: por que o SB3 é "estável" aqui e "instável" num projeto externo
+# Part 6: why SB3 is "stable" here and "unstable" in an external project
 
-O usuário notou que, no projeto externo enviado, o SB3 tinha desvio padrão
-`112.1` (segundo pior, quase tão ruim quanto um TorchRL com bug
-suspeitado), enquanto no nosso benchmark o SB3 era consistentemente o MAIS
-estável (`std=26-30`). Hipótese: `N_ENVS` (8 no nosso setup, 1 no deles).
+The user noticed that, in the external project they sent, SB3 had a standard
+deviation of `112.1` (second worst, almost as bad as a TorchRL with a
+suspected bug), while in our benchmark SB3 was consistently the MOST stable
+(`std=26-30`). Hypothesis: `N_ENVS` (8 in our setup, 1 in theirs).
 
-Testamos mudando SÓ essa variável (`train_sb3_n1.py`, `n_envs=1`, mesmo
-seed, mesmo budget):
+We tested changing ONLY this variable (`train_sb3_n1.py`, `n_envs=1`, same
+seed, same budget):
 
-| Versão | Std |
+| Version | Std |
 |---|---|
 | SB3 (n_envs=8) | 30.0 |
 | SB3 (n_envs=1) | 132.1 |
 
-**Teste de Levene** (não Mann-Whitney -- a pergunta era sobre variância,
-não sobre média): `p=0.00013`. Diferença de variância real e forte.
-**Hipótese confirmada**: mudar 1 parâmetro estrutural inverteu a reputação
-de estabilidade do SB3 inteira.
+**Levene's test** (not Mann-Whitney -- the question was about variance,
+not about the mean): `p=0.00013`. A real and strong variance difference.
+**Hypothesis confirmed**: changing 1 structural parameter flipped SB3's entire
+stability reputation.
 
-# Parte 7: correção de bootstrap em truncamento -- LunarLander (inconclusivo)
+# Part 7: truncation-bootstrap correction -- LunarLander (inconclusive)
 
-Nosso GAE tratava `terminated` (episódio realmente acabou) e `truncated`
-(cortado por limite de tempo artificial) da mesma forma, zerando o
-bootstrap de valor nos dois casos -- tecnicamente errado pra truncamento.
+Our GAE treated `terminated` (the episode really ended) and `truncated` (cut
+by an artificial time limit) the same way, zeroing the value bootstrap in both
+cases -- technically wrong for truncation.
 
-Confirmamos empiricamente que o Gymnasium atual (`autoreset_mode=
-NEXT_STEP`, o padrão) retorna a observação real final no step de
-truncamento -- o dado certo já existia, só não estava sendo usado. Corrigimos
-com duas máscaras separadas no GAE (`train_jax_tuned_kl_trunc.py`): uma pra
-zerar bootstrap (só terminated de verdade), outra pra parar a propagação
-do GAE (terminated OU truncated).
+We confirmed empirically that current Gymnasium (`autoreset_mode=NEXT_STEP`,
+the default) returns the real final observation on the truncation
+step -- the right data was already there, it just wasn't being used. We fixed
+it with two separate masks in the GAE (`train_jax_tuned_kl_trunc.py`): one to
+zero the bootstrap (only true terminated), another to stop the GAE
+propagation (terminated OR truncated).
 
-Resultado no LunarLander: **104.9 (sem correção) vs 85.4 (com correção)**,
-Mann-Whitney `p=0.3647` -- **não significativo**, a diferença é ruído.
-Explicação provável: LunarLander tem limite de 1000 steps, mas episódios
-terminam por pouso/crash bem antes disso -- truncamento é raro, a correção
-não teve chance de mostrar efeito.
+Result on LunarLander: **104.9 (without the correction) vs 85.4 (with it)**,
+Mann-Whitney `p=0.3647` -- **not significant**, the difference is noise.
+Likely explanation: LunarLander has a 1000-step limit, but episodes end by
+landing/crash well before that -- truncation is rare, the correction had no
+chance to show an effect.
 
-# Parte 8: mesma correção, no CartPole -- resultado claro e positivo
+# Part 8: the same correction, on CartPole -- clear and positive result
 
-CartPole é o ambiente certo pra essa hipótese: limite de 500 steps, e uma
-política competente aprende a balançar indefinidamente, batendo o limite
-de tempo na maioria dos episódios (truncamento é a forma DOMINANTE de
-terminar um episódio bem-sucedido).
+CartPole is the right environment for this hypothesis: 500-step limit, and a
+competent policy learns to swing indefinitely, hitting the time limit on most
+episodes (truncation is the DOMINANT way a successful episode
+ends).
 
-Resultado (seed=42, 400k timesteps):
+Result (seed=42, 400k timesteps):
 
-| Versão | Média | Std | Min |
+| Version | Mean | Std | Min |
 |---|---|---|---|
-| Com correção | **500.0** | **0.0** | 500.0 |
-| Sem correção | 485.5 | 43.5 | 343.0 |
+| With correction | **500.0** | **0.0** | 500.0 |
+| Without correction | 485.5 | 43.5 | 343.0 |
 
-Mann-Whitney: `p=0.0231` -- significativo. **Perfeito em todos os 50
-episódios de avaliação** com a correção. Mesmo mecanismo, mesmo código,
-irrelevante num ambiente (LunarLander) e decisivo no outro (CartPole).
+Mann-Whitney: `p=0.0231` -- significant. **Perfect in all 50 evaluation
+episodes** with the correction. Same mechanism, same code, irrelevant in one
+environment (LunarLander) and decisive in the other (CartPole).
 
-# Parte 9: RLlib real no CartPole -- resultado inconclusivo, mas revelador
+# Part 9: real RLlib on CartPole -- inconclusive, but revealing, result
 
-Pergunta: será que o RLlib "de fábrica" já trata truncamento corretamente,
-explicando parte da vantagem dele? Rodamos RLlib no CartPole (config
-genérica das Partes 1-2, sem LR annealing), 400k timesteps, seed=42.
+Question: does "out of the box" RLlib already handle truncation correctly,
+explaining part of its advantage? We ran RLlib on CartPole (the generic config
+from Parts 1-2, without LR annealing), 400k timesteps, seed=42.
 
-Avaliação final: **171.3 ± 33.9** -- muito abaixo do 500 esperado. Mas a
-curva de treino completa mostrou algo diferente: a política **bateu 500**
-no meio do treino (step ~330k) e **degradou** de forma consistente até o
-final, terminando em 193. Não é falta de budget -- é instabilidade de
-treino que a avaliação (feita no checkpoint final) capturou num vale, não
-no pico.
+Final evaluation: **171.3 ± 33.9** -- far below the expected 500. But the full
+training curve showed something different: the policy **hit 500**
+mid-training (step ~330k) and **degraded** consistently until the
+end, finishing at 193. It's not a lack of budget -- it's training instability
+that the evaluation (run on the final checkpoint) caught in a
+valley, not at the peak.
 
-**O teste original não foi respondido** -- revelou, em vez disso, que essa
-config do RLlib (sem LR annealing) é instável perto do teto de
-performance, ecoando o mecanismo que nossas próprias versões tunadas usam
-pra evitar exatamente isso.
+**The original test went unanswered** -- it revealed, instead, that this RLlib
+config (without LR annealing) is unstable near the performance
+ceiling, echoing the mechanism our own tuned versions use to avoid
+exactly that.
 
-# Parte 10: TorchRL e Tianshou
+# Part 10: TorchRL and Tianshou
 
-Motivação dupla: (1) fechar o mistério do TorchRL catastrófico (-377) do
-projeto externo, implementando nossa própria versão controlada; (2)
-adicionar uma segunda lib madura pra separar "vantagem específica do
-RLlib" de "framework de produção sempre vence hobbyist".
+Dual motivation: (1) close the mystery of the catastrophic TorchRL (-377)
+from the external project by implementing our own controlled version; (2) add
+a second mature lib to separate "an advantage specific to RLlib" from "a
+production framework always beats a hobbyist one".
 
-Precisou corrigir 2 APIs quebradas por versão (ver "Conceitos", item 3):
-Tianshou 2.0 (`policy`→`algorithm`) e TorchRL (`SyncDataCollector`→
-`Collector`). O ambiente de execução também foi resetado no meio do
-trabalho, exigindo reinstalar tudo (incluindo lidar com falta de espaço em
-disco).
+It required fixing 2 APIs broken by version (see "Concepts", item 3):
+Tianshou 2.0 (`policy`→`algorithm`) and TorchRL (`SyncDataCollector`→
+`Collector`). The execution environment was also reset mid-work, requiring
+reinstalling everything (including dealing with running out of
+disk space).
 
-Resultado (LunarLander-v3, seed=42, 1M steps):
+Result (LunarLander-v3, seed=42, 1M steps):
 
-| Lib | Média eval | Tempo de treino |
+| Lib | Mean eval | Training time |
 |---|---|---|
 | TorchRL | 49.0 | **1014.5s** |
 | Tianshou | -7.2 | 233.8s |
 
-**O mistério do TorchRL não se repetiu** -- nossa implementação ficou no
-meio do pelotão, nada catastrófico, reforçando que o -377 do projeto
-externo era específico da config dele. **TorchRL foi disparado a
-implementação mais lenta de todo o projeto** (1014s vs 111-265s das
-outras). Tianshou e TorchRL caíram estatisticamente indistinguíveis de
-várias implementações "genéricas" nossas -- enfraquece a hipótese de
-"framework maduro sempre vence hobbyist": a vantagem do RLlib parece mais
-específica dele do que um padrão geral.
+**The TorchRL mystery did not repeat itself** -- our implementation landed in
+the middle of the pack, nothing catastrophic, reinforcing that the external
+project's -377 was specific to its config. **TorchRL was by far the
+slowest implementation of the entire project** (1014s vs 111-265s for
+the others). Tianshou and TorchRL came out statistically indistinguishable from
+several of our "generic" implementations -- this weakens the "mature framework
+always beats hobbyist" hypothesis: RLlib's advantage looks more specific to it
+than a general pattern.
 
 ---
 
-# Parte 11: SB3 com os hiperparâmetros OFICIAIS do RL Zoo -- confirmação final
+# Part 11: SB3 with the OFFICIAL RL Zoo hyperparameters -- final confirmation
 
-## A pergunta
+## The question
 
-Por que várias implementações (incluindo o próprio SB3 genérico, `-85.3`)
-davam reward NEGATIVO no LunarLander? Era bug, ou má configuração? Já
-tínhamos evidência indireta (Parte 4: tuning subiu o JAX de -57.8 pra
-+45.1) mas nunca confirmamos com a config *real, recomendada por quem
-mantém a lib* -- só com nossas próprias tentativas de tuning.
+Why did several implementations (including generic SB3 itself, `-85.3`) give
+NEGATIVE reward on LunarLander? Was it a bug, or bad configuration? We already
+had indirect evidence (Part 4: tuning raised JAX from -57.8 to
++45.1) but we had never confirmed it with the *real, recommended by the people
+who maintain the lib* config -- only with our own tuning attempts.
 
-## O teste
+## The test
 
-Peguei os hiperparâmetros oficiais do **RL Baselines3 Zoo**
-(`DLR-RM/rl-baselines3-zoo`, `hyperparams/ppo.yml`, seção
-`LunarLander-v3`) -- os valores realmente usados/recomendados pela equipe
-que mantém o SB3 pra essa tarefa específica:
+I took the official hyperparameters from the **RL Baselines3 Zoo**
+(`DLR-RM/rl-baselines3-zoo`, `hyperparams/ppo.yml`, `LunarLander-v3` section)
+-- the values actually used/recommended by the team that maintains SB3 for this
+specific task:
 
 ```yaml
 n_envs: 16
 n_steps: 1024
 batch_size: 64
 gae_lambda: 0.98
-gamma: 0.999        # bem mais alto que o 0.99 genérico -- LunarLander
-                    # tem episódios longos, precisa dar mais peso a
-                    # reward futuro
+gamma: 0.999        # much higher than the generic 0.99 -- LunarLander
+                    # has long episodes, so future reward has to be weighted
+                    # more heavily
 n_epochs: 4
 ent_coef: 0.01
 n_timesteps: 1e6
 ```
 
-(learning rate, clip_range, vf_coef, arquitetura: defaults do SB3, sem
-mudança). Mesmo seed=42, mesmo protocolo de avaliação (50 episódios) das
-Partes 3-10, pra comparação direta com tudo que já tínhamos.
+(learning rate, clip_range, vf_coef, architecture: SB3 defaults, no
+change). Same seed=42, same evaluation protocol (50 episodes) as Parts 3-10,
+for a direct comparison with everything we already had.
 
-## Resultado
+## Result
 
-**231.3 ± 88.8** -- não só saiu do negativo como ficou ACIMA de todas as
-outras 11 implementações testadas até aqui, incluindo o RLlib (158.9) e o
-nosso próprio `jax_tuned_kl` (104.9).
+**231.3 ± 88.8** -- not only did it get out of the negative, it landed ABOVE
+all the other 11 implementations tested so far, including RLlib (158.9) and our
+own `jax_tuned_kl` (104.9).
 
-| Lib | Média eval | Std |
+| Lib | Mean eval | Std |
 |---|---|---|
-| **SB3 (config oficial do Zoo)** | **231.3** | 88.8 |
+| **SB3 (official Zoo config)** | **231.3** | 88.8 |
 | RLlib (Ray) | 158.9 | 115.5 |
 | jax_tuned_kl | 104.9 | 95.0 |
 | jax_tuned_kl_trunc | 85.4 | 106.0 |
@@ -491,34 +491,34 @@ nosso próprio `jax_tuned_kl` (104.9).
 | jax_tuned | 45.1 | 110.7 |
 | stable_baselines3_n1 | 0.6 | 132.1 |
 | Tianshou | -7.2 | 105.9 |
-| CleanRL (oficial) | -52.8 | 126.5 |
-| PyTorch puro | -55.7 | 76.2 |
-| JAX puro | -57.8 | 39.3 |
-| Stable-Baselines3 (config genérica) | -85.3 | 30.0 |
+| CleanRL (official) | -52.8 | 126.5 |
+| Pure PyTorch | -55.7 | 76.2 |
+| Pure JAX | -57.8 | 39.3 |
+| Stable-Baselines3 (generic config) | -85.3 | 30.0 |
 
-Kruskal-Wallis: `H=273.810, p≈0.0000`. Mann-Whitney com Bonferroni (12
-implementações, 66 pares): **SB3-Zoo é significativamente diferente de
-TODAS as outras 11 implementações**, incluindo o RLlib (`p=0.0000` em
-todos os pares envolvendo SB3-Zoo).
+Kruskal-Wallis: `H=273.810, p≈0.0000`. Mann-Whitney with Bonferroni (12
+implementations, 66 pairs): **SB3-Zoo is significantly different from ALL the
+other 11 implementations**, including RLlib (`p=0.0000` in every pair involving
+SB3-Zoo).
 
-## A resposta definitiva
+## The definitive answer
 
-**Config, não biblioteca.** SB3-Zoo e Stable-Baselines3 (genérico) são
-**literalmente o mesmo código-fonte, a mesma versão da mesma biblioteca**
--- a única coisa que mudou foram os hiperparâmetros. E essa mudança sozinha
-produziu a maior amplitude de reward de todo o projeto inteiro (de -85.3
-pra +231.3, um salto de mais de 300 pontos), maior que qualquer diferença
-entre bibliotecas que medimos nas Partes 1-10.
+**Config, not library.** SB3-Zoo and Stable-Baselines3 (generic) are
+**literally the same source code, the same version of the same library** -- the
+only thing that changed were the hyperparameters. And that change alone
+produced the largest reward swing of the entire project (from -85.3 to
++231.3, a jump of more than 300 points), bigger than any difference between
+libraries we measured in Parts 1-10.
 
-Isso fecha, com o teste mais direto possível, a pergunta que atravessou
-o projeto inteiro: quando você vê "biblioteca X tem reward negativo/ruim",
-a explicação mais provável não é "a lib tem bug" -- é "ninguém deu a ela
-os hiperparâmetros certos pra essa tarefa". `gamma=0.999` em vez de `0.99`
-sozinho já é uma pista forte: LunarLander tem episódios de até 1000 steps,
-e descontar reward futuro de forma agressiva (gamma baixo) faz o agente
-"não enxergar" o benefício de longo prazo de pousar com cuidado.
+That closes, with the most direct test possible, the question that ran through
+the whole project: when you see "library X has negative/bad reward", the most
+likely explanation is not "the lib has a bug" -- it is "nobody gave it the
+right hyperparameters for this task". `gamma=0.999` instead of `0.99` alone is
+already a strong hint: LunarLander has episodes of up to 1000 steps, and
+discounting future reward aggressively (low gamma) makes the agent "not see"
+the long-term benefit of landing carefully.
 
-## Rodar
+## Run
 
 ```bash
 export PPO_ENV=LunarLander-v3
@@ -529,112 +529,112 @@ python3 scripts/eval_stats.py
 
 ---
 
-# Parte 12: repetindo TODA a comparação com os hiperparâmetros do RL Zoo
+# Part 12: repeating the ENTIRE comparison with the RL Zoo hyperparameters
 
-## A pergunta
+## The question
 
-A Parte 11 mostrou que o SB3 com a config certa vira o melhor do pelotão.
-Mas isso testou só o SB3. A pergunta natural: **será que aplicar a mesma
-config (não uma "config oficial" de cada lib, que não existe pra todas,
-mas literalmente os mesmos valores de hiperparâmetro do RL Zoo) em TODAS
-as implementações muda o ranking inteiro que construímos nas Partes 1-10?**
+Part 11 showed that SB3 with the right config becomes the best of the pack.
+But that only tested SB3. The natural question: **would applying the same
+config (not an "official config" for each lib, which doesn't exist for all of
+them, but literally the same RL Zoo hyperparameter values) to ALL
+implementations change the entire ranking we built in Parts 1-10?**
 
-Ideia do usuário, mais simples e mais limpa que tentar achar uma "receita
-oficial" por biblioteca (que não existe pra RLlib/TorchRL/Tianshou/nossas
-implementações próprias de forma simétrica): usar os MESMOS valores do RL
-Zoo (`n_steps=1024`, `n_envs=16`, `gae_lambda=0.98`, `gamma=0.999`,
-`n_epochs=4`, `ent_coef=0.01`, `batch_size=64`) em `common.py`, e rodar
-outra vez a mesma bateria de 7 implementações -- 1 seed=42, 1M timesteps,
-50 episódios de avaliação, LunarLander-v3.
+User's idea, simpler and cleaner than trying to find an "official recipe" per
+library (which doesn't exist in a symmetric way for RLlib/TorchRL/Tianshou/our
+own implementations): use the SAME RL Zoo values (`n_steps=1024`,
+`n_envs=16`, `gae_lambda=0.98`, `gamma=0.999`,
+`n_epochs=4`, `ent_coef=0.01`, `batch_size=64`) in `common.py`, and run the
+same battery of 7 implementations again -- 1 seed=42, 1M timesteps, 50
+evaluation episodes, LunarLander-v3.
 
-## Perrengues de infraestrutura no meio do caminho (vale registrar)
+## Infrastructure struggles along the way (worth recording)
 
-Esta parte sofreu DOIS resets de container no meio da execução -- o
-sistema de arquivos de trabalho (`/home/claude`) e, desta vez, até a pasta
-de outputs (que eu supunha ser permanentemente persistente) reverteram pra
-um estado anterior mais de uma vez. Consequências práticas:
-- Perdemos os resultados intermediários do TorchRL uma vez (teve que
-  rodar de novo, ~20 minutos perdidos).
-- Um reset trouxe de volta uma versão ANTIGA do `common.py` (sem os
-  hiperparâmetros do Zoo) que só foi percebida porque o log do TorchRL
-  mostrava `frames_per_batch (2048)` em vez de `16384` -- o processo
-  chegou a rodar ~5 minutos com a config errada antes de ser interrompido
-  e corrigido.
-- A lição prática adotada a partir daqui: copiar os resultados pra
-  `outputs` **imediatamente após cada script terminar**, não só no final
-  do trabalho -- e essa lição ela mesma quase não foi suficiente, porque
-  até `outputs` se mostrou instável nesta sessão.
+This part suffered TWO container resets mid-execution -- the working
+filesystem (`/home/claude`) and, this time, even the outputs folder (which I
+assumed was permanently persistent) reverted to an earlier state more than
+once. Practical consequences:
+- We lost the intermediate TorchRL results once (it had to run again,
+  ~20 minutes lost).
+- One reset brought back an OLD version of `common.py` (without the Zoo
+  hyperparameters), which was only noticed because the TorchRL log showed
+  `frames_per_batch (2048)` instead of `16384` -- the process even ran
+  ~5 minutes with the wrong config before being interrupted and
+  fixed.
+- The practical lesson adopted from here on: copy the results to `outputs`
+  **immediately after each script finishes**, not just at the end of the work
+  -- and that lesson itself almost wasn't enough, because even `outputs`
+  turned out to be unstable in this session.
 
-Mais um capítulo ao vivo do tema "Conceitos", item 3 -- reprodutibilidade
-não é só sobre versão de biblioteca, é sobre o ambiente de execução inteiro
-não ser garantido, ponto final.
+Yet another live chapter of the "Concepts" theme, item 3 -- reproducibility is
+not only about library versions, it is about the whole execution environment
+not being guaranteed, period.
 
-## Resultado (LunarLander-v3, seed=42, 1M steps, config do Zoo em todas)
+## Result (LunarLander-v3, seed=42, 1M steps, Zoo config in all of them)
 
-| Lib | Média eval (config Zoo) | Std | Média eval (config genérica, Partes 3-10) |
+| Lib | Mean eval (Zoo config) | Std | Mean eval (generic config, Parts 3-10) |
 |---|---|---|---|
 | **Tianshou** | **281.2** | 37.6 | -7.2 |
-| PyTorch puro (estilo CleanRL) | 265.4 | 31.7 | -55.7 |
-| CleanRL (oficial) | 235.0 | 73.4 | -52.8 |
+| Pure PyTorch (CleanRL style) | 265.4 | 31.7 | -55.7 |
+| CleanRL (official) | 235.0 | 73.4 | -52.8 |
 | Stable-Baselines3 | 231.3 | 88.8 | -85.3 |
-| JAX puro | 158.3 | 24.9 | -57.8 |
+| Pure JAX | 158.3 | 24.9 | -57.8 |
 | RLlib (Ray) | 123.7 | 34.9 | **158.9** |
 | TorchRL | 112.3 | 38.0 | 49.0 |
 
-Kruskal-Wallis: `H=220.311, p≈0.0000`. Mann-Whitney com Bonferroni (21
-pares, alpha corrigido=0.0024): **18 de 21 pares significativos** -- a
-proporção mais alta de significância de todo o projeto.
+Kruskal-Wallis: `H=220.311, p≈0.0000`. Mann-Whitney with Bonferroni (21
+pairs, corrected alpha=0.0024): **18 of 21 pairs significant** -- the highest
+proportion of significant pairs of the whole project.
 
-Os 3 pares NÃO significativos formam um "grupo de topo" estatisticamente
-indistinguível entre si: PyTorch puro vs CleanRL oficial (p=0.0050, não
-sobrevive à correção), PyTorch puro vs SB3 (p=0.0759), CleanRL oficial vs
-SB3 (p=0.3432). O Tianshou fica sozinho acima até desse grupo (significativamente
-melhor que os 3). RLlib e TorchRL ficam isolados abaixo de todo o resto,
-significativamente piores que as 5 implementações de cima -- e
-significativamente diferentes um do outro também (RLlib > TorchRL,
-p=0.0003).
+The 3 NON-significant pairs form a "top group" that is statistically
+indistinguishable among themselves: pure PyTorch vs official CleanRL
+(p=0.0050, doesn't survive the correction), pure PyTorch vs SB3 (p=0.0759),
+official CleanRL vs SB3 (p=0.3432). Tianshou sits alone above even that group
+(significantly better than those 3). RLlib and TorchRL sit isolated below the
+rest, significantly worse than the 5 implementations above -- and
+significantly different from each other too
+(RLlib > TorchRL, p=0.0003).
 
-## O achado central: o ranking virou de cabeça pra baixo
+## The central finding: the ranking flipped upside down
 
-**O RLlib, que era disparado o melhor com hiperparâmetros genéricos
-(158.9, isolado no topo nas Partes 3-10), caiu pra penúltimo lugar
-(123.7) com a config correta aplicada a todo mundo igualmente.** Quase
-todas as implementações "do zero" (Tianshou, PyTorch puro, JAX puro) e até
-o CleanRL oficial ultrapassaram o RLlib.
+**RLlib, which was by far the best with generic hyperparameters (158.9, alone
+at the top in Parts 3-10), dropped to second-to-last (123.7) once the correct
+config was applied to everyone equally.** Almost all of the "from scratch"
+implementations (Tianshou, pure PyTorch, pure JAX) and even official CleanRL
+passed RLlib.
 
-Isso não é "RLlib piorou" -- ele teve exatamente os mesmos hiperparâmetros
-de treino que as outras, então seu resultado absoluto até melhorou um
-pouco moderadamente em relação ao que já tinha (123.7 vs valores baixos
-seria esperado, mas na verdade ele já estava em 158.9 antes -- ou seja,
-mudar pra config do Zoo não ajudou o RLlib tanto quanto ajudou as outras
-implementações, e as outras ultrapassaram ele). A explicação mais
-provável, juntando tudo que já sabemos: **o RLlib parece ter mecanismos
-internos (normalização, tratamento de episódio, os defaults de KL/vf-clip
-que já são parte dele por padrão) que o tornam relativamente robusto
-mesmo com hiperparâmetros ruins** -- e é exatamente por isso que ele
-"vencia" nas Partes 3-10, quando todo mundo tinha configuração ruim. Uma
-vez que TODAS as implementações recebem hiperparâmetros bons, essa
-robustez deixa de ser um diferencial, e a vantagem que sobra vai pra quem
-tem a implementação mais eficiente em cima de bons hiperparâmetros -- que,
-neste teste, não foi o RLlib.
+This isn't "RLlib got worse" -- it had exactly the same training
+hyperparameters as the others, so its absolute result actually improved
+moderately compared to what it already had (123.7 vs low values would be
+expected, but in fact it was already at 158.9 before -- meaning that switching
+to the Zoo config didn't help RLlib as much as it helped the other
+implementations, and the others overtook it). The most likely explanation,
+putting together everything we already know: **RLlib seems to have internal
+mechanisms (normalization, episode handling, the KL/vf-clip defaults that are
+already part of it by default) that make it relatively robust even with bad
+hyperparameters** -- and that is exactly why it "won" in Parts 3-10, when
+everyone had a bad configuration. Once ALL implementations receive good
+hyperparameters, that robustness stops being a differentiator, and the
+advantage that remains goes to whoever has the most efficient implementation
+on top of good hyperparameters -- which, in this test, was not
+RLlib.
 
-## Leitura final desta parte
+## Final take on this part
 
-Isso é a demonstração mais direta e mais forte de todo o projeto do
-princípio central que vínhamos descobrindo aos poucos: **"biblioteca X é
-melhor" nunca foi uma propriedade fixa da biblioteca -- sempre foi uma
-propriedade da combinação (biblioteca, hiperparâmetros, tarefa, budget)
-inteira.** A mesma pergunta ("qual biblioteca de PPO é melhor pro
-LunarLander?") tem duas respostas opostas dependendo só de uma variável
-que nem é a biblioteca -- é a qualidade dos hiperparâmetros que você deu a
-ela.
+This is the most direct and strongest demonstration in the whole project
+of the central principle we had been uncovering little by little:
+**"library X is better" was never a fixed property of the library -- it was
+always a property of the whole (library, hyperparameters, task, budget)
+combination.** The same question ("which PPO library is better for
+LunarLander?") has two opposite answers depending only on one variable
+that isn't even the library: it is the quality of the hyperparameters
+you gave it.
 
-TorchRL também vale nota à parte: além de continuar sendo, disparado, a
-implementação mais lenta (~20 minutos, ~5-10x mais que a maioria), agora
-também é a mais fraca em reward. Nenhuma vantagem compensatória apareceu
-pra ela nesta bateria de testes.
+TorchRL also deserves a separate note: besides continuing to be, by far, the
+slowest implementation (~20 minutes, ~5-10x more than most of them), it is now
+also the weakest in reward. No compensating advantage showed up for it in this
+test battery.
 
-## Rodar
+## Run
 
 ```bash
 export PPO_ENV=LunarLander-v3
@@ -647,56 +647,56 @@ python3 scripts/train_jax.py
 python3 scripts/train_rllib.py
 python3 scripts/train_cleanrl_original.py
 python3 scripts/train_tianshou.py
-python3 scripts/train_torchrl.py   # o mais lento, ~20min sozinho
+python3 scripts/train_torchrl.py   # the slowest, ~20min on its own
 python3 scripts/eval_stats.py
 ```
 
-`PPO_RUN_TAG` cria uma subpasta separada em `results/` e `results_eval/`
-(`LunarLander-v3-zoo/`) pra não misturar com os resultados de config
-genérica das Partes 3-10, que usam o mesmo ambiente e seed mas
-hiperparâmetros diferentes.
+`PPO_RUN_TAG` creates a separate subfolder in `results/` and `results_eval/`
+(`LunarLander-v3-zoo/`) so results don't get mixed with the generic-config
+ones from Parts 3-10, which use the same environment and seed but different
+hyperparameters.
 
 ---
 
 
 
-Depois de 11 partes, a resposta mais honesta pra "qual biblioteca de PPO é
-melhor" é: **a pergunta, do jeito que é normalmente feita, não é
-respondível.** Toda vez que isolamos uma variável -- seeds, dificuldade da
-tarefa, budget, `n_envs`, KL/vf-clip, tratamento de truncamento, e por fim
-hiperparâmetros de configuração -- uma conclusão anterior que parecia
-sólida ou perdeu força, ou se revelou sobre outra coisa completamente
-diferente do que parecia.
+After 11 parts, the most honest answer to "which PPO library is better" is:
+**the question, the way it is usually asked, cannot be answered.** Every time
+we isolated one variable -- seeds, task difficulty, budget, `n_envs`,
+KL/vf-clip, truncation handling, and finally the configuration hyperparameters
+-- an earlier conclusion that looked solid either lost strength, or turned out
+to be about something completely different from what it
+seemed.
 
-# Conclusão geral do projeto
+# Overall project conclusion
 
-Depois de 12 partes, a resposta mais honesta pra "qual biblioteca de PPO é
-melhor" é: **a pergunta, do jeito que é normalmente feita, não é
-respondível.** Toda vez que isolamos uma variável -- seeds, dificuldade da
-tarefa, budget, `n_envs`, KL/vf-clip, tratamento de truncamento, e por fim
-hiperparâmetros de configuração -- uma conclusão anterior que parecia
-sólida ou perdeu força, ou se revelou sobre outra coisa completamente
-diferente do que parecia.
+After 12 parts, the most honest answer to "which PPO library is better" is:
+**the question, the way it is usually asked, cannot be answered.** Every time
+we isolated one variable -- seeds, task difficulty, budget, `n_envs`,
+KL/vf-clip, truncation handling, and finally the configuration
+hyperparameters -- an earlier conclusion that looked solid either lost
+strength, or turned out to be about something completely different from what it
+seemed.
 
-A Parte 12 é o exemplo mais extremo disso no projeto inteiro: o RLlib, que
-tinha vencido de forma estatisticamente sólida nas Partes 3, 5 e 10, virou
-o penúltimo colocado assim que a ÚNICA coisa que mudou foi dar
-hiperparâmetros de qualidade a todo mundo igualmente. Não existiu, em
-nenhum momento desse projeto, uma resposta pra "qual lib é melhor" que
-sobrevivesse a mudar o regime de comparação -- a única coisa achada por
-esse projeto que se sustentou universalmente foi o próprio padrão: **a
-biblioteca importa muito menos do que a configuração.**
+Part 12 is the most extreme example of this in the whole project: RLlib,
+which had won in a statistically solid way in Parts 3, 5 and 10, became the
+second-to-last place as soon as the ONLY thing that changed was giving quality
+hyperparameters to everyone equally. At no point in this project did an answer
+to "which lib is better" exist that survived changing the comparison regime --
+the only thing this project found that held universally was the pattern
+itself: **the library matters far less than the
+configuration.**
 
-A única coisa que sobreviveu ao escrutínio inteiro foi a versão qualificada
-da pergunta: "com esse algoritmo, nesse ambiente, com esse budget, com N
-seeds, com esses hiperparâmetros específicos, essa implementação teve essa
-distribuição de resultados." Isso é bem menos vendável que um ranking de
-benchmark, mas é a única coisa que continuou verdadeira depois de mudarmos
-qualquer coisa.
+The only thing that survived the entire scrutiny was the qualified version of
+the question: "with this algorithm, in this environment, with this budget, with
+N seeds, with these specific hyperparameters, this implementation had this
+distribution of results." That is far less marketable than a benchmark ranking,
+but it is the only thing that stayed true after we changed
+anything.
 
-Se isso for alimentar a ideia da sua lib própria de ML: a lição prática
-não é "escolha a lib certa" -- é que a maior parte do que faz um agente de
-RL funcionar bem não está na escolha do framework, está em um punhado de
-decisões de engenharia (normalização, tratamento de truncamento, LR
-annealing, hiperparâmetros calibrados pra tarefa) que qualquer
-implementação -- sua ou de terceiros -- precisa acertar.
+If this is going to feed the idea of your own ML library: the practical lesson
+is not "choose the right lib" -- it is that most of what makes an RL agent
+work well is not in the framework choice, it is in a handful of engineering
+decisions (normalization, truncation handling, LR annealing, hyperparameters
+calibrated for the task) that any implementation -- yours or a third
+party's -- has to get right.

@@ -1,16 +1,17 @@
 """
-Família 1 — Soluções Diretas (Direct Encoding / Parameter Perturbation)
+Family 1 — Direct Solutions (Direct Encoding / Parameter Perturbation)
 
-Algoritmos que evoluem diretamente vetores de soluções/parâmetros sem modelar ou aprender
-uma distribuição de probabilidade explícita sobre o espaço de busca:
-  1. SimpleGA  — Algoritmo Genético clássico com seleção por torneio, SBX crossover e mutação gaussiana
-  2. DE        — Differential Evolution (rand/1/bin, estratégia de Price & Storn 1997)
-  3. OpenAI-ES — Natural Evolution Strategies com perturbações gaussianas isotrópicas de variância
-                 fixa (Salimans et al. 2017). Não aprende distribuição nem covariância: utiliza o
-                 ruído fixo como estimador estocástico de gradiente (NES/finite-difference) para
-                 atualizar diretamente o vetor de parâmetros θ por ascensão de gradiente.
+Algorithms that evolve solution/parameter vectors directly, without modeling or
+learning an explicit probability distribution over the search space:
+  1. SimpleGA  — Classic genetic algorithm with tournament selection, SBX crossover and gaussian mutation
+  2. DE        — Differential Evolution (rand/1/bin, the Price & Storn 1997 strategy)
+  3. OpenAI-ES — Natural Evolution Strategies with isotropic gaussian perturbations of
+                 fixed variance (Salimans et al. 2017). It learns neither a distribution
+                 nor a covariance: it uses the fixed noise as a stochastic gradient
+                 estimator (NES/finite-difference) to update the parameter vector θ
+                 directly by gradient ascent.
 
-Todos seguem a interface comum:
+All of them follow the common interface:
     init(rng, n_params) -> state
     ask(state, rng)     -> (population [pop_size, n_params], state)
     tell(state, ...)    -> state
@@ -23,25 +24,25 @@ import jax.numpy as jnp
 
 
 # ===========================================================================
-# 1. SimpleGA — Algoritmo Genético Clássico
+# 1. SimpleGA — Classic Genetic Algorithm
 # ===========================================================================
 
 class GAState(NamedTuple):
     population:   jnp.ndarray   # [pop_size, n_params]
     fitness:      jnp.ndarray   # [pop_size]
     best_params:  jnp.ndarray   # [n_params]
-    best_fitness: jnp.ndarray   # escalar
-    generation:   jnp.ndarray   # escalar int
+    best_fitness: jnp.ndarray   # scalar
+    generation:   jnp.ndarray   # scalar int
 
 class SimpleGA:
     """
-    Algoritmo Genético com:
-      - Seleção por torneio binário (tournament_size=2)
-      - Crossover SBX (Simulated Binary Crossover, Deb & Agrawal 1995)
-      - Mutação gaussiana adaptativa
-      - Elitismo (1 elite preservada)
+    Genetic Algorithm with:
+      - Binary tournament selection (tournament_size=2)
+      - SBX crossover (Simulated Binary Crossover, Deb & Agrawal 1995)
+      - Adaptive gaussian mutation
+      - Elitism (1 elite preserved)
 
-    Referência: Goldberg, D. E. (1989). Genetic algorithms in search,
+    Reference: Goldberg, D. E. (1989). Genetic algorithms in search,
     optimization and machine learning. Addison-Wesley.
     """
 
@@ -52,8 +53,8 @@ class SimpleGA:
         self.sigma_init = sigma_init
         self.sigma_decay= sigma_decay
         self.sigma_limit= sigma_limit
-        self.cx_eta     = cx_eta     # parâmetro de distribuição SBX
-        self.cx_prob    = cx_prob    # probabilidade de crossover
+        self.cx_eta     = cx_eta     # SBX distribution parameter
+        self.cx_prob    = cx_prob    # crossover probability
 
     def init(self, rng: jax.Array, n_params: int) -> GAState:
         pop = jax.random.normal(rng, (self.pop_size, n_params)) * self.sigma_init
@@ -75,7 +76,7 @@ class SimpleGA:
             self.sigma_limit
         )
 
-        # Atualiza elite
+        # Update the elite
         best_idx     = jnp.argmax(fitness)
         best_fitness = jnp.where(fitness[best_idx] > state.best_fitness,
                                  fitness[best_idx], state.best_fitness)
@@ -84,7 +85,7 @@ class SimpleGA:
 
         rng, r1, r2, r3, r4 = jax.random.split(rng, 5)
 
-        # Seleção por torneio binário para criar pop_size pais (a e b)
+        # Binary tournament selection to create pop_size parents (a and b)
         idx_a1 = jax.random.randint(r1, (pop_size,), 0, pop_size)
         idx_a2 = jax.random.randint(r2, (pop_size,), 0, pop_size)
         idx_b1 = jax.random.randint(r3, (pop_size,), 0, pop_size)
@@ -110,12 +111,12 @@ class SimpleGA:
         child    = 0.5 * ((1 + beta) * parent_a + (1 - beta) * parent_b)
         offspring = jnp.where(do_cx[:, None], child, parent_a)
 
-        # Mutação gaussiana
+        # Gaussian mutation
         rng, r_mut = jax.random.split(rng)
         noise     = jax.random.normal(r_mut, offspring.shape) * sigma
         offspring = offspring + noise
 
-        # Elitismo: substitui o pior por best_params
+        # Elitism: replace the worst individual with best_params
         worst_idx  = jnp.argmin(fitness)
         offspring  = offspring.at[worst_idx].set(best_params)
 
@@ -144,13 +145,13 @@ class DEState(NamedTuple):
 
 class DE:
     """
-    Differential Evolution — estratégia rand/1/bin (Price, Storn & Lampinen 2005).
+    Differential Evolution — rand/1/bin strategy (Price, Storn & Lampinen 2005).
 
-    Mutação:    v_i = x_r1 + F * (x_r2 - x_r3)
-    Crossover:  u_ij = v_ij se U(0,1) < CR, senão x_ij
-    Seleção:    greedy one-to-one (preserva indivíduo diretamente se trial for pior)
+    Mutation:    v_i = x_r1 + F * (x_r2 - x_r3)
+    Crossover:  u_ij = v_ij if U(0,1) < CR, otherwise x_ij
+    Selection:    greedy one-to-one (keeps the individual directly if the trial is worse)
 
-    Parâmetros padrão: F=0.8, CR=0.9 (recomendados em Storn & Price 1997).
+    Default parameters: F=0.8, CR=0.9 (as recommended in Storn & Price 1997).
     """
 
     def __init__(self, pop_size: int = 64, F: float = 0.8, CR: float = 0.9,
@@ -171,11 +172,11 @@ class DE:
         )
 
     def ask(self, state: DEState, rng: jax.Array):
-        """Gera população de vetores trial (mutação + crossover)."""
+        """Generates the population of trial vectors (mutation + crossover)."""
         pop_size, n_params = state.population.shape
         rng, r1, r2, r3, r4 = jax.random.split(rng, 5)
 
-        # Amostragem de r1, r2, r3 distintos (aproximação via permutação)
+        # Sampling of distinct r1, r2, r3 (approximation via permutation)
         idx_r1 = jax.random.randint(r1, (pop_size,), 0, pop_size)
         idx_r2 = jax.random.randint(r2, (pop_size,), 0, pop_size)
         idx_r3 = jax.random.randint(r3, (pop_size,), 0, pop_size)
@@ -184,12 +185,12 @@ class DE:
         x_r2 = state.population[idx_r2]
         x_r3 = state.population[idx_r3]
 
-        # Vetor mutante
+        # Mutant vector
         v = x_r1 + self.F * (x_r2 - x_r3)
 
-        # Crossover binomial
+        # Binomial crossover
         mask  = jax.random.uniform(r4, (pop_size, n_params)) < self.CR
-        # Garante ao menos 1 gene do mutante por indivíduo
+        # Guarantee at least 1 mutant gene per individual
         j_rand = jax.random.randint(rng, (pop_size,), 0, n_params)
         mask   = mask.at[jnp.arange(pop_size), j_rand].set(True)
 
@@ -198,7 +199,7 @@ class DE:
 
     def tell(self, state: DEState, trial_fitness: jnp.ndarray,
              trial: jnp.ndarray) -> DEState:
-        """Seleção greedy: mantém trial se melhor que o pai."""
+        """Greedy selection: keeps the trial when it is better than the parent."""
         improved = trial_fitness > state.fitness
         new_pop  = jnp.where(improved[:, None], trial, state.population)
         new_fit  = jnp.where(improved, trial_fitness, state.fitness)
@@ -220,40 +221,40 @@ class DE:
 
 
 # ===========================================================================
-# 3. OpenAI-ES — Natural Evolution Strategies (Solução Direta / Perturbação de Parâmetros)
+# 3. OpenAI-ES — Natural Evolution Strategies (Direct Solution / Parameter Perturbation)
 # ===========================================================================
 
 class OpenAIESState(NamedTuple):
-    mean:         jnp.ndarray   # [n_params] centróide / vetor de parâmetros θ
-    sigma:        jnp.ndarray   # escalar step-size atual (isotrópico fixo com decaimento)
-    noise:        jnp.ndarray   # [pop_size//2, n_params] perturbações antitéticas
+    mean:         jnp.ndarray   # [n_params] centroid / parameter vector θ
+    sigma:        jnp.ndarray   # current step-size scalar (fixed isotropic one with decay)
+    noise:        jnp.ndarray   # [pop_size//2, n_params] antithetic perturbations
     best_params:  jnp.ndarray   # [n_params]
-    best_fitness: jnp.ndarray   # escalar
+    best_fitness: jnp.ndarray   # scalar
     generation:   jnp.ndarray
 
 class OpenAIES:
     """
     OpenAI-ES (Salimans et al. 2017).
     
-    Classificação taxonômica: Família 1 (Soluções Diretas).
-    Diferente de EDAs (como CMA-ES ou PBIL), o OpenAI-ES não aprende nem adapta
-    uma matriz de covariância ou distribuição probabilística. Ele perturba um
-    único vetor de parâmetros θ com ruído gaussiano isotrópico de escala fixa σ,
-    calcula um estimador Monte Carlo de gradiente por diferenças finitas/score function:
+    Taxonomic classification: Family 1 (Direct Solutions).
+    Unlike EDAs (such as CMA-ES or PBIL), OpenAI-ES neither learns nor adapts
+    a covariance matrix or a probability distribution. It perturbs a
+    single parameter vector θ with isotropic gaussian noise of fixed scale σ,
+    computes a Monte Carlo gradient estimator by finite differences/score function:
         ∇_θ E[f] ≈ 1 / (σ N) Σ f(θ + σ ε_i) ε_i
-    e atualiza diretamente θ via gradiente ascendente (SGD/Adam). O vetor de
-    parâmetros em si é a solução direta que evolui no espaço de busca.
+    and updates θ directly by gradient ascent (SGD/Adam). The parameter vector
+    itself is the direct solution that evolves in the search space.
 
-    Recursos implementados:
-      - Perturbação antitética (mirrored sampling) para redução de variância
-      - Normalização de fitness (rank-based fitness shaping)
-      - Decaimento programado de learning rate e taxa de perturbação
+    Implemented features:
+      - Antithetic perturbation (mirrored sampling) for variance reduction
+      - Fitness normalization (rank-based fitness shaping)
+      - Scheduled decay of the learning rate and of the perturbation scale
     """
 
     def __init__(self, pop_size: int = 64, sigma: float = 0.05,
                  lr: float = 0.01, sigma_decay: float = 0.999,
                  sigma_limit: float = 0.001, lr_decay: float = 0.9999):
-        assert pop_size % 2 == 0, "pop_size deve ser par (perturbação antitética)"
+        assert pop_size % 2 == 0, "pop_size must be even (antithetic perturbation)"
         self.pop_size    = pop_size
         self.sigma_init  = sigma
         self.lr          = lr
@@ -275,7 +276,7 @@ class OpenAIES:
         half = self.pop_size // 2
         n    = state.mean.shape[0]
         noise = jax.random.normal(rng, (half, n))
-        # Perturbações antitéticas: [+ε₁, −ε₁, +ε₂, −ε₂, ...]
+        # Antithetic perturbations: [+ε₁, −ε₁, +ε₂, −ε₂, ...]
         pop_plus  = state.mean[None, :] + state.sigma * noise
         pop_minus = state.mean[None, :] - state.sigma * noise
         population = jnp.concatenate([pop_plus, pop_minus], axis=0)
@@ -290,17 +291,17 @@ class OpenAIES:
         half  = self.pop_size // 2
         noise = state.noise  # [half, n_params]
 
-        # Fitness shaping: rank-based normalization (0-centrado)
+        # Fitness shaping: rank-based normalization (zero-centered)
         ranks    = jnp.argsort(jnp.argsort(fitness))  # rank 0..pop-1
         shaped   = (ranks.astype(float) / (self.pop_size - 1)) - 0.5
 
-        # Gradiente NES: (1/n*σ) Σ shaped_i * ε_i
-        # Para perturbações antitéticas: F(+ε) e F(−ε) → diferença
+        # NES gradient: (1/n*σ) Σ shaped_i * ε_i
+        # For antithetic perturbations: F(+ε) and F(−ε) → difference
         f_plus  = shaped[:half]
         f_minus = shaped[half:]
         gradient = ((f_plus - f_minus)[:, None] * noise).mean(axis=0)
 
-        # Learning rate com decaimento
+        # Learning rate with decay
         lr    = self.lr * (self.lr_decay ** state.generation.astype(float))
         lr    = jnp.maximum(lr, 1e-5)
 
@@ -310,7 +311,7 @@ class OpenAIES:
             self.sigma_limit
         )
 
-        # Elite global
+        # Global elite
         best_idx  = jnp.argmax(fitness)
         pop_plus  = state.mean[None, :] + state.sigma * state.noise
         pop_minus = state.mean[None, :] - state.sigma * state.noise

@@ -1,7 +1,7 @@
-"""PPO com Tianshou 2.x. A API mudou bastante na v2 (policy -> algorithm,
-classes renomeadas) -- baseado no exemplo oficial test/continuous/test_ppo.py
-do repositório, adaptado pra ação discreta (DiscreteActor/DiscreteCritic +
-Categorical em vez de Normal)."""
+"""PPO with Tianshou 2.x. The API changed a lot in v2 (policy -> algorithm,
+classes renamed) -- based on the repository's official example test/continuous/test_ppo.py,
+adapted for discrete actions (DiscreteActor/DiscreteCritic +
+Categorical instead of Normal)."""
 import time
 import sys
 sys.path.insert(0, "/home/claude/ppo-benchmark/scripts")
@@ -40,9 +40,9 @@ def main():
     net_c = Net(state_shape=obs_dim, hidden_sizes=hidden_sizes)
     critic = DiscreteCritic(preprocess_net=net_c)
 
-    # inicialização ortogonal com os mesmos gains usados nas outras libs
-    # (aqui aplicado de forma uniforme por módulo, já que a API não separa
-    # facilmente "última camada" do resto sem subclassificar)
+    # orthogonal initialization with the same gains used by the other libs
+    # (applied uniformly per module here, since the API doesn't easily separate
+    # the "last layer" from the rest without subclassing)
     gh = cfg["ortho_gain_hidden"]
     for m in actor.modules():
         if isinstance(m, torch.nn.Linear):
@@ -103,8 +103,8 @@ def main():
     )
     elapsed = time.time() - t0
 
-    # Tianshou não expõe facilmente uma curva de reward no mesmo formato das
-    # outras libs sem um test_collector -- registramos só o resultado final
+    # without a test_collector, Tianshou doesn't easily expose a reward curve in the same
+    # format as the other libs -- we only record the final result
     save_result("tianshou", elapsed, [])
 
     def act_fn(obs):

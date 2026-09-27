@@ -1,3 +1,7 @@
+"""PPO with Stable-Baselines3, the reference framework arm: n_envs DummyVecEnvs with an
+MlpPolicy on SB3's own orthogonal init, a callback that harvests ep_info_buffer for the training
+curve, then the shared stochastic evaluation of the frozen policy.
+"""
 import time
 import sys
 sys.path.insert(0, "/home/claude/ppo-benchmark/scripts")
@@ -37,7 +41,7 @@ def main():
     policy_kwargs = dict(
         net_arch=dict(pi=list(cfg["hidden_sizes"]), vf=list(cfg["hidden_sizes"])),
         activation_fn=nn.Tanh,
-        ortho_init=True,  # gains: sqrt(2) hidden, 0.01 policy-out, 1.0 value-out (default do SB3, igual às outras libs)
+        ortho_init=True,  # gains: sqrt(2) hidden, 0.01 policy-out, 1.0 value-out (SB3 default, same as the other libs)
         optimizer_kwargs=dict(eps=cfg["adam_eps"]),
     )
 

@@ -1,11 +1,11 @@
 """
 train_neat.py
 =============
-Gerenciador de benchmark pareado do agente NEAT (MarIO original).
+Paired benchmark manager for the NEAT agent (original MarIO).
 
-Executa o BizHawk em modo turbo (speedmode 600) por tempo idêntico ao GP (180s),
-monitora a evolução das espécies e genomas, persiste os checkpoints e extrai
-as métricas de fitness para comparação direta.
+Runs BizHawk in turbo mode (speedmode 600) for exactly the same duration as GP (180s),
+monitors the evolution of species and genomes, persists the checkpoints and extracts
+the fitness metrics for direct comparison.
 """
 
 import os
@@ -25,10 +25,10 @@ LOG_FILE = BIZHAWK_DIR / "neat_training_results.txt"
 
 def run_neat_benchmark(duration_seconds: int = 180):
     print("=" * 65)
-    print("  INICIANDO SESSÃO DE BENCHMARK DO AGENTE NEAT (PAREADO)")
+    print("  STARTING THE PAIRED NEAT AGENT BENCHMARK SESSION")
     print("=" * 65)
-    print(f"Duração planejada: {duration_seconds} segundos (speedmode 600)")
-    print(f"Emulador: {EMUHAWK_EXE}")
+    print(f"Planned duration: {duration_seconds} seconds (speedmode 600)")
+    print(f"Emulator: {EMUHAWK_EXE}")
     print(f"Script:   {LUA_SCRIPT}")
     print(f"ROM:      {ROM_FILE.name}\n")
 
@@ -50,27 +50,27 @@ def run_neat_benchmark(duration_seconds: int = 180):
                     lines = LOG_FILE.read_text(encoding="utf-8", errors="ignore").splitlines()
                     if len(lines) > last_count:
                         last_count = len(lines)
-                        print(f"[{elapsed:3d}s] Avaliações: {len(lines)} | Último: {lines[-1]}")
+                        print(f"[{elapsed:3d}s] Evaluations: {len(lines)} | Last: {lines[-1]}")
                 except Exception:
                     pass
     except KeyboardInterrupt:
-        print("\nInterrupção recebida.")
+        print("\nInterrupt received.")
     finally:
-        print(f"\nFinalizando sessão NEAT ({int(time.time() - start_time)}s decorridos)...")
+        print(f"\nEnding the NEAT session ({int(time.time() - start_time)}s elapsed)...")
         proc.terminate()
         try:
             proc.wait(timeout=5)
         except subprocess.TimeoutExpired:
             proc.kill()
 
-    # Copia resultados para o repositório
+    # Copy the results into the repository
     if LOG_FILE.exists():
         shutil.copy2(LOG_FILE, REPO_DIR / "neat_training_results.txt")
-        print("\n[OK] Resultados gravados em neat_training_results.txt")
+        print("\n[OK] Results written to neat_training_results.txt")
 
     for f in BIZHAWK_DIR.glob("*.pool"):
         shutil.copy2(f, REPO_DIR / f.name)
-        print(f"[OK] Pool preservado: {f.name}")
+        print(f"[OK] Pool preserved: {f.name}")
 
 
 if __name__ == "__main__":

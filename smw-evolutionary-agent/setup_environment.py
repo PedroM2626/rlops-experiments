@@ -1,13 +1,13 @@
 """
 setup_environment.py
 ====================
-Validação e preparação automatizada do ambiente para o smw-evolutionary-agent.
+Automated environment validation and preparation for smw-evolutionary-agent.
 
-Verifica:
-  1. Integridade criptográfica da ROM de Super Mario World (USA) via SHA-1.
-  2. Presença e configuração dos executáveis e bibliotecas do BizHawk 2.9.1.
-  3. Integridade e formato do savestate nativo DP1.state.
-  4. Presença dos scripts evolucionários: MarIO.lua (NEAT) e MarIO_GP.lua (Genetic Programming).
+Checks:
+  1. Cryptographic integrity of the Super Mario World (USA) ROM via SHA-1.
+  2. Presence and configuration of the BizHawk 2.9.1 executables and libraries.
+  3. Integrity and format of the native DP1.state savestate.
+  4. Presence of the evolutionary scripts: MarIO.lua (NEAT) and MarIO_GP.lua (Genetic Programming).
 """
 
 from __future__ import annotations
@@ -29,40 +29,40 @@ ROM_SHA1_USA = "6b47bb75d16514b6a476aa0c73a683a2a4c18765"
 
 
 def check_rom() -> bool:
-    print("\n[1/4] Verificando integridade da ROM...")
+    print("\n[1/4] Checking ROM integrity...")
     if not ROM_REPO.exists():
-        print(f"  [ERRO] ROM não encontrada em: {ROM_REPO}")
+        print(f"  [ERROR] ROM not found at: {ROM_REPO}")
         return False
 
     data = ROM_REPO.read_bytes()
     sha1 = hashlib.sha1(data).hexdigest()
-    print(f"  Arquivo : {ROM_REPO.name}")
-    print(f"  Tamanho : {len(data) // 1024} KB")
+    print(f"  File    : {ROM_REPO.name}")
+    print(f"  Size    : {len(data) // 1024} KB")
     print(f"  SHA-1   : {sha1}")
 
     if sha1 == ROM_SHA1_USA:
-        print("  [OK] SHA-1 oficial verificado (dump idêntico ao benchmark de referência).")
+        print("  [OK] Official SHA-1 verified (dump identical to the reference benchmark).")
     else:
-        print(f"  [AVISO] SHA-1 difere do padrão ({ROM_SHA1_USA}).")
+        print(f"  [WARNING] SHA-1 differs from the expected value ({ROM_SHA1_USA}).")
 
     if not ROM_BIZHAWK.exists() or ROM_BIZHAWK.stat().st_size != len(data):
         shutil.copy2(ROM_REPO, ROM_BIZHAWK)
-        print("  [OK] ROM sincronizada com C:\\BizHawk\\")
+        print("  [OK] ROM synchronized with C:\\BizHawk\\")
     return True
 
 
 def check_emulator() -> bool:
-    print("\n[2/4] Verificando emulador BizHawk...")
+    print("\n[2/4] Checking the BizHawk emulator...")
     if not EMUHAWK_EXE.exists():
-        print(f"  [ERRO] BizHawk não encontrado em {EMUHAWK_EXE}")
+        print(f"  [ERROR] BizHawk not found at {EMUHAWK_EXE}")
         return False
 
-    print(f"  [OK] Executável BizHawk encontrado: {EMUHAWK_EXE}")
+    print(f"  [OK] BizHawk executable found: {EMUHAWK_EXE}")
     return True
 
 
 def check_savestate() -> bool:
-    print("\n[3/4] Verificando savestate nativo (DP1.state)...")
+    print("\n[3/4] Checking the native savestate (DP1.state)...")
     valid_in_repo = STATE_REPO.exists() and STATE_REPO.stat().st_size > 10_000
     valid_in_biz = STATE_BIZHAWK.exists() and STATE_BIZHAWK.stat().st_size > 10_000
 
@@ -70,18 +70,18 @@ def check_savestate() -> bool:
         with open(STATE_REPO, "rb") as f:
             magic = f.read(4)
         if magic.startswith(b"PK") or magic.startswith(b"BZh"):
-            print(f"  [OK] Savestate nativo verificado no repositório ({STATE_REPO.stat().st_size // 1024} KB).")
+            print(f"  [OK] Native savestate verified in the repository ({STATE_REPO.stat().st_size // 1024} KB).")
             if not valid_in_biz:
                 shutil.copy2(STATE_REPO, STATE_BIZHAWK)
-                print("  [OK] DP1.state sincronizado com C:\\BizHawk\\")
+                print("  [OK] DP1.state synchronized with C:\\BizHawk\\")
             return True
 
-    print("  [INFO] DP1.state necessita ser gerado no primeiro lançamento.")
+    print("  [INFO] DP1.state must be generated on the first launch.")
     return True
 
 
 def check_scripts() -> bool:
-    print("\n[4/4] Verificando scripts evolucionários...")
+    print("\n[4/4] Checking the evolutionary scripts...")
     scripts = ["MarIO.lua", "MarIO_GP.lua"]
     all_ok = True
     for s in scripts:
@@ -89,16 +89,16 @@ def check_scripts() -> bool:
         dst = BIZHAWK_DIR / s
         if src.exists():
             shutil.copy2(src, dst)
-            print(f"  [OK] {s} ({src.stat().st_size // 1024} KB) copiado para BizHawk.")
+            print(f"  [OK] {s} ({src.stat().st_size // 1024} KB) copied to BizHawk.")
         else:
-            print(f"  [ERRO] {s} não encontrado no repositório.")
+            print(f"  [ERROR] {s} not found in the repository.")
             all_ok = False
     return all_ok
 
 
 def main():
     print("=" * 60)
-    print("  SMW EVOLUTIONARY AGENT - SETUP E VALIDAÇÃO")
+    print("  SMW EVOLUTIONARY AGENT - SETUP AND VALIDATION")
     print("=" * 60)
 
     ok_rom = check_rom()
@@ -108,13 +108,13 @@ def main():
 
     print("\n" + "=" * 60)
     if ok_rom and ok_emu and ok_state and ok_scripts:
-        print("  STATUS: AMBIENTE 100% CONFIGURADO E OPERACIONAL!")
+        print("  STATUS: ENVIRONMENT 100% CONFIGURED AND OPERATIONAL!")
         print("=" * 60)
-        print("\nPara iniciar o agente de forma totalmente autônoma:")
-        print("  python launch_mario.py       # Para rodar NEAT")
-        print("  python launch_mario.py --gp  # Para rodar Genetic Programming\n")
+        print("\nTo start the agent in a fully autonomous way:")
+        print("  python launch_mario.py       # Run NEAT")
+        print("  python launch_mario.py --gp  # Run Genetic Programming\n")
     else:
-        print("  STATUS: FALHA NA CONFIGURAÇÃO. Verifique as mensagens acima.")
+        print("  STATUS: SETUP FAILED. Check the messages above.")
         print("=" * 60)
         sys.exit(1)
 

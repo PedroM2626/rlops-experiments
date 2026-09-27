@@ -1,4 +1,4 @@
-# Chase (Pega-Pega) - Humanoid RL Environment
+# Chase - Humanoid RL Environment
 
 ## Overview
 This project contains an interactive reinforcement learning environment `ChaseEnv` using PyBullet, where an AI agent humanoid learns to survive and outrun another rule-based humanoid chaser mimicking human gait in a TAG game.

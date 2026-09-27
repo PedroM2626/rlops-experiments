@@ -1,13 +1,13 @@
-"""SB3 com os hiperparâmetros OFICIAIS do RL Baselines3 Zoo especificamente
-pro LunarLander (github.com/DLR-RM/rl-baselines3-zoo, hyperparams/ppo.yml),
-em vez dos hiperparâmetros genéricos de common.py (que foram calibrados
-pro CartPole). Objetivo: confirmar se reward negativo nas outras
-implementações é config ruim pra essa tarefa, não bug.
+"""SB3 with the OFFICIAL RL Baselines3 Zoo hyperparameters specifically
+for LunarLander (github.com/DLR-RM/rl-baselines3-zoo, hyperparams/ppo.yml),
+instead of the generic hyperparameters from common.py (which were calibrated
+for CartPole). Goal: confirm whether the negative reward in the other
+implementations is a bad config for this task, not a bug.
 
-Hiperparâmetros do Zoo pra LunarLander-v3:
+Zoo hyperparameters for LunarLander-v3:
     n_envs: 16, n_steps: 1024, batch_size: 64, gae_lambda: 0.98,
     gamma: 0.999, n_epochs: 4, ent_coef: 0.01
-    (lr, clip_range, vf_coef, max_grad_norm, arquitetura: default do SB3)
+    (lr, clip_range, vf_coef, max_grad_norm, architecture: SB3 default)
 """
 import time
 import sys

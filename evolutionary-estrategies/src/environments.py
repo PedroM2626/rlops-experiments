@@ -1,12 +1,12 @@
 """
-Wrappers sobre gymnax para avaliação vetorizada de fitness.
+Wrappers around gymnax for vectorized fitness evaluation.
 
-Cada ambiente expõe `rollout(flat_params, rng) -> mean_return`.
-A política é um MLP 2 camadas compartilhado por todos os algoritmos:
+Each environment exposes `rollout(flat_params, rng) -> mean_return`.
+The policy is a 2-layer MLP shared by all algorithms:
     obs (obs_dim) -> Dense(32) -> tanh -> Dense(32) -> tanh -> Dense(act_dim)
 
-Para discreto: argmax(logits)
-Para contínuo: tanh(logits) * action_scale
+For discrete actions: argmax(logits)
+For continuous actions: tanh(logits) * action_scale
 """
 from __future__ import annotations
 from typing import Callable, Dict, Any
@@ -15,7 +15,7 @@ import jax.numpy as jnp
 
 
 # ---------------------------------------------------------------------------
-# Metadados dos ambientes
+# Environment metadata
 # ---------------------------------------------------------------------------
 
 ENV_META: Dict[str, Dict[str, Any]] = {
@@ -25,18 +25,18 @@ ENV_META: Dict[str, Dict[str, Any]] = {
     "MountainCarContinuous-v0": dict(obs_dim=2,  act_dim=1,  discrete=False, max_steps=999,  act_scale=1.0),
 }
 
-HIDDEN = 32  # neurônios nas camadas ocultas
+HIDDEN = 32  # neurons in the hidden layers
 
 
 def param_count(env_name: str) -> int:
-    """Número total de parâmetros da política MLP para o ambiente dado."""
+    """Total number of MLP policy parameters for the given environment."""
     m = ENV_META[env_name]
     obs, act = m["obs_dim"], m["act_dim"]
     return (obs * HIDDEN + HIDDEN) + (HIDDEN * HIDDEN + HIDDEN) + (HIDDEN * act + act)
 
 
 def unpack_params(flat: jnp.ndarray, obs_dim: int, act_dim: int):
-    """Desempacota vetor plano em pesos/biases do MLP."""
+    """Unpacks a flat vector into the MLP weights/biases."""
     h = HIDDEN
     idx = 0
     W1 = flat[idx: idx + obs_dim * h].reshape(obs_dim, h); idx += obs_dim * h
@@ -50,7 +50,7 @@ def unpack_params(flat: jnp.ndarray, obs_dim: int, act_dim: int):
 
 def forward_mlp(flat: jnp.ndarray, obs: jnp.ndarray,
                 obs_dim: int, act_dim: int) -> jnp.ndarray:
-    """Passagem direta do MLP."""
+    """Forward pass of the MLP."""
     W1, b1, W2, b2, W3, b3 = unpack_params(flat, obs_dim, act_dim)
     x = jnp.tanh(obs @ W1 + b1)
     x = jnp.tanh(x @ W2 + b2)
@@ -59,13 +59,13 @@ def forward_mlp(flat: jnp.ndarray, obs: jnp.ndarray,
 
 def make_rollout_fn(env_name: str, n_rollouts: int = 8) -> Callable:
     """
-    Retorna função JIT-compilada:
+    Returns the JIT-compiled function:
         rollout(flat_params: [n_params], rng) -> scalar mean return
 
-    Parâmetros
+    Parameters
     ----------
-    env_name   : nome do ambiente gymnax
-    n_rollouts : número de episódios para média (reduz variância)
+    env_name   : name of the gymnax environment
+    n_rollouts : number of episodes used for the average (reduces variance)
     """
     import gymnax
     env, env_params = gymnax.make(env_name)
@@ -113,7 +113,8 @@ def make_rollout_fn(env_name: str, n_rollouts: int = 8) -> Callable:
 
 def make_pop_eval_fn(env_name: str, n_rollouts: int = 8) -> Callable:
     """
-    Retorna função que avalia uma população inteira em paralelo (vmap sobre indivíduos):
+    Returns a function that evaluates an entire population in parallel
+    (vmap over individuals):
         evaluate(pop [pop_size, n_params], rng) -> fitness [pop_size]
     """
     rollout_fn = make_rollout_fn(env_name, n_rollouts)

@@ -1,219 +1,219 @@
-# Benchmark Científico: 3 Famílias de Algoritmos Evolutivos em Reinforcement Learning com JAX
+# Scientific Benchmark: 3 Families of Evolutionary Algorithms for Reinforcement Learning with JAX
 
-Comparação experimental, conceitual e algorítmica rigorosa de **3 famílias de algoritmos evolutivos** aplicados a problemas canônicos de Reinforcement Learning (RL), com aceleração de avaliação via compilação vetorial em **JAX** (`vmap` + `jit`).
+A rigorous experimental, conceptual, and algorithmic comparison of **3 families of evolutionary algorithms** applied to canonical Reinforcement Learning (RL) problems, with evaluation accelerated through vectorized compilation in **JAX** (`vmap` + `jit`).
 
 ---
 
-## 1. Fundamentação Teórica e Taxonomia Estrutural
+## 1. Theoretical Foundations and Structural Taxonomy
 
-A taxonomia formal da computação evolutiva deve ser definida pelo **objeto matemático que sofre variação e seleção ao longo do tempo**, e não por nomenclaturas históricas:
+A formal taxonomy of evolutionary computation must be defined by the **mathematical object that undergoes variation and selection over time**, not by historical nomenclature:
 
 ```
                                   ┌─────────────────────────────┐
-                                  │   Algoritmos Evolutivos     │
+                                  │   Evolutionary Algorithms   │
                                   └──────────────┬──────────────┘
             ┌────────────────────────────────────┼────────────────────────────────────┐
             ▼                                    ▼                                    ▼
 ┌──────────────────────────────┐   ┌──────────────────────────────┐   ┌──────────────────────────────┐
-│  Família 1: Soluções Diretas │   │   Família 2: Programas       │   │  Família 3: Modelos (EDA)    │
+│  Family 1: Direct Solutions  │   │  Family 2: Programs          │   │  Family 3: Models (EDA)      │
 │  (Direct Representations)    │   │   (Genetic Programming)      │   │  (Estimation of Distribution)│
 ├──────────────────────────────┤   ├──────────────────────────────┤   ├──────────────────────────────┤
-│ • Objeto: vetor de parâmetros│   │ • Objeto: sequência/grafo de │   │ • Objeto: distribuição de   │
-│   θ ou população de vetores  │   │   instruções computacionais  │   │   probabilidade P(x; Θ)      │
-│ • Indivíduos são persistidos,│   │ • Fenótipo executado como    │   │ • Indivíduos são amostras    │
-│   mutados e recombinados     │   │   função simbólica direta    │   │   temporárias descartáveis   │
-│ • Métodos:                   │   │ • Métodos:                   │   │ • Métodos:                   │
+│ • Object: parameter vector   │   │ • Object: sequence/graph of  │   │ • Object: probability        │
+│   θ or vector population     │   │   computational instructions │   │   distribution P(x; Θ)       │
+│ • Individuals are persisted, │   │ • Phenotype executed as a    │   │ • Individuals are temporary  │
+│   mutated and recombined     │   │   symbolic function directly │   │   disposable samples         │
+│ • Methods:                   │   │ • Methods:                   │   │ • Methods:                   │
 │   - SimpleGA (Goldberg 1989) │   │   - LinearGP (Banzhaf 2007)  │   │   - CMA-ES (Hansen 2001/2016)│
 │   - DE (Price & Storn 1997)  │   │   - CartesianGP (Miller 2000)│   │   - PBIL (Baluja 1994)       │
 │   - OpenAI-ES (Salimans 2017)│   │                              │   │                              │
 └──────────────────────────────┘   └──────────────────────────────┘   └──────────────────────────────┘
 ```
 
-### 1.1 Por que CMA-ES é inequivocamente Família 3 (Modelos / EDA)?
-O **CMA-ES** (*Covariance Matrix Adaptation Evolution Strategy*, Hansen & Ostermeier 2001; Hansen 2016) possui a assinatura canônica de um **Estimation of Distribution Algorithm (EDA)** contínuo de segunda ordem:
-1. **Ausência de Hereditariedade Genômica Indivíduo-Indivíduo**: Não existe preservação, mutação pontual ou recombinação direta de indivíduos-pais. A cada geração $g$, uma população inteira de $\lambda$ indivíduos é gerada por amostragem independente de uma distribuição Gaussiana multivariada:
+### 1.1 Why Is CMA-ES Unambiguously Family 3 (Models / EDA)?
+**CMA-ES** (*Covariance Matrix Adaptation Evolution Strategy*, Hansen & Ostermeier 2001; Hansen 2016) carries the canonical signature of a continuous second-order **Estimation of Distribution Algorithm (EDA)**:
+1. **No Individual-to-Individual Genomic Heredity**: Parent individuals are never preserved, point-mutated, or directly recombined. At each generation $g$, an entire population of $\lambda$ individuals is produced by independent sampling from a multivariate Gaussian distribution:
    $$x_k \sim \mathcal{N}\left(\mu^{(g)}, (\sigma^{(g)})^2 \Sigma^{(g)}\right), \quad k = 1, \dots, \lambda$$
-2. **População 100% Descartável**: Calculados os retornos de fitness, **todos os indivíduos são descartados**. Nenhum genoma transita fisicamente para a geração seguinte.
-3. **Evolução Paramétrica da Distribuição**: O que evolui iterativamente são os hiperparâmetros do modelo probabilístico:
-   - **Vetor de média $\mu$**: Deslocamento guiado pela recombinação intermediária ponderada das $\mu_{\text{eff}}$ melhores amostras.
-   - **Step-size global $\sigma$ (CSA)**: Adaptação cumulativa do comprimento de passo baseada no caminho de evolução conjugado $p_\sigma$.
-   - **Matriz de Covariância $\Sigma$ (CMA)**: Adaptação de segunda ordem via *rank-one update* (acumulando o caminho anisotrópico $p_c$) e *rank-$\mu$ update* (estimador empírico da dispersão da elite).
-4. Em toda a literatura moderna de otimização estocástica (Larrañaga & Lozano 2002), o CMA-ES é reconhecido como o expoente dos EDAs contínuos, aprendendo a métrica de curvatura Riemanniana / inversa da Hessiana da função de fitness.
+2. **100% Disposable Population**: Once the fitness returns are computed, **every individual is discarded**. No genome physically carries over into the next generation.
+3. **Parametric Evolution of the Distribution**: What evolves iteratively are the hyperparameters of the probabilistic model:
+   - **Mean vector $\mu$**: Shift driven by the weighted intermediate recombination of the $\mu_{\text{eff}}$ best samples.
+   - **Global step-size $\sigma$ (CSA)**: Cumulative step-length adaptation based on the conjugate evolution path $p_\sigma$.
+   - **Covariance matrix $\Sigma$ (CMA)**: Second-order adaptation via a *rank-one update* (accumulating the anisotropic path $p_c$) and a *rank-$\mu$ update* (empirical estimator of the elite dispersion).
+4. Throughout the modern stochastic-optimization literature (Larrañaga & Lozano 2002), CMA-ES is recognized as the flagship of continuous EDAs, learning the Riemannian curvature metric / inverse Hessian of the fitness function.
 
-### 1.2 Por que OpenAI-ES pertence à Família 1 (Soluções Diretas)?
-O algoritmo proposto por Salimans et al. (2017) (**OpenAI-ES**), apesar do termo histórico "Evolution Strategy", **não aprende nem mantém qualquer modelo de distribuição probabilística**:
-1. Não existe matriz de covariância adaptativa, nem distribuição paramétrica sendo aprendida. A perturbação utilizada é ruído Gaussiano isotrópico com variância fixa $\epsilon \sim \mathcal{N}(0, I)$.
-2. O algoritmo mantém um **único vetor de parâmetros $\theta \in \mathbb{R}^d$** correspondente aos pesos da rede neural.
-3. As perturbações aleatórias atuam exclusivamente como um **estimador estocástico de gradiente por diferenças finitas / score-function (NES)**:
+### 1.2 Why Does OpenAI-ES Belong to Family 1 (Direct Solutions)?
+The algorithm proposed by Salimans et al. (2017) (**OpenAI-ES**), despite the historical term "Evolution Strategy", **neither learns nor maintains any probabilistic distribution model**:
+1. There is no adaptive covariance matrix and no parametric distribution being learned. The perturbation used is isotropic Gaussian noise with fixed variance $\epsilon \sim \mathcal{N}(0, I)$.
+2. The algorithm maintains a **single parameter vector $\theta \in \mathbb{R}^d$** holding the neural network weights.
+3. The random perturbations act exclusively as a **stochastic finite-difference / score-function (NES) gradient estimator**:
    $$\nabla_\theta \mathbb{E}_{\epsilon \sim \mathcal{N}(0, I)} [f(\theta + \sigma \epsilon)] = \frac{1}{\sigma} \mathbb{E}_{\epsilon} [f(\theta + \sigma \epsilon) \epsilon] \approx \frac{1}{2 n \sigma} \sum_{i=1}^n \left( f(\theta + \sigma \epsilon_i) - f(\theta - \sigma \epsilon_i) \right) \epsilon_i$$
-4. O vetor de parâmetros é atualizado diretamente por ascensão de gradiente com otimizador determinístico (SGD/Adam): $\theta \leftarrow \theta + \alpha \widehat{\nabla} f$.
-5. Trata-se, portanto, de uma busca direta no espaço de parâmetros de uma única solução (análoga a algoritmos de hill-climbing e perturbação direta), sem modelagem de densidade probabilística.
+4. The parameter vector is updated directly by gradient ascent with a deterministic optimizer (SGD/Adam): $\theta \leftarrow \theta + \alpha \widehat{\nabla} f$.
+5. It is therefore a direct single-solution search in parameter space (analogous to hill-climbing and direct-perturbation algorithms), with no probabilistic density modeling.
 
 ---
 
-## 2. Formulação Matemática dos Algoritmos Avaliados
+## 2. Mathematical Formulation of the Evaluated Algorithms
 
-### 2.1 Família 1: Soluções Diretas (Direct Solutions)
+### 2.1 Family 1: Direct Solutions (Direct Representations)
 * **SimpleGA** (Goldberg 1989; Deb & Agrawal 1995):
-  * Mantém população explícita $P = \{x_1, \dots, x_N\} \subset \mathbb{R}^d$.
-  * Seleção por torneio binário estocástico ($k=2$).
-  * Recombinação simulada binária (**SBX**):
-    $$\beta = \begin{cases} (2u)^{\frac{1}{\eta+1}}, & \text{se } u \le 0.5 \\ \left(\frac{1}{2(1-u)}\right)^{\frac{1}{\eta+1}}, & \text{caso contrário} \end{cases}$$
+  * Maintains an explicit population $P = \{x_1, \dots, x_N\} \subset \mathbb{R}^d$.
+  * Selection by stochastic binary tournament ($k=2$).
+  * Simulated binary crossover (**SBX**):
+    $$\beta = \begin{cases} (2u)^{\frac{1}{\eta+1}}, & \text{if } u \le 0.5 \\ \left(\frac{1}{2(1-u)}\right)^{\frac{1}{\eta+1}}, & \text{otherwise} \end{cases}$$
     $$c_1 = \frac{1}{2}[(1+\beta)p_1 + (1-\beta)p_2], \quad c_2 = \frac{1}{2}[(1-\beta)p_1 + (1+\beta)p_2]$$
-  * Mutação Gaussiana com decaimento exponencial de variância e elitismo estrito de 1 indivíduo.
+  * Gaussian mutation with exponential variance decay and strict elitism of 1 individual.
 * **Differential Evolution (DE)** (Storn & Price 1997):
-  * Estratégia clássica `rand/1/bin`:
+  * Classic `rand/1/bin` strategy:
     $$v_i = x_{r1} + F \cdot (x_{r2} - x_{r3}), \quad r_1 \ne r_2 \ne r_3 \ne i$$
-  * Crossover binomial com probabilidade $CR$ e garantia de pelo menos 1 gene mutado.
-  * Seleção gulosa *one-to-one*: o indivíduo trial substitui o pai se, e somente se, $f(u_i) \ge f(x_i)$.
+  * Binomial crossover with probability $CR$ and a guarantee that at least 1 gene is mutated.
+  * Greedy *one-to-one* selection: the trial individual replaces the parent if and only if $f(u_i) \ge f(x_i)$.
 * **OpenAI-ES** (Salimans et al. 2017):
-  * Perturbações antitéticas espelhadas ($+\epsilon_i, -\epsilon_i$) para cancelamento de variância de primeira ordem.
-  * *Fitness shaping*: normalização baseada em ranks centrada em zero para invariância a transformações monotônicas de recompensa.
-  * Atualização direta do vetor de pesos por SGD com decaimento geométrico de learning rate.
+  * Mirrored antithetic perturbations ($+\epsilon_i, -\epsilon_i$) for first-order variance cancellation.
+  * *Fitness shaping*: zero-centered rank-based normalization, yielding invariance to monotonic reward transformations.
+  * Direct weight-vector update via SGD with geometric learning-rate decay.
 
-### 2.2 Família 2: Programas Simbólicos (Genetic Programming)
+### 2.2 Family 2: Symbolic Programs (Genetic Programming)
 * **LinearGP (LGP)** (Brameier & Banzhaf 2007):
-  * Indivíduo representado por sequência linear de registradores: `[op, dst, src1, src2]`.
-  * Conjunto de registradores: $R = R_{\text{obs}} \cup R_{\text{extra}} \cup R_{\text{act}}$.
-  * Conjunto de funções primitivas: $\{+, -, \times, \div_{\text{safe}}, \sin, \cos, \tanh\}$.
-  * Fenótipo executado como programa imperativo sequencial, permitindo reutilização de variáveis intermediárias e presença de código intrinsecamente neutro (*introns*).
+  * Individual represented as a linear sequence of register instructions: `[op, dst, src1, src2]`.
+  * Register set: $R = R_{\text{obs}} \cup R_{\text{extra}} \cup R_{\text{act}}$.
+  * Primitive function set: $\{+, -, \times, \div_{\text{safe}}, \sin, \cos, \tanh\}$.
+  * Phenotype executed as a sequential imperative program, which allows reuse of intermediate variables and the presence of intrinsically neutral code (*introns*).
 * **CartesianGP (CGP)** (Miller & Thomson 2000):
-  * Indivíduo codificado como grafo acíclico dirigido (DAG) posicional 2D ($1 \times N_{\text{cols}}$).
-  * Nós intermediários recebem conexões apenas de entradas ou de nós em colunas anteriores.
-  * Mutação estrutural pontual em conexões e funções.
-  * Algoritmo evolucionário $(1+\lambda)$-ES com seleção puramente neutra (substituição ocorre se fitness do filho for maior ou igual ao do pai).
+  * Individual encoded as a positional 2D directed acyclic graph (DAG) ($1 \times N_{\text{cols}}$).
+  * Intermediate nodes receive connections only from inputs or from nodes in earlier columns.
+  * Pointwise structural mutation on connections and functions.
+  * Evolutionary $(1+\lambda)$-ES with purely neutral selection (replacement occurs whenever the offspring fitness is greater than or equal to the parent fitness).
 
-### 2.3 Família 3: Modelos Probabilísticos (EDA)
+### 2.3 Family 3: Probabilistic Models (EDA)
 * **CMA-ES** (Hansen & Ostermeier 2001; Hansen 2016):
-  * Modelo contínuo multivariado $\mathcal{N}(\mu, \sigma^2 C)$.
-  * Eigendecomposição da covariância $C = B D^2 B^T$ (onde $B$ é a base ortonormal de autovetores e $D$ a matriz diagonal de desvios principais).
-  * Adaptação de passo por CSA (*Cumulative Step-length Adaptation*):
+  * Multivariate continuous model $\mathcal{N}(\mu, \sigma^2 C)$.
+  * Eigendecomposition of the covariance $C = B D^2 B^T$ (where $B$ is the orthonormal eigenbasis and $D$ the diagonal matrix of principal standard deviations).
+  * Step-length adaptation via CSA (*Cumulative Step-length Adaptation*):
     $$p_\sigma \leftarrow (1-c_\sigma) p_\sigma + \sqrt{c_\sigma(2-c_\sigma)\mu_{\text{eff}}} \, C^{-1/2} \frac{\mu^{(g+1)}-\mu^{(g)}}{\sigma^{(g)}}$$
     $$\sigma^{(g+1)} = \sigma^{(g)} \exp \left( \frac{c_\sigma}{d_\sigma} \left( \frac{\|p_\sigma\|}{E[\|\mathcal{N}(0, I)\|]} - 1 \right) \right)$$
-  * Adaptação de matriz de covariância:
+  * Covariance matrix adaptation:
     $$C^{(g+1)} = (1 - c_1 - c_\mu) C^{(g)} + c_1 \left( p_c p_c^T + \delta(h_\sigma) C^{(g)} \right) + c_\mu \sum_{i=1}^\mu w_i y_{i:\lambda} y_{i:\lambda}^T$$
-* **PBIL Contínuo** (Baluja 1994; Sebag & Ducoulombier 1998):
-  * Modelo Gaussiano univariado independente: $\Theta = \{(\mu_1, \sigma_1), \dots, (\mu_d, \sigma_d)\}$.
-  * Atualização incremental baseada no centroide e variância das top-$k$ soluções:
+* **Continuous PBIL** (Baluja 1994; Sebag & Ducoulombier 1998):
+  * Independent univariate Gaussian model: $\Theta = \{(\mu_1, \sigma_1), \dots, (\mu_d, \sigma_d)\}$.
+  * Incremental update based on the centroid and variance of the top-$k$ solutions:
     $$\mu \leftarrow (1-\alpha) \mu + \alpha \, \bar{x}_{\text{top-k}}$$
     $$\sigma \leftarrow (1-\alpha_\sigma) \sigma + \alpha_\sigma \, \text{std}(x_{\text{top-k}})$$
-  * Mutação estocástica aplicada diretamente sobre os parâmetros do próprio modelo probabilístico.
+  * Stochastic mutation applied directly to the parameters of the probabilistic model itself.
 
 ---
 
-## 3. Arquitetura da Política e Engenharia em JAX
+## 3. Policy Architecture and Engineering in JAX
 
-### 3.1 Política Neural Unificada (Famílias 1 e 3)
-Para garantir comparações homogêneas e imparciais, todos os métodos das Famílias 1 e 3 otimizam a mesma arquitetura de Perceptron Multicamadas (MLP):
+### 3.1 Unified Neural Policy (Families 1 and 3)
+To guarantee homogeneous and unbiased comparisons, all methods in Families 1 and 3 optimize the same multilayer perceptron (MLP) architecture:
 $$\text{obs} \xrightarrow{\quad} \text{Dense}(32) \xrightarrow{\tanh} \text{Dense}(32) \xrightarrow{\tanh} \text{Dense}(\text{act})$$
 
-* **Ações Discretas**: $a = \arg\max(\text{logits})$.
-* **Ações Contínuas**: $a = \tanh(\text{logits}) \times \text{action\_scale}$.
+* **Discrete actions**: $a = \arg\max(\text{logits})$.
+* **Continuous actions**: $a = \tanh(\text{logits}) \times \text{action\_scale}$.
 
-Número total de parâmetros por ambiente:
-* **CartPole-v1** ($4 \to 32 \to 32 \to 2$): $1.282$ parâmetros
-* **Acrobot-v1** ($6 \to 32 \to 32 \to 3$): $1.379$ parâmetros
-* **Pendulum-v1** ($3 \to 32 \to 32 \to 1$): $1.217$ parâmetros
-* **MountainCarContinuous-v0** ($2 \to 32 \to 32 \to 1$): $1.185$ parâmetros
+Total number of parameters per environment:
+* **CartPole-v1** ($4 \to 32 \to 32 \to 2$): $1{,}282$ parameters
+* **Acrobot-v1** ($6 \to 32 \to 32 \to 3$): $1{,}379$ parameters
+* **Pendulum-v1** ($3 \to 32 \to 32 \to 1$): $1{,}217$ parameters
+* **MountainCarContinuous-v0** ($2 \to 32 \to 32 \to 1$): $1{,}185$ parameters
 
-### 3.2 Vetorização e Aceleração via XLA (JAX)
-* A avaliação de um indivíduo em um episódio é modelada como uma função pura `rollout(flat_params, rng) -> float`.
-* A população inteira de tamanho $P$ é paralelizada via compilação vetorial nativa:
+### 3.2 Vectorization and XLA Acceleration (JAX)
+* Evaluating one individual in one episode is modeled as a pure function `rollout(flat_params, rng) -> float`.
+* The whole population of size $P$ is parallelized through native vectorized compilation:
   $$\text{eval\_pop} = \text{jax.jit}(\text{jax.vmap}(\text{rollout\_multi}, \text{in\_axes}=(0, \text{None})))$$
-* Em conformidade com a especificação do `gymnax 1.0.0`, a transição de ambiente retorna 6 elementos:
+* In accordance with the `gymnax 1.0.0` specification, the environment transition returns 6 elements:
   `obs, state, reward, terminated, truncated, info = env.step(...)`
 
-### 3.3 Orçamento Computacional de Treinamento e Avaliação (Episódios e Steps)
+### 3.3 Training and Evaluation Compute Budget (Episodes and Steps)
 
-Para garantir reprodutibilidade e clareza formal, o orçamento exato de interação com os ambientes é discriminado abaixo:
+To ensure reproducibility and formal clarity, the exact interaction budget with the environments is itemized below:
 
-#### A. Horizonte Temporal por Episódio ($H = \text{max\_steps}$)
-Em cada ambiente, o episódio tem uma duração máxima delimitada pelo horizonte $H$:
-* **CartPole-v1**: $H = 500$ steps (critério de sucesso: manter-se equilibrado por 500 steps, retorno acumulado = +500).
-* **Acrobot-v1**: $H = 500$ steps (custo de $-1.0$ por step até que a ponta atinja a altura alvo; ótimo em torno de $-64$ a $-70$ steps).
-* **Pendulum-v1**: $H = 200$ steps (penalização contínua de ângulo normalizado, velocidade e esforço de torque; ótimo em torno de $-150$ a $-200$).
-* **MountainCarContinuous-v0**: $H = 999$ steps (custo de ação em cada passo $+100$ ao atingir o topo da colina direita; ótimo em torno de $+90$ a $+95$).
+#### A. Temporal Horizon per Episode ($H = \text{max\_steps}$)
+In each environment an episode has a maximum duration bounded by the horizon $H$:
+* **CartPole-v1**: $H = 500$ steps (success criterion: stay balanced for 500 steps, cumulative return = +500).
+* **Acrobot-v1**: $H = 500$ steps (cost of $-1.0$ per step until the tip reaches the target height; optimum around $-64$ to $-70$ steps).
+* **Pendulum-v1**: $H = 200$ steps (continuous penalty on normalized angle, angular velocity and torque effort; optimum around $-150$ to $-200$).
+* **MountainCarContinuous-v0**: $H = 999$ steps (per-step action cost, plus $+100$ upon reaching the top of the right hill; optimum around $+90$ to $+95$).
 
-#### B. Episódios de Avaliação por Indivíduo ($N_{\text{rollouts}}$)
-Para mitigar a variância estocástica inerente às condições iniciais do ambiente (como a perturbação angular inicial em CartPole e Pendulum):
-* **Famílias 1 e 3 (SimpleGA, DE, OpenAI-ES, CMA-ES, PBIL)**: Cada indivíduo/amostra é avaliado em **$N_{\text{rollouts}} = 2$ episódios independentes** a cada geração (no modo `--quick` reportado). No modo completo (`--full`), utilizam-se **$N_{\text{rollouts}} = 4$ episódios**. O fitness atribuído é a média dos retornos obtidos:
+#### B. Evaluation Episodes per Individual ($N_{\text{rollouts}}$)
+To mitigate the stochastic variance inherent in the environment initial conditions (such as the initial angular perturbation in CartPole and Pendulum):
+* **Families 1 and 3 (SimpleGA, DE, OpenAI-ES, CMA-ES, PBIL)**: Each individual/sample is evaluated over **$N_{\text{rollouts}} = 2$ independent episodes** per generation (in the reported `--quick` mode). In the full mode (`--full`), **$N_{\text{rollouts}} = 4$ episodes** are used. The fitness assigned is the mean of the returns obtained:
   $$f(x) = \frac{1}{N_{\text{rollouts}}} \sum_{e=1}^{N_{\text{rollouts}}} R_e$$
-  A cada geração, uma nova semente estocástica (`rng_eval`) é ramificada via `jax.random.split`, garantindo que os indivíduos sejam testados contra diferentes condições iniciais e não memorizem uma trajetória única.
-* **Família 2 (LinearGP e CartesianGP)**: Cada programa simbólico é avaliado em **$N_{\text{rollouts}} = 3$ episódios independentes** a cada geração.
+  At each generation a new stochastic seed (`rng_eval`) is spawned via `jax.random.split`, ensuring that individuals are tested against different initial conditions and cannot memorize a single trajectory.
+* **Family 2 (LinearGP and CartesianGP)**: Each symbolic program is evaluated over **$N_{\text{rollouts}} = 3$ independent episodes** per generation.
 
-#### C. Matriz de Orçamento Total de Treinamento (Episódios e Steps Simulados)
+#### C. Total Training Budget Matrix (Simulated Episodes and Steps)
 
-A tabela abaixo detalha o número de gerações ($G$), tamanho da população ($P$), rollouts por indivíduo, **total de episódios simulados** e o **teto de steps de interação com o ambiente** durante todo o treinamento em cada ambiente:
+The table below details the number of generations ($G$), population size ($P$), rollouts per individual, the **total number of simulated episodes**, and the **ceiling on environment interaction steps** over the whole training run in each environment:
 
-| Algoritmo | Família | Gerações ($G$) | População ($P$) | Rollouts/Indivíduo | Total Episódios / Env | Teto Steps CartPole ($H=500$) | Teto Steps Acrobot ($H=500$) | Teto Steps Pendulum ($H=200$) | Teto Steps MountainCar ($H=999$) |
+| Algorithm | Family | Generations ($G$) | Population ($P$) | Rollouts/Individual | Total Episodes / Env | Step Ceiling CartPole ($H=500$) | Step Ceiling Acrobot ($H=500$) | Step Ceiling Pendulum ($H=200$) | Step Ceiling MountainCar ($H=999$) |
 |:---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| **SimpleGA** | F1 | 30 | 32 | 2 | **1.920** | 960.000 | 960.000 | 384.000 | 1.918.080 |
-| **DE** | F1 | 30 | 32 | 2 | **1.920** | 960.000 | 960.000 | 384.000 | 1.918.080 |
-| **OpenAI-ES** | F1 | 30 | 32 (16 pares) | 2 | **1.920** | 960.000 | 960.000 | 384.000 | 1.918.080 |
-| **LinearGP** | F2 | 15 | 16 | 3 | **720** | $\le 360.000$* | $\le 360.000$* | — | — |
-| **CartesianGP**| F2 | 15 | 8 (1+7) | 3 | **360** | $\le 180.000$* | $\le 180.000$* | — | — |
-| **CMA-ES** | F3 | 30 | 25 ($\lambda$) | 2 | **1.500** | 750.000 | 750.000 | 300.000 | 1.498.500 |
-| **PBIL** | F3 | 30 | 32 | 2 | **1.920** | 960.000 | 960.000 | 384.000 | 1.918.080 |
+| **SimpleGA** | F1 | 30 | 32 | 2 | **1,920** | 960,000 | 960,000 | 384,000 | 1,918,080 |
+| **DE** | F1 | 30 | 32 | 2 | **1,920** | 960,000 | 960,000 | 384,000 | 1,918,080 |
+| **OpenAI-ES** | F1 | 30 | 32 (16 pairs) | 2 | **1,920** | 960,000 | 960,000 | 384,000 | 1,918,080 |
+| **LinearGP** | F2 | 15 | 16 | 3 | **720** | $\le 360{,}000$* | $\le 360{,}000$* | — | — |
+| **CartesianGP**| F2 | 15 | 8 (1+7) | 3 | **360** | $\le 180{,}000$* | $\le 180{,}000$* | — | — |
+| **CMA-ES** | F3 | 30 | 25 ($\lambda$) | 2 | **1,500** | 750,000 | 750,000 | 300,000 | 1,498,500 |
+| **PBIL** | F3 | 30 | 32 | 2 | **1,920** | 960,000 | 960,000 | 384,000 | 1,918,080 |
 
-*\*Nota sobre a Família 2 (GP)*: Na implementação interpretada em Python, o loop encerra imediatamente assim que `terminated` ou `truncated` é acionado (`break`). Portanto, quando o programa aprende a estabilizar o pêndulo rapidamente (ou falha precocemente), o número real de steps executados é significativamente inferior ao teto máximo $H$.
+*\*Note on Family 2 (GP)*: In the Python-interpreted implementation the loop exits as soon as `terminated` or `truncated` is raised (`break`). Therefore, when the program learns to stabilize the pendulum quickly (or fails early), the actual number of steps executed is significantly lower than the maximum ceiling $H$.
 
 ---
 
-## 4. Resultados Experimentais Consolidados
+## 4. Consolidated Experimental Results
 
-Todos os dados a seguir foram obtidos empiricamente através do benchmark automatizado (sem qualquer dado sintético ou extrapolado):
+All data below was obtained empirically through the automated benchmark (no synthetic or extrapolated data):
 
-### 4.1 Ambientes Discretos (Todas as 3 Famílias)
+### 4.1 Discrete Environments (All 3 Families)
 
-| Família | Algoritmo | Paradigma | CartPole-v1 (Best) | Acrobot-v1 (Best) | Tempo CartPole (s) | Tempo Acrobot (s) |
+| Family | Algorithm | Paradigm | CartPole-v1 (Best) | Acrobot-v1 (Best) | CartPole Time (s) | Acrobot Time (s) |
 |:---|:---|:---|:---:|:---:|:---:|:---:|
-| **F1: Soluções Diretas** | **DE** | Vetores trial rand/1/bin | **500.00** *(Gen 6)* | −78.00 | 2.7s | 2.5s |
-| **F1: Soluções Diretas** | **SimpleGA** | Torneio + SBX crossover | 318.50 | **−64.00** | 3.0s | 2.9s |
-| **F1: Soluções Diretas** | **OpenAI-ES** | Ascensão de gradiente NES | 419.50 | **−64.00** *(Média: −84.78)* | 2.1s | 2.6s |
-| **F2: Programas** | **CartesianGP** | DAG posicional 2D (1+7)ES | **500.00** *(Gen 5)* | −78.67 | 61.9s | 65.5s |
-| **F2: Programas** | **LinearGP** | Sequência de registradores | 453.33 | −74.00 | 95.4s | 239.4s |
-| **F3: Modelos (EDA)** | **CMA-ES** | Covariância $\mathcal{N}(\mu, \sigma^2 \Sigma)$ | **500.00** | **−64.00** | 9.2s | 10.2s |
-| **F3: Modelos (EDA)** | **PBIL** | Modelo marginal univariado | 464.50 | −75.00 | 2.1s | 3.0s |
+| **F1: Direct Solutions** | **DE** | rand/1/bin trial vectors | **500.00** *(Gen 6)* | −78.00 | 2.7s | 2.5s |
+| **F1: Direct Solutions** | **SimpleGA** | Tournament + SBX crossover | 318.50 | **−64.00** | 3.0s | 2.9s |
+| **F1: Direct Solutions** | **OpenAI-ES** | NES gradient ascent | 419.50 | **−64.00** *(Mean: −84.78)* | 2.1s | 2.6s |
+| **F2: Programs** | **CartesianGP** | Positional 2D DAG (1+7)ES | **500.00** *(Gen 5)* | −78.67 | 61.9s | 65.5s |
+| **F2: Programs** | **LinearGP** | Register sequence | 453.33 | −74.00 | 95.4s | 239.4s |
+| **F3: Models (EDA)** | **CMA-ES** | Covariance $\mathcal{N}(\mu, \sigma^2 \Sigma)$ | **500.00** | **−64.00** | 9.2s | 10.2s |
+| **F3: Models (EDA)** | **PBIL** | Univariate marginal model | 464.50 | −75.00 | 2.1s | 3.0s |
 
-### 4.2 Ambientes Contínuos (Famílias 1 e 3)
+### 4.2 Continuous Environments (Families 1 and 3)
 
-| Família | Algoritmo | Pendulum-v1 (Best) | Pendulum-v1 (Mean Final) | MountainCarCont (Best) | MountainCarCont (Mean Final) | Tempo Total (s) |
+| Family | Algorithm | Pendulum-v1 (Best) | Pendulum-v1 (Mean Final) | MountainCarCont (Best) | MountainCarCont (Mean Final) | Total Time (s) |
 |:---|:---|:---:|:---:|:---:|:---:|:---:|
-| **F1: Soluções Diretas** | **SimpleGA** | **−9.13** | −1237.52 | 94.17 | −56.30 | 4.3s |
-| **F1: Soluções Diretas** | **DE** | −468.77 | −1412.38 | 85.50 | −90.91 | 3.6s |
-| **F1: Soluções Diretas** | **OpenAI-ES** | −691.96 | −1231.18 | **−0.00** *(Falha de gradiente)* | −1.12 | 3.9s |
-| **F3: Modelos (EDA)** | **CMA-ES** | −410.60 | −1348.26 | **95.83** *(Ótimo)* | −59.37 | 16.0s |
-| **F3: Modelos (EDA)** | **PBIL** | −192.09 | −1524.69 | 94.22 | −74.45 | 3.2s |
+| **F1: Direct Solutions** | **SimpleGA** | **−9.13** | −1237.52 | 94.17 | −56.30 | 4.3s |
+| **F1: Direct Solutions** | **DE** | −468.77 | −1412.38 | 85.50 | −90.91 | 3.6s |
+| **F1: Direct Solutions** | **OpenAI-ES** | −691.96 | −1231.18 | **−0.00** *(Gradient failure)* | −1.12 | 3.9s |
+| **F3: Models (EDA)** | **CMA-ES** | −410.60 | −1348.26 | **95.83** *(Optimum)* | −59.37 | 16.0s |
+| **F3: Models (EDA)** | **PBIL** | −192.09 | −1524.69 | 94.22 | −74.45 | 3.2s |
 
 ---
 
-## 5. Validação Estatística Out-of-Sample (Protocolo Rigoroso de 100 Episódios)
+## 5. Out-of-Sample Statistical Validation (Rigorous 100-Episode Protocol)
 
-Em conformidade com as diretrizes metodológicas modernas para reprodutibilidade e avaliação em Aprendizado por Reforço (Henderson et al. 2018; Machado et al. 2018; Agarwal et al. 2021), **a métrica obtida durante o treinamento com poucos rollouts ($N=2$ ou $3$) não constitui evidência suficiente de convergência robusta**. Políticas evolutivas podem sofrer de sobreajuste às condições estocásticas vistas durante a seleção (*Winner's Curse*).
+In line with modern methodological guidelines for reproducibility and evaluation in Reinforcement Learning (Henderson et al. 2018; Machado et al. 2018; Agarwal et al. 2021), **a metric obtained during training with few rollouts ($N=2$ or $3$) is not sufficient evidence of robust convergence**. Evolutionary policies can overfit the stochastic conditions seen during selection (*Winner's Curse*).
 
-Para quantificar a verdadeira capacidade de generalização e incerteza epistêmica, os melhores controladores de cada algoritmo foram submetidos a uma bateria de **$N=100$ episódios de teste independentes** com semente pseudoaleatória não vista durante a otimização (`seed = 99999`):
-* **Famílias 1 e 3 (Redes Neurais)**: Avaliadas via compilação vetorial pura em JAX (`jax.vmap` sobre 100 sementes com `jax.lax.scan`), garantindo paralelismo idêntico e ausência de viés temporal.
-* **Família 2 (Programas Simbólicos)**: Avaliados por execução iterativa direta dos grafos/registradores com passos de transição compilados em XLA (`jax.jit`).
+To quantify the true generalization capability and epistemic uncertainty, the best controller of each algorithm was subjected to a battery of **$N=100$ independent test episodes** with a pseudo-random seed unseen during optimization (`seed = 99999`):
+* **Families 1 and 3 (Neural Networks)**: Evaluated through pure vectorized compilation in JAX (`jax.vmap` over 100 seeds with `jax.lax.scan`), guaranteeing identical parallelism and no temporal bias.
+* **Family 2 (Symbolic Programs)**: Evaluated by direct iterative execution of the graphs/registers with transition steps compiled in XLA (`jax.jit`).
 
-### 5.1 Métricas Estatísticas Computadas
-* **Tendência Central**: Média amostral ($\bar{R}_{\text{test}}$) e Mediana.
-* **Incerteza Amostral**: Erro Padrão da Média ($\text{SEM} = s / \sqrt{N}$) e **Intervalo de Confiança Bootstrap não-paramétrico de 95%** ($B = 2.000$ reamostragens).
-* **Dispersão e Robustez**: Desvio Padrão ($s$), Intervalo Interquartil ($\text{IQR} = Q_3 - Q_1$) e Coeficiente de Variação ($\text{CV} = s / |\bar{R}|$).
-* **Confiabilidade**: *Signal-to-Noise Ratio* ($\text{SNR} = |\bar{R}| / s$).
-* **Lacuna de Otimismo / Viés do Vencedor (*Winner's Curse*)**:
+### 5.1 Computed Statistical Metrics
+* **Central Tendency**: Sample mean ($\bar{R}_{\text{test}}$) and median.
+* **Sampling Uncertainty**: Standard error of the mean ($\text{SEM} = s / \sqrt{N}$) and **non-parametric 95% bootstrap confidence interval** ($B = 2{,}000$ resamples).
+* **Dispersion and Robustness**: Standard deviation ($s$), interquartile range ($\text{IQR} = Q_3 - Q_1$) and coefficient of variation ($\text{CV} = s / |\bar{R}|$).
+* **Reliability**: *Signal-to-Noise Ratio* ($\text{SNR} = |\bar{R}| / s$).
+* **Optimism Gap / Winner Bias (*Winner's Curse*)**:
   $$\Delta_{\text{optimism}} = f_{\text{train\_best}} - \bar{R}_{\text{test}}$$
-  Mede o grau de sobreajuste espúrio da política aos poucos episódios de treino.
-* **Taxa de Sucesso ($\%$)**: Proporção de episódios que atingiram os limiares canônicos de resolução da tarefa:
+  Measures the degree of spurious overfitting of the policy to the few training episodes.
+* **Success Rate ($\%$)**: Proportion of episodes that reached the canonical task-resolution thresholds:
   * CartPole-v1: $R \ge 475.0$
   * Acrobot-v1: $R \ge -100.0$
   * Pendulum-v1: $R \ge -200.0$
   * MountainCarContinuous-v0: $R \ge 90.0$
 
-### 5.2 Tabela Consolidada de Validação ($N=100$ Episódios Out-of-Sample)
+### 5.2 Consolidated Validation Table ($N=100$ Out-of-Sample Episodes)
 
-Dados empíricos brutos extraídos diretamente de `results/validation_100_summary.csv`:
+Raw empirical data extracted directly from `results/validation_100_summary.csv`:
 
-| Família | Algoritmo | Ambiente | Train Best ($N \le 3$) | Test Mean $\pm$ SEM | 95% Bootstrap CI | Mediana | IQR | Desvio Padrão | SNR | Lacuna Otimismo ($\Delta$) | Taxa Sucesso (%) |
+| Family | Algorithm | Environment | Train Best ($N \le 3$) | Test Mean $\pm$ SEM | 95% Bootstrap CI | Median | IQR | Std Dev | SNR | Optimism Gap ($\Delta$) | Success Rate (%) |
 |:---:|:---|:---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
 | **F1** | **SimpleGA** | CartPole-v1 | 318.50 | 318.82 $\pm$ 19.43 | [281.37, 356.55] | 500.00 | 395.50 | 194.29 | 1.64 | **−0.32** | 51.0% |
 | **F1** | **DE** | CartPole-v1 | **500.00** | 123.84 $\pm$ 8.48 | [108.68, 141.80] | 101.00 | 40.00 | 84.79 | 1.46 | **+376.16** | **2.0%** |
@@ -243,88 +243,88 @@ Dados empíricos brutos extraídos diretamente de `results/validation_100_summar
 | **F3** | **CMA-ES** | MountainCarCont | **95.83** | **96.43 $\pm$ 0.11** | **[96.22, 96.63]** | **96.72** | **1.76** | **1.06** | **90.99** | **−0.60** | **100.0%** |
 | **F3** | **PBIL** | MountainCarCont | 94.22 | **93.87 $\pm$ 0.12** | **[93.64, 94.10]** | **94.06** | **1.80** | **1.15** | **81.28** | **+0.35** | **100.0%** |
 
-*\*Nota DE MountainCar*: O DE convergiu consistentemente para score $\approx 85.7$, mas o critério de sucesso formal exige $R \ge 90.0$.
+*\*Note on DE in MountainCar*: DE consistently converged to a score of $\approx 85.7$, but the formal success criterion requires $R \ge 90.0$.
 
 ---
 
-## 6. Análise e Discussão Científica dos Resultados
+## 6. Analysis and Scientific Discussion of the Results
 
-### 6.1 A Manifestação Empírica do Winner's Curse (Otimismo Espúrio em Avaliações Rápidas)
-A validação em 100 episódios expôs um fenômeno crucial em RL Evolutivo:
-1. **O Colapso do Differential Evolution (DE) no CartPole**:
-   * No treino ($N_{\text{rollouts}}=2$), o DE reportou fitness ótimo aparente de **500.00**.
-   * Em teste ($N=100$), a média despencou para **123.84** com **taxa de sucesso de apenas 2.0%** ($\Delta = +376.16$).
-   * *Diagnóstico Mecanístico*: O DE encontrou um vetor de pesos hipersensível que funcionava excepcionalmente bem para o par de ângulos iniciais sorteados na geração 29, mas que era instável para a distribuição contínua de estados iniciais.
-2. **A Robustez Perfeita do CMA-ES**:
-   * O **CMA-ES** atingiu **500.00 $\pm$ 0.00** nos 100 episódios out-of-sample, com **desvio padrão rigorosamente 0.00** e **100% de sucesso**.
-   * Por modelar a curvatura da distribuição conjunta via adaptação da covariância $\Sigma$, o CMA-ES encontrou um atrator largo (*flat minimum*) no espaço de parâmetros, imune a flutuações das condições iniciais.
+### 6.1 The Empirical Manifestation of the Winner's Curse (Spurious Optimism in Fast Evaluations)
+Validation over 100 episodes exposed a crucial phenomenon in evolutionary RL:
+1. **The Collapse of Differential Evolution (DE) on CartPole**:
+   * During training ($N_{\text{rollouts}}=2$), DE reported an apparent optimal fitness of **500.00**.
+   * In testing ($N=100$), the mean collapsed to **123.84** with a **success rate of only 2.0%** ($\Delta = +376.16$).
+   * *Mechanistic Diagnosis*: DE found a hypersensitive weight vector that worked exceptionally well for the pair of initial angles drawn in generation 29, but was unstable under the continuous distribution of initial states.
+2. **The Perfect Robustness of CMA-ES**:
+   * **CMA-ES** reached **500.00 $\pm$ 0.00** over the 100 out-of-sample episodes, with a **standard deviation of strictly 0.00** and **100% success**.
+   * By modeling the curvature of the joint distribution through covariance adaptation $\Sigma$, CMA-ES found a broad attractor (*flat minimum*) in parameter space, immune to fluctuations in the initial conditions.
 
-### 6.2 Generalização dos Programas Simbólicos (Família 2)
-* Tanto **LinearGP** quanto **CartesianGP** exibiram **91.0% de taxa de sucesso** no CartPole (retorno médio $\approx 487.5$, $\text{IQR} = 0.0$).
-* No Acrobot, LinearGP e CartesianGP alcançaram **87% e 82% de taxa de sucesso**, superando algoritmos neurais como PBIL (55%) e DE (82%).
-* Isso prova que **controladores expressos por grafos de instruções discretas possuem excelente viabilidade e generalização fora da amostra**, gerando superfícies de decisão compactas que não sofrem do sobreajuste típico de vetores contínuos de alta dimensionalidade.
+### 6.2 Generalization of Symbolic Programs (Family 2)
+* Both **LinearGP** and **CartesianGP** achieved a **91.0% success rate** on CartPole (mean return $\approx 487.5$, $\text{IQR} = 0.0$).
+* On Acrobot, LinearGP and CartesianGP reached **success rates of 87% and 82%**, outperforming neural algorithms such as PBIL (55%) and DE (82%).
+* This demonstrates that **controllers expressed as graphs of discrete instructions have excellent viability and out-of-sample generalization**, producing compact decision surfaces that do not suffer from the overfitting typical of high-dimensional continuous vectors.
 
-### 6.3 O Colapso de Gradiente vs EDAs no MountainCarContinuous
-* **OpenAI-ES (Score: −0.00, SNR: 1.02, Sucesso: 0.0%)**:
-  O estimador de gradiente colapsou integralmente pela ausência de gradiente em sinal de recompensa esparso ($\nabla_\theta \mathbb{E}[f] = \mathbf{0}$).
-* **CMA-ES e PBIL (Sucesso: 100.0%, SNR: 91.0 e 81.3)**:
-  Ambos os EDAs resolveram o ambiente com estabilidade assintótica determinística ($\text{SEM} \approx 0.11$, $\text{Std} \le 1.15$), comprovando a superioridade de métodos baseados em distribuição de segunda ordem para problemas de *exploration valley*.
+### 6.3 Gradient Collapse vs. EDAs on MountainCarContinuous
+* **OpenAI-ES (Score: −0.00, SNR: 1.02, Success: 0.0%)**:
+  The gradient estimator collapsed entirely because a sparse reward signal provides no gradient ($\nabla_\theta \mathbb{E}[f] = \mathbf{0}$).
+* **CMA-ES and PBIL (Success: 100.0%, SNR: 91.0 and 81.3)**:
+  Both EDAs solved the environment with deterministic asymptotic stability ($\text{SEM} \approx 0.11$, $\text{Std} \le 1.15$), confirming the superiority of second-order distribution-based methods for *exploration valley* problems.
 
-### 6.4 A Sensibilidade Estocástica do Pêndulo Invertido
-* No **Pendulum-v1**, todos os métodos exibiram grande lacuna de otimismo ($\Delta > 500$), reflexo da alta sensibilidade do ângulo inicial $\theta_0 \sim \mathcal{U}[-\pi, \pi]$.
-* O melhor algoritmo em teste foi o **PBIL** ($\bar{R} = -804.3$, Mediana = $-387.3$, Sucesso = $29\%$).
-* Para controle contínuo não-linear com dinâmica caótica em torno do polo inferior, treinar com apenas $N_{\text{rollouts}} = 2$ é claramente insuficiente para cobrir o suporte do espaço de estados, exigindo um protocolo de treino com pelo menos $N=8$ a $16$ rollouts.
-
----
-
-## 7. Visualizações Geradas
-
-Todos os gráficos são renderizados com estética dark-mode acadêmica de alta resolução e salvos em `results/`:
-
-### 7.1 Validação Estatística Out-of-Sample (100 Episódios)
-* **`results/validation_100_ci95_bars.png`**: Gráfico comparativo de 4 painéis contendo o retorno médio de teste ($\bar{R}_{\text{test}}$), barras de erro com **Intervalo de Confiança Bootstrap de 95%** e rótulos de **Signal-to-Noise Ratio (SNR)** por família.
-* **`results/optimism_gap_analysis.png`**: Análise quantitativa da **Lacuna de Otimismo (*Winner's Curse*)** ($\Delta = f_{\text{train}} - R_{\text{test}}$), destacando em vermelho políticas com sobreajuste severo e em verde políticas robustas.
-
-### 7.2 Curvas de Treinamento e Dinâmica Evolutiva
-* **`results/all_families_curves.png`**: Curvas de aprendizado comparando as 3 famílias nos ambientes discretos.
-* **`results/all_families_bar.png`**: Performance comparativa de todos os 7 algoritmos agrupados por família.
-* **`results/learning_curves.png`**: Curvas de aprendizado das Famílias 1 e 3 nos 4 ambientes.
-* **`results/family_comparison.png`**: Comparação de fitness final nos 4 ambientes.
-* **`results/time_vs_performance.png`**: Dispersão entre custo computacional (segundos) e score atingido.
+### 6.4 The Stochastic Sensitivity of the Inverted Pendulum
+* On **Pendulum-v1**, every method exhibited a large optimism gap ($\Delta > 500$), reflecting the high sensitivity of the initial angle $\theta_0 \sim \mathcal{U}[-\pi, \pi]$.
+* The best algorithm in testing was **PBIL** ($\bar{R} = -804.3$, median = $-387.3$, success = $29\%$).
+* For nonlinear continuous control with chaotic dynamics around the bottom pole, training with only $N_{\text{rollouts}} = 2$ is clearly insufficient to cover the support of the state space, requiring a training protocol with at least $N=8$ to $16$ rollouts.
 
 ---
 
-## 8. Tabela de Hiperparâmetros
+## 7. Generated Visualizations
 
-| Algoritmo | Família | Hiperparâmetros Chave |
+All figures are rendered in a high-resolution academic dark-mode style and saved under `results/`:
+
+### 7.1 Out-of-Sample Statistical Validation (100 Episodes)
+* **`results/validation_100_ci95_bars.png`**: 4-panel comparison chart showing the mean test return ($\bar{R}_{\text{test}}$), error bars for the **95% bootstrap confidence interval**, and **Signal-to-Noise Ratio (SNR)** labels per family.
+* **`results/optimism_gap_analysis.png`**: Quantitative analysis of the **Optimism Gap (*Winner's Curse*)** ($\Delta = f_{\text{train}} - R_{\text{test}}$), highlighting severely overfit policies in red and robust policies in green.
+
+### 7.2 Training Curves and Evolutionary Dynamics
+* **`results/all_families_curves.png`**: Learning curves comparing the 3 families on the discrete environments.
+* **`results/all_families_bar.png`**: Comparative performance of all 7 algorithms grouped by family.
+* **`results/learning_curves.png`**: Learning curves of Families 1 and 3 on the 4 environments.
+* **`results/family_comparison.png`**: Final fitness comparison on the 4 environments.
+* **`results/time_vs_performance.png`**: Scatter plot relating computational cost (seconds) to the score achieved.
+
+---
+
+## 8. Hyperparameter Table
+
+| Algorithm | Family | Key Hyperparameters |
 |:---|:---:|:---|
-| **SimpleGA** | F1 | População: 32–64, $\sigma_0 = 0.5$, Decaimento $\sigma$: $0.999$, SBX $\eta = 2.0$, $P_{\text{cx}} = 0.8$, Elitismo: 1 |
-| **DE** | F1 | População: 32–64, $F = 0.8$, $CR = 0.9$, Estratégia: `rand/1/bin`, Escala inicial: 0.5 |
-| **OpenAI-ES** | F1 | População: 32 (16 pares antitéticos), $\sigma = 0.05$, Learning rate: 0.01, Fitness shaping rank-based |
-| **LinearGP** | F2 | População: 16, Instruções: 48, Registradores: $\text{obs} + 8 + \text{act}$, Taxa de mutação: 0.15 |
-| **CartesianGP**| F2 | População: 8 (1 pai + 7 filhos), Colunas: 30, Taxa de mutação por gene: 0.05 |
-| **CMA-ES** | F3 | $\sigma_0 = 0.5$, $\lambda = 4 + \lfloor 3 \ln d \rfloor$, Hiperparâmetros de CSA/CMA derivados de Hansen (2016) via $\sqrt{d}$ |
-| **PBIL** | F3 | População: 32, $\alpha_\mu = 0.1$, $\alpha_\sigma = 0.05$, Elite: top 20%, $\sigma_{\text{init}} = 1.0$, $\sigma_{\text{min}} = 0.01$ |
+| **SimpleGA** | F1 | Population: 32–64, $\sigma_0 = 0.5$, $\sigma$ decay: $0.999$, SBX $\eta = 2.0$, $P_{\text{cx}} = 0.8$, Elitism: 1 |
+| **DE** | F1 | Population: 32–64, $F = 0.8$, $CR = 0.9$, Strategy: `rand/1/bin`, Initial scale: 0.5 |
+| **OpenAI-ES** | F1 | Population: 32 (16 antithetic pairs), $\sigma = 0.05$, Learning rate: 0.01, Rank-based fitness shaping |
+| **LinearGP** | F2 | Population: 16, Instructions: 48, Registers: $\text{obs} + 8 + \text{act}$, Mutation rate: 0.15 |
+| **CartesianGP**| F2 | Population: 8 (1 parent + 7 offspring), Columns: 30, Per-gene mutation rate: 0.05 |
+| **CMA-ES** | F3 | $\sigma_0 = 0.5$, $\lambda = 4 + \lfloor 3 \ln d \rfloor$, CSA/CMA hyperparameters derived from Hansen (2016) via $\sqrt{d}$ |
+| **PBIL** | F3 | Population: 32, $\alpha_\mu = 0.1$, $\alpha_\sigma = 0.05$, Elite: top 20%, $\sigma_{\text{init}} = 1.0$, $\sigma_{\text{min}} = 0.01$ |
 
 ---
 
-## 9. Estrutura do Repositório
+## 9. Repository Structure
 
 ```
 evolutionary-estrategies/
 ├── src/
-│   ├── environments.py       # Wrapper gymnax 1.0.0 + forward pass MLP vetorizado em JAX
-│   ├── family1_direct.py     # Família 1: SimpleGA, DE, OpenAI-ES
-│   ├── family2_programs.py   # Família 2: LinearGP, CartesianGP (Programação Genética)
-│   ├── family3_eda.py        # Família 3: CMA-ES, PBIL (Estimation of Distribution)
-│   ├── benchmark.py          # Benchmark ask/tell unificado com compilação JIT
-│   ├── evaluation.py         # Módulo formal de validação out-of-sample (100 eps, Bootstrap CI, SNR)
-│   └── visualization.py      # Geração de gráficos em dark-mode e tabelas
-├── run_benchmark.py          # Script de treino acelerado (Famílias 1 e 3)
-├── run_gp_only.py            # Script dedicado de treino da Família 2 (GP)
-├── run_validation_100.py     # Script mestre de validação out-of-sample (100 eps)
-├── generate_final_plots.py   # Compilação visual consolidada de treino
-├── results/                  # Dados empíricos brutos e gráficos:
+│   ├── environments.py       # Gymnax 1.0.0 wrapper + vectorized JAX MLP forward pass
+│   ├── family1_direct.py     # Family 1: SimpleGA, DE, OpenAI-ES
+│   ├── family2_programs.py   # Family 2: LinearGP, CartesianGP (Genetic Programming)
+│   ├── family3_eda.py        # Family 3: CMA-ES, PBIL (Estimation of Distribution)
+│   ├── benchmark.py          # Unified ask/tell benchmark with JIT compilation
+│   ├── evaluation.py         # Formal out-of-sample validation module (100 eps, bootstrap CI, SNR)
+│   └── visualization.py      # Dark-mode figure and table generation
+├── run_benchmark.py          # Accelerated training script (Families 1 and 3)
+├── run_gp_only.py            # Dedicated training script for Family 2 (GP)
+├── run_validation_100.py     # Master out-of-sample validation script (100 eps)
+├── generate_final_plots.py   # Consolidated visual compilation of training runs
+├── results/                  # Raw empirical data and figures:
 │   ├── validation_100_results.json
 │   ├── validation_100_summary.csv
 │   ├── validation_100_ci95_bars.png
@@ -337,18 +337,18 @@ evolutionary-estrategies/
 
 ---
 
-## 10. Reprodução dos Experimentos
+## 10. Reproducing the Experiments
 
 ```bash
-# 1. Configuração do ambiente virtual (Python 3.11 recomendado)
+# 1. Set up the virtual environment (Python 3.11 recommended)
 py -3.11 -m venv C:\ev
 C:\ev\Scripts\activate
 pip install "jax[cpu]" gymnax "orbax-checkpoint==0.5.23" "flax==0.8.5" matplotlib numpy tqdm
 
-# 2. Executar protocolo completo de validação out-of-sample (100 episódios)
+# 2. Run the complete out-of-sample validation protocol (100 episodes)
 python run_validation_100.py
 
-# 3. (Opcional) Executar benchmark de treino separado
+# 3. (Optional) Run the separate training benchmark
 python run_benchmark.py --quick --no-gp
 python run_gp_only.py
 python generate_final_plots.py
@@ -356,7 +356,7 @@ python generate_final_plots.py
 
 ---
 
-## 11. Referências Bibliográficas
+## 11. References
 
 1. **Agarwal, R., Schwarzer, M., Castro, P. S., Courville, A. C., & Bellemare, M.** (2021). Deep reinforcement learning at the edge of the statistical precipice. *Advances in Neural Information Processing Systems (NeurIPS)*, 34, 29304–29320.
 2. **Henderson, P., Islam, R., Bachman, P., Pineau, J., Precup, D., & Meger, D.** (2018). Deep reinforcement learning that matters. *AAAI Conference on Artificial Intelligence*, 32(1).

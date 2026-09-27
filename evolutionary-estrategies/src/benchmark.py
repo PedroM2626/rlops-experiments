@@ -1,11 +1,11 @@
 """
-Módulo de benchmark: loop de treinamento evolutivo para todos os algoritmos.
+Benchmark module: evolutionary training loop for every algorithm.
 
-Para a Família 2 (Programas), o fitness é avaliado via rollouts interpretados
-em Python (não JAX-jit) pois os programas são DAGs/sequências de instruções
-discretas. As Famílias 1 e 3 usam avaliação totalmente em JAX (vmap+jit).
+For Family 2 (Programs), fitness is evaluated via rollouts interpreted in
+Python (not JAX-jit) because the programs are DAGs/sequences of discrete
+instructions. Families 1 and 3 use fully JAX-based evaluation (vmap+jit).
 
-Retorna: dict com histórico de fitness (mean, max, std) por geração.
+Returns: dict with the fitness history (mean, max, std) per generation.
 """
 from __future__ import annotations
 import time
@@ -22,7 +22,7 @@ from src.environments import ENV_META, make_pop_eval_fn, make_rollout_fn
 
 
 # ---------------------------------------------------------------------------
-# Resultado de uma corrida
+# Result of a single run
 # ---------------------------------------------------------------------------
 class RunResult:
     def __init__(self, algo_name: str, env_name: str, family: int):
@@ -43,11 +43,11 @@ class RunResult:
 
 
 # ---------------------------------------------------------------------------
-# Benchmark Família 1 e 3 (vetores de parâmetros reais — avaliação em JAX)
+# Benchmark for Families 1 and 3 (real parameter vectors — evaluation in JAX)
 # ---------------------------------------------------------------------------
 
 def run_param_based(
-    algo,              # instância GA / DE / CMA-ES / OpenAI-ES / PBIL
+    algo,              # GA / DE / CMA-ES / OpenAI-ES / PBIL instance
     algo_name: str,
     env_name: str,
     family: int,
@@ -57,29 +57,29 @@ def run_param_based(
     log_every: int = 10,
 ) -> RunResult:
     """
-    Loop de treinamento para algoritmos de Família 1 (Diretas) e 3 (EDA).
-    A avaliação de fitness é feita em JAX (vmap sobre a população).
+    Training loop for Family 1 (Direct) and Family 3 (EDA) algorithms.
+    Fitness evaluation is performed in JAX (vmap over the population).
     """
     result = RunResult(algo_name, env_name, family)
     rng    = jax.random.PRNGKey(seed)
 
-    # Configura ambiente e função de avaliação
+    # Set up the environment and the evaluation function
     eval_fn  = make_pop_eval_fn(env_name, n_rollouts=n_rollouts)
     n_params = eval_fn.n_params
 
-    # Inicializa algoritmo
+    # Initialize the algorithm
     rng, rng_init = jax.random.split(rng)
-    if hasattr(algo, '_hyperparams'):  # CMA-ES precisa de n para calcular pop_size
+    if hasattr(algo, '_hyperparams'):  # CMA-ES needs n to compute pop_size
         state = algo.init(rng_init, n_params)
         pop_size = algo._hp["lam"]
     else:
         state = algo.init(rng_init, n_params)
         pop_size = algo.pop_size
 
-    # Primeira compilação JAX (warm-up)
+    # First JAX compilation (warm-up)
     rng, rng_ask, rng_eval = jax.random.split(rng, 3)
 
-    # Para DE, precisa guardar o trial separado
+    # For DE, the trial vector must be kept separately
     is_de = hasattr(algo, 'F')
 
     t0 = time.time()
@@ -136,7 +136,7 @@ def run_param_based_v2(
     seed: int = 42,
     log_every: int = 10,
 ) -> RunResult:
-    """Versão corrigida com despacho de tell() por tipo de algoritmo."""
+    """Corrected version that dispatches tell() according to the algorithm type."""
     from src.family1_direct import DE, SimpleGA, OpenAIES
     from src.family3_eda    import CMAES, PBIL
 
@@ -185,7 +185,7 @@ def run_param_based_v2(
             state       = algo.tell(state, fitness, pop, rng_ask)
 
         else:
-            raise ValueError(f"Algoritmo desconhecido: {type(algo)}")
+            raise ValueError(f"Unknown algorithm: {type(algo)}")
 
         fitness_np = np.array(fitness)
         result.generations.append(gen)
@@ -208,14 +208,14 @@ def run_param_based_v2(
 
 
 # ---------------------------------------------------------------------------
-# Benchmark Família 2 (Programas — avaliação interpretada em Python/NumPy)
+# Benchmark Family 2 (Programs — evaluation interpreted in Python/NumPy)
 # ---------------------------------------------------------------------------
 
 def _rollout_program_python(policy_fn: Callable, env_name: str,
                              n_rollouts: int, seed: int) -> float:
     """
-    Avalia uma política baseada em programa via gymnax em Python (sem JIT).
-    Necessário porque programas são DAGs discretos, não computação JAX diferenciável.
+    Evaluate a program-based policy through gymnax in Python (no JIT).
+    Necessary because the programs are discrete DAGs, not differentiable JAX code.
     """
     import gymnax
     env, env_params = gymnax.make(env_name)
@@ -267,8 +267,8 @@ def run_program_based(
     log_every: int = 10,
 ) -> RunResult:
     """
-    Loop de treinamento para algoritmos de Família 2 (Programas LGP/CGP).
-    A avaliação é interpretada (Python + gymnax), mais lenta.
+    Training loop for Family 2 (Programs LGP/CGP) algorithms.
+    Evaluation is interpreted (Python + gymnax), hence slower.
     """
     from src.family2_programs import LinearGP, CartesianGP
 
@@ -282,7 +282,7 @@ def run_program_based(
     for gen in range(n_generations):
         t_gen = time.time()
 
-        # Avalia a população atual
+        # Evaluate the current population
         programs = np.array(state.programs)
         fitness_list = []
         for i in range(len(programs)):
@@ -294,7 +294,7 @@ def run_program_based(
         fitness_np = np.array(fitness_list, dtype=np.float32)
         fitness_jnp = jnp.array(fitness_np)
 
-        # Atualiza algoritmo
+        # Update the algorithm
         state = algo.tell(state, fitness_jnp)
 
         result.generations.append(gen)

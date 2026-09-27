@@ -1,6 +1,6 @@
 """
-Gera o plot comparativo final unificado com todas as 3 famílias.
-Lê resultados das Famílias 1+3 do JSON principal e Família 2 do gp_results.json.
+Generate the final unified comparative plot with all 3 families.
+Reads Families 1+3 from the main results JSON and Family 2 from gp_results.json.
 """
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 OUT_DIR  = os.path.join(os.path.dirname(__file__), "results")
 ART_DIR  = r"C:\Users\Acer\.gemini\antigravity-ide\brain\ba1c8a11-8fe6-4f79-b29a-66466415603f"
 
-# ── Dados das Famílias 1 e 3 ────────────────────────────────────────────────
+# ── Data for Families 1 and 3 ────────────────────────────────────────────────
 f13_path = os.path.join(OUT_DIR, "raw_results.json")
 gp_path  = os.path.join(OUT_DIR, "gp_results.json")
 
@@ -26,7 +26,7 @@ with open(gp_path) as f:
 
 fam_of = {"SimpleGA": 1, "DE": 1, "OpenAI-ES": 1, "LinearGP": 2, "CartesianGP": 2, "CMA-ES": 3, "PBIL": 3}
 
-# Tabela consolidada para CartPole e Acrobot
+# Consolidated table for CartPole and Acrobot
 ROWS = []
 
 # F1+F3 CartPole
@@ -58,20 +58,20 @@ for r in gp_data.get("Acrobot-v1", []):
         t=r["total_time"], n_eval=r["n_evals"],
     ))
 
-# ── Plot comparativo unificado ────────────────────────────────────────────────
+# ── Unified comparative plot ────────────────────────────────────────────────
 COLORS = {1: "#E63946", 2: "#457B9D", 3: "#52B788"}
 MARKERS= {"SimpleGA":"o","DE":"s","CMA-ES":"^","LinearGP":"D","CartesianGP":"P","OpenAI-ES":"v","PBIL":"X"}
 
 envs_plot = ["CartPole-v1","Acrobot-v1"]
 fig, axes = plt.subplots(1, 2, figsize=(14, 6), facecolor="#0d1117")
-fig.suptitle("Benchmark Completo — 3 Famílias × 2 Ambientes (CartPole + Acrobot)",
+fig.suptitle("Full Benchmark — 3 Families × 2 Environments (CartPole + Acrobot)",
              color="white", fontsize=14, fontweight="bold", y=1.02)
 
 for ax, env in zip(axes, envs_plot):
     ax.set_facecolor("#161b22")
     ax.set_title(env, color="white", fontsize=12, pad=8)
-    ax.set_xlabel("Geração", color="#8b949e")
-    ax.set_ylabel("Melhor Fitness", color="#8b949e")
+    ax.set_xlabel("Generation", color="#8b949e")
+    ax.set_ylabel("Best Fitness", color="#8b949e")
     ax.tick_params(colors="#8b949e", labelsize=8)
     for spine in ax.spines.values():
         spine.set_edgecolor("#30363d")
@@ -110,10 +110,10 @@ out2 = os.path.join(ART_DIR, "all_families_curves.png")
 plt.savefig(out1, dpi=150, bbox_inches="tight", facecolor=fig.get_facecolor())
 plt.savefig(out2, dpi=150, bbox_inches="tight", facecolor=fig.get_facecolor())
 plt.close()
-print(f"Salvo: {out1}")
-print(f"Salvo: {out2}")
+print(f"Saved: {out1}")
+print(f"Saved: {out2}")
 
-# ── Barplot unificado 3 famílias × 2 ambientes ───────────────────────────────
+# ── Unified barplot: 3 families × 2 environments ───────────────────────────────
 fig2, ax2 = plt.subplots(figsize=(13, 6), facecolor="#0d1117")
 ax2.set_facecolor("#161b22")
 
@@ -133,7 +133,7 @@ for a in all_algos_ordered:
     algo_colors[a] = shades[f][cidx[f] % len(shades[f])]
     cidx[f] += 1
 
-# Monta valores
+# Assemble the bar values
 vals = {}
 for env in env_labels:
     vals[env] = {}
@@ -159,8 +159,8 @@ for i, algo in enumerate(all_algos_ordered):
 
 ax2.set_xticks(x)
 ax2.set_xticklabels(env_labels, color="#8b949e", fontsize=11)
-ax2.set_ylabel("Fitness Final (melhor indivíduo)", color="#8b949e", fontsize=10)
-ax2.set_title("Comparação Final: 3 Famílias Completas (F1=Diretas, F2=Programas, F3=EDA)",
+ax2.set_ylabel("Final Fitness (best individual)", color="#8b949e", fontsize=10)
+ax2.set_title("Final Comparison: All 3 Families (F1=Direct, F2=Programs, F3=EDA)",
               color="white", fontsize=12, fontweight="bold")
 ax2.tick_params(colors="#8b949e")
 for spine in ax2.spines.values(): spine.set_edgecolor("#30363d")
@@ -175,14 +175,14 @@ out4 = os.path.join(ART_DIR, "all_families_bar.png")
 plt.savefig(out3, dpi=150, bbox_inches="tight", facecolor=fig2.get_facecolor())
 plt.savefig(out4, dpi=150, bbox_inches="tight", facecolor=fig2.get_facecolor())
 plt.close()
-print(f"Salvo: {out3}")
-print(f"Salvo: {out4}")
+print(f"Saved: {out3}")
+print(f"Saved: {out4}")
 
-# ── Tabela resumo completa ────────────────────────────────────────────────────
+# ── Complete summary table ────────────────────────────────────────────────────
 print("\n" + "="*75)
-print("TABELA COMPLETA — 3 FAMILIAS × 2 AMBIENTES COM GP")
+print("COMPLETE TABLE — 3 FAMILIES × 2 ENVIRONMENTS, INCLUDING GP")
 print("="*75)
-print(f"{'Algoritmo':<14} {'Familia':<8} {'Ambiente':<26} {'Best':>10} {'Gerações':>9} {'t(s)':>7}")
+print(f"{'Algorithm':<14} {'Family':<8} {'Environment':<26} {'Best':>10} {'Gens':>9} {'t(s)':>7}")
 print("-"*75)
 for r in ROWS:
     print(f"{r['algo']:<14} F{r['family']:<7} {r['env']:<26} {r['best']:>10.2f} {r['n_gen']:>9} {r['t']:>7.1f}")

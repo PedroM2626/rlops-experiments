@@ -1142,7 +1142,7 @@ saveLoadLabel = forms.label(form, "Save/Load:", 5, 129)
 playTopButton = forms.button(form, "Play Top", playTop, 5, 170)
 hideBanner = forms.checkbox(form, "Hide Banner", 5, 190)
 
--- Habilita emulação acelerada (turbo) para benchmark pareado
+-- Enable accelerated emulation (turbo) for the paired benchmark
 pcall(function() client.speedmode(600) end)
 
 while true do

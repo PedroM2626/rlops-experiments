@@ -1,3 +1,8 @@
+"""PPO with RLlib (Ray) on the torch backend, the framework arm: maps common.py's canonical
+hyperparameters onto PPOConfig (16 envs inside one in-process runner, 64x64 tanh net, orthogonal
+init) and then runs the shared stochastic evaluation. Its init is not fully comparable: this API
+exposes no separate gain for the output head, so RLlib's last layer keeps the hidden-layer gain.
+"""
 import time
 import sys
 sys.path.insert(0, "/home/claude/ppo-benchmark/scripts")
@@ -19,11 +24,11 @@ def main():
     model_config = DefaultModelConfig(
         fcnet_hiddens=list(cfg["hidden_sizes"]),
         fcnet_activation=cfg["activation"],
-        vf_share_layers=False,  # default do RLlib é True; as outras 3 libs usam redes separadas
+        vf_share_layers=False,  # RLlib's default is True; the other 3 libs use separate networks
         fcnet_kernel_initializer="orthogonal_",
         fcnet_kernel_initializer_kwargs={"gain": cfg["ortho_gain_hidden"]},
-        # nota: RLlib não expõe gain diferente pro layer de saída via essa API,
-        # então a última camada fica com o mesmo gain das hidden (gap documentado no README)
+        # note: RLlib doesn't expose a different gain for the output layer through this API,
+        # so the last layer keeps the same gain as the hidden ones (gap documented in the README)
     )
 
     config = (

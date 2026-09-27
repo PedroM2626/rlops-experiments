@@ -1,7 +1,7 @@
-"""PPO com TorchRL, seguindo o tutorial oficial (coding_ppo.html) adaptado
-pra ação discreta -- TorchRL usa spec OneHot por padrão pra gym.Discrete,
-então o padrão certo é ProbabilisticActor + OneHotCategorical (não
-Categorical simples), como no exemplo da DataCamp/documentação oficial."""
+"""PPO with TorchRL, following the official tutorial (coding_ppo.html) adapted
+for discrete actions -- TorchRL uses a OneHot spec by default for gym.Discrete,
+so the right pattern is ProbabilisticActor + OneHotCategorical (not a
+plain Categorical), as in the DataCamp/official documentation example."""
 import time
 import sys
 sys.path.insert(0, "/home/claude/ppo-benchmark/scripts")
@@ -112,7 +112,7 @@ def main():
                 optim.step()
                 optim.zero_grad()
 
-        # episódios que terminaram nesse batch (RewardSum acumula em "episode_reward")
+        # episodes that ended in this batch (RewardSum accumulates into "episode_reward")
         done_mask = tensordict_data["next", "done"].squeeze(-1)
         if done_mask.any():
             ep_rewards = tensordict_data["next", "episode_reward"][done_mask].squeeze(-1)

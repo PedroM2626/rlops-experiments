@@ -1,6 +1,6 @@
-"""PPO em JAX puro: rede e update compilados com jit, env continua sendo gymnasium
-(CartPole do gym não é jittable como o do Brax, mas assim comparamos a MESMA física
-entre as 3 implementações -- fairness > pureza)."""
+"""PPO in pure JAX: network and update compiled with jit, while the env stays gymnasium
+(gym's CartPole isn't jittable the way Brax's is, but this way we compare the SAME physics
+across the 3 implementations -- fairness > purity)."""
 import time
 import sys
 sys.path.insert(0, "/home/claude/ppo-benchmark/scripts")
@@ -198,7 +198,7 @@ def main():
     save_result("jax_pure", elapsed, smoothed)
     envs.close()
 
-    eval_key = [key]  # lista pra poder reatribuir dentro do closure
+    eval_key = [key]  # list so it can be reassigned inside the closure
 
     def act_fn(obs):
         eval_key[0], subkey = jax.random.split(eval_key[0])

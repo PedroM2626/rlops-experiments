@@ -1,8 +1,8 @@
-"""Réplica exata do train_sb3.py, mudando SÓ uma coisa: n_envs=1 em vez de 8.
-Objetivo: testar se essa única diferença estrutural explica por que o SB3
-apareceu muito mais instável no projeto externo (N_ENVS=1 lá) do que no
-nosso benchmark (N_ENVS=8 aqui, onde o SB3 foi consistentemente o mais
-ESTÁVEL das 5-7 implementações)."""
+"""Exact replica of train_sb3.py, changing ONLY one thing: n_envs=1 instead of 8.
+Goal: test whether this single structural difference explains why SB3
+looked far more unstable in the external project (N_ENVS=1 there) than in
+our benchmark (N_ENVS=8 here, where SB3 was consistently the most
+STABLE of the 5-7 implementations)."""
 import time
 import sys
 sys.path.insert(0, "/home/claude/ppo-benchmark/scripts")
@@ -37,13 +37,13 @@ def make_env():
 
 def main():
     cfg = dict(PPO_CONFIG)
-    cfg["n_envs"] = 1  # ÚNICA mudança em relação ao train_sb3.py original
+    cfg["n_envs"] = 1  # ONLY change relative to the original train_sb3.py
     env = DummyVecEnv([make_env() for _ in range(cfg["n_envs"])])
 
     policy_kwargs = dict(
         net_arch=dict(pi=list(cfg["hidden_sizes"]), vf=list(cfg["hidden_sizes"])),
         activation_fn=nn.Tanh,
-        ortho_init=True,  # gains: sqrt(2) hidden, 0.01 policy-out, 1.0 value-out (default do SB3, igual às outras libs)
+        ortho_init=True,  # gains: sqrt(2) hidden, 0.01 policy-out, 1.0 value-out (SB3 default, same as the other libs)
         optimizer_kwargs=dict(eps=cfg["adam_eps"]),
     )
 

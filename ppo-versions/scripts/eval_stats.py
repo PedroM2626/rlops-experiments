@@ -1,3 +1,8 @@
+"""Post-processing of the frozen-policy EVALUATION results (results_eval/<ENV_TAG>): for a
+single training seed per library, reports per-episode return statistics plus Kruskal-Wallis
+and Bonferroni-corrected Mann-Whitney U tests, and saves a boxplot. The spread shown here is
+evaluation noise only -- no training-seed variance. Defaults to LunarLander-v3.
+"""
 import json
 import glob
 import numpy as np
@@ -12,10 +17,10 @@ RESULTS_DIR = f"/home/claude/ppo-benchmark/results_eval/{ENV_TAG}"
 
 labels = {
     "stable_baselines3": "Stable-Baselines3",
-    "cleanrl_style_pytorch": "PyTorch puro\n(estilo CleanRL)",
-    "jax_pure": "JAX puro",
+    "cleanrl_style_pytorch": "Pure PyTorch\n(CleanRL style)",
+    "jax_pure": "Pure JAX",
     "rllib": "RLlib (Ray)",
-    "cleanrl_original": "CleanRL\n(oficial)",
+    "cleanrl_original": "CleanRL\n(official)",
 }
 colors = {
     "stable_baselines3": "#4C72B0",
@@ -35,11 +40,11 @@ arrays = {n: np.array(data[n]["eval_returns"]) for n in order}
 n_eps = len(next(iter(arrays.values())))
 
 print("=" * 70)
-print(f"AVALIAÇÃO: 1 seed de treino (seed={EVAL_SEED}), {n_eps} episódios de avaliação por lib")
+print(f"EVALUATION: 1 training seed (seed={EVAL_SEED}), {n_eps} evaluation episodes per library")
 print("=" * 70)
 for n in order:
     a = arrays[n]
-    print(f"{labels.get(n,n).replace(chr(10),' '):32s} média={a.mean():8.1f}  mediana={np.median(a):8.1f}  "
+    print(f"{labels.get(n,n).replace(chr(10),' '):32s} mean ={a.mean():8.1f}  median ={np.median(a):8.1f}  "
           f"std={a.std():7.1f}  min={a.min():7.1f}  max={a.max():7.1f}")
 
 h_stat, p_kw = stats.kruskal(*[arrays[n] for n in order])
@@ -47,11 +52,11 @@ print(f"\nKruskal-Wallis: H={h_stat:.3f}, p={p_kw:.4f}")
 
 pairs = list(combinations(order, 2))
 alpha_corr = 0.05 / len(pairs)
-print(f"Mann-Whitney U pairwise (Bonferroni, alpha corrigido={alpha_corr:.4f}):")
+print(f"Mann-Whitney U pairwise (Bonferroni, corrected alpha={alpha_corr:.4f}):")
 rows = []
 for a, b in pairs:
     u, p = stats.mannwhitneyu(arrays[a], arrays[b], alternative="two-sided")
-    rows.append((labels.get(a,a).replace(chr(10),' '), labels.get(b,b).replace(chr(10),' '), p, "SIM" if p < alpha_corr else "não"))
+    rows.append((labels.get(a,a).replace(chr(10),' '), labels.get(b,b).replace(chr(10),' '), p, "yes" if p < alpha_corr else "no"))
 rows.sort(key=lambda r: r[2])
 for a, b, p, sig in rows:
     print(f"  {a:28s} vs {b:28s} p={p:8.4f}  {sig}")
@@ -67,8 +72,8 @@ for patch, n in zip(bp["boxes"], order):
 for i, a in enumerate(plot_data):
     x = np.random.normal(i + 1, 0.05, size=len(a))
     ax.scatter(x, a, alpha=0.4, s=14, color="black", zorder=3)
-ax.set_ylabel("Retorno por episódio de avaliação")
-ax.set_title(f"1 treino por lib (seed={EVAL_SEED}, 1M steps) — variância vem só da avaliação (n={n_eps} episódios)\n"
+ax.set_ylabel("Return per evaluation episode")
+ax.set_title(f"1 training run per library (seed={EVAL_SEED}, 1M steps) — variance comes only from evaluation (n={n_eps} episodes)\n"
              f"Kruskal-Wallis: H={h_stat:.2f}, p={p_kw:.4f}")
 ax.grid(alpha=0.3, axis="y")
 fig.tight_layout()

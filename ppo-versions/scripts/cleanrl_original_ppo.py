@@ -1,3 +1,7 @@
+"""Vendored copy of the official CleanRL ppo.py (github.com/vwxyzjn/cleanrl): a single-file,
+tyro-configured PPO that train_cleanrl_original.py runs as a subprocess. Unmodified except for
+one local patch at the end, which torch.save()s the trained state_dict so it can be evaluated.
+"""
 # docs and experiment results can be found at https://docs.cleanrl.dev/rl-algorithms/ppo/#ppopy
 import os
 import random

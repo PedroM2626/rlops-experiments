@@ -1,16 +1,16 @@
 """
-Script principal de benchmark.
+Main benchmark script.
 
-Executa 3 famílias de algoritmos evolutivos em 5 ambientes gymnax/JAX:
-  Família 1 (Diretas):   SimpleGA, DE, OpenAI-ES
-  Família 2 (Programas): LinearGP, CartesianGP
-  Família 3 (EDA):       CMA-ES, PBIL
+Runs 3 families of evolutionary algorithms on 5 gymnax/JAX environments:
+  Family 1 (Direct):   SimpleGA, DE, OpenAI-ES
+  Family 2 (Programs): LinearGP, CartesianGP
+  Family 3 (EDA):      CMA-ES, PBIL
 
-Uso:
+Usage:
     C:\\ev\\Scripts\\python run_benchmark.py [--quick] [--env ENV_NAME]
 
-    --quick : modo rápido (menos gerações, para teste)
-    --env   : roda somente 1 ambiente específico
+    --quick : quick mode (fewer generations, for testing)
+    --env   : run only 1 specific environment
 """
 import sys
 import os
@@ -26,7 +26,7 @@ import time
 import numpy as np
 import jax
 
-# Silencia warnings verbosos do JAX/flax
+# Silence the verbose JAX/flax warnings
 os.environ.setdefault("JAX_PLATFORMS", "cpu")
 os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "3")
 
@@ -42,11 +42,11 @@ OUT_DIR = os.path.join(os.path.dirname(__file__), "results")
 
 
 def build_algorithms(obs_dim: int, act_dim: int, quick: bool):
-    """Instancia todos os algoritmos com hiperparâmetros por modo."""
+    """Instantiates all algorithms with mode-specific hyper-parameters."""
     pop = 32 if quick else 64
 
     return [
-        # --- Família 1: Soluções Diretas ---
+        # --- Family 1: Direct Solutions ---
         dict(algo=SimpleGA(pop_size=pop, sigma_init=0.5, cx_prob=0.8),
              name="SimpleGA", family=1),
         dict(algo=DE(pop_size=pop, F=0.8, CR=0.9),
@@ -54,7 +54,7 @@ def build_algorithms(obs_dim: int, act_dim: int, quick: bool):
         dict(algo=OpenAIES(pop_size=pop, sigma=0.05, lr=0.01),
              name="OpenAI-ES", family=1),
 
-        # --- Família 3: EDA/Modelos ---
+        # --- Family 3: EDA/Models ---
         dict(algo=CMAES(sigma0=0.5),
              name="CMA-ES", family=3),
         dict(algo=PBIL(pop_size=pop, lr=0.1, lr_sigma=0.05, top_k_frac=0.2),
@@ -63,7 +63,7 @@ def build_algorithms(obs_dim: int, act_dim: int, quick: bool):
 
 
 def build_gp_algorithms(obs_dim: int, act_dim: int, quick: bool):
-    """Instancia algoritmos de Família 2 (precisam de obs_dim/act_dim)."""
+    """Instantiates the Family 2 algorithms (they need obs_dim/act_dim)."""
     pop = 16 if quick else 32
     return [
         dict(algo=LinearGP(obs_dim=obs_dim, act_dim=act_dim,
@@ -78,13 +78,13 @@ def build_gp_algorithms(obs_dim: int, act_dim: int, quick: bool):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Benchmark Evolutivo RL em JAX")
+    parser = argparse.ArgumentParser(description="Evolutionary RL Benchmark in JAX")
     parser.add_argument("--quick",  action="store_true",
-                        help="Modo rápido: menos gerações (teste de sanidade)")
+                        help="Quick mode: fewer generations (sanity check)")
     parser.add_argument("--env",    type=str, default=None,
-                        help="Rodar somente este ambiente (e.g. CartPole-v1)")
+                        help="Run only this environment (e.g. CartPole-v1)")
     parser.add_argument("--no-gp",  action="store_true",
-                        help="Pular Família 2 (GP, mais lento)")
+                        help="Skip Family 2 (GP, slower)")
     parser.add_argument("--seed",   type=int, default=42)
     args = parser.parse_args()
 
@@ -92,7 +92,7 @@ def main():
     if args.env:
         envs_to_run = [args.env]
 
-    # Configurações de número de gerações por modo
+    # Number-of-generations settings for each mode
     if args.quick:
         n_gen_direct = 30
         n_gen_gp     = 10
@@ -103,11 +103,11 @@ def main():
         n_rollouts   = 4
 
     print("=" * 70)
-    print("  Benchmark: 3 Famílias de Algoritmos Evolutivos × Ambientes RL")
-    print(f"  Modo: {'rápido' if args.quick else 'completo'}")
-    print(f"  Ambientes: {envs_to_run}")
-    print(f"  Gerações (direto): {n_gen_direct}  |  GP: {n_gen_gp}")
-    print(f"  Rollouts por avaliação: {n_rollouts}")
+    print("  Benchmark: 3 Families of Evolutionary Algorithms × RL Environments")
+    print(f"  Mode: {'quick' if args.quick else 'full'}")
+    print(f"  Environments: {envs_to_run}")
+    print(f"  Generations (direct): {n_gen_direct}  |  GP: {n_gen_gp}")
+    print(f"  Rollouts per evaluation: {n_rollouts}")
     print(f"  Seed: {args.seed}")
     print("=" * 70)
 
@@ -123,14 +123,14 @@ def main():
         obs_dim  = meta["obs_dim"]
         act_dim  = meta["act_dim"]
         print(f"\n{'-'*70}")
-        print(f"  Ambiente: {env_name}  (obs={obs_dim}, act={act_dim}, discrete={meta['discrete']})")
+        print(f"  Environment: {env_name}  (obs={obs_dim}, act={act_dim}, discrete={meta['discrete']})")
         print(f"{'-'*70}")
 
         results_env = []
 
-        # ── Famílias 1 e 3 ────────────────────────────────────────────────
+        # ── Families 1 and 3 ───────────────────────────────────────────────
         for alg_cfg in build_algorithms(obs_dim, act_dim, args.quick):
-            print(f"\n[Família {alg_cfg['family']}] {alg_cfg['name']}")
+            print(f"\n[Family {alg_cfg['family']}] {alg_cfg['name']}")
             res = run_param_based_v2(
                 algo         = alg_cfg["algo"],
                 algo_name    = alg_cfg["name"],
@@ -143,10 +143,10 @@ def main():
             )
             results_env.append(res)
 
-        # ── Família 2 (GP) ────────────────────────────────────────────────
+        # ── Family 2 (GP) ──────────────────────────────────────────────────
         if not args.no_gp:
             for alg_cfg in build_gp_algorithms(obs_dim, act_dim, args.quick):
-                print(f"\n[Família 2] {alg_cfg['name']}")
+                print(f"\n[Family 2] {alg_cfg['name']}")
                 res = run_program_based(
                     algo         = alg_cfg["algo"],
                     algo_name    = alg_cfg["name"],
@@ -162,12 +162,12 @@ def main():
         results_by_env[env_name] = results_env
 
     print(f"\n\n{'='*70}")
-    print(f"  Treino concluido em {time.time()-t_total:.1f}s")
+    print(f"  Training finished in {time.time()-t_total:.1f}s")
     print(f"{'='*70}\n")
 
-    # ── Tabela resumo ──────────────────────────────────────────────────────
-    print(f"{'Algoritmo':<14} {'Família':<9} {'Ambiente':<28} "
-          f"{'Best Fitness':>14} {'Mean Final':>12} {'Tempo (s)':>10}")
+    # ── Summary table ──────────────────────────────────────────────────────
+    print(f"{'Algorithm':<14} {'Family':<9} {'Environment':<28} "
+          f"{'Best Fitness':>14} {'Mean Final':>12} {'Time (s)':>10}")
     print("-" * 90)
     for env, res_list in results_by_env.items():
         for r in res_list:
@@ -177,8 +177,8 @@ def main():
                   f"{bf:>14.2f} {mf:>12.2f} {r.total_time:>10.1f}")
         print()
 
-    # ── Gráficos ───────────────────────────────────────────────────────────
-    print("\nGerando visualizações...")
+    # ── Plots ──────────────────────────────────────────────────────────────
+    print("\nGenerating visualizations...")
     os.makedirs(OUT_DIR, exist_ok=True)
 
     plot_learning_curves(results_by_env, OUT_DIR)
@@ -186,7 +186,7 @@ def main():
     plot_time_profile(results_by_env, OUT_DIR)
     save_results_csv(results_by_env, OUT_DIR)
 
-    # ── Salva dados brutos em JSON ─────────────────────────────────────────
+    # ── Saves the raw data to JSON ─────────────────────────────────────────
     json_data = {}
     for env, res_list in results_by_env.items():
         json_data[env] = []
@@ -204,9 +204,9 @@ def main():
     json_path = os.path.join(OUT_DIR, "raw_results.json")
     with open(json_path, "w") as f:
         json.dump(json_data, f, indent=2)
-    print(f"[json] Salvo: {json_path}")
+    print(f"[json] Saved: {json_path}")
 
-    print(f"\n[OK] Todos os resultados em: {OUT_DIR}/")
+    print(f"\n[OK] All results in: {OUT_DIR}/")
 
 
 if __name__ == "__main__":

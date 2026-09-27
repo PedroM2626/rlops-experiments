@@ -1,17 +1,17 @@
-"""Igual ao train_jax_tuned.py (normalização de obs/reward, rede 128x128, LR
-annealing), MAS com os 2 truques específicos do RLlib que ficaram como
-hipótese em aberto no README:
+"""Same as train_jax_tuned.py (obs/reward normalization, 128x128 network, LR
+annealing), BUT with the 2 RLlib-specific tricks that were left as an
+open hypothesis in the README:
 
-5. Value function clipping (RLLIB_VF_CLIP_PARAM = 10.0) -- clipa o quanto a
-   estimativa de valor pode se mover em relação ao valor coletado no rollout,
-   igual ao clipping de política, só que pra value function.
-6. Penalidade de KL dinâmica (RLLIB_KL_TARGET = 0.01, RLLIB_INITIAL_KL_COEFF
-   = 0.2) -- adiciona kl_coeff * KL(antiga||nova) na loss, e ajusta kl_coeff
-   a cada update: sobe se a KL medida passou do alvo, desce se ficou abaixo.
+5. Value function clipping (RLLIB_VF_CLIP_PARAM = 10.0) -- clips how far the
+   value estimate may move relative to the value collected in the rollout,
+   like policy clipping but for the value function.
+6. Dynamic KL penalty (RLLIB_KL_TARGET = 0.01, RLLIB_INITIAL_KL_COEFF
+   = 0.2) -- adds kl_coeff * KL(old||new) to the loss and adjusts kl_coeff
+   at each update: up when the measured KL exceeds the target, down when it stays below.
 
-Objetivo: isolar se esses 2 mecanismos específicos (e não outra coisa
-qualquer do RLlib) explicam o gap que sobrou entre jax_tuned (45.1) e o
-RLlib de verdade (158.9) no LunarLander.
+Goal: isolate whether these 2 specific mechanisms (and not anything else
+in RLlib) explain the gap left between jax_tuned (45.1) and real
+RLlib (158.9) on LunarLander.
 """
 import time
 import sys
@@ -31,7 +31,7 @@ RLLIB_INITIAL_KL_COEFF = 0.2
 
 
 class RunningMeanStd:
-    """Welford/Chan's algorithm -- média e variância rodantes, atualizadas em batch."""
+    """Welford/Chan's algorithm -- running mean and variance, updated in batches."""
     def __init__(self, shape=()):
         self.mean = np.zeros(shape, dtype=np.float64)
         self.var = np.ones(shape, dtype=np.float64)
@@ -116,7 +116,7 @@ def ppo_loss(params, obs, actions, old_logp, old_value, advantages, returns, kl_
     pg2 = -adv * jnp.clip(ratio, 1 - cfg["clip_coef"], 1 + cfg["clip_coef"])
     pg_loss = jnp.maximum(pg1, pg2).mean()
 
-    # value function clipping, igual ao clipping de política só que pro crítico
+    # value function clipping, like policy clipping but for the critic
     v_clipped = old_value + jnp.clip(value - old_value, -RLLIB_VF_CLIP_PARAM, RLLIB_VF_CLIP_PARAM)
     v_loss_unclipped = (value - returns) ** 2
     v_loss_clipped = (v_clipped - returns) ** 2
@@ -124,8 +124,8 @@ def ppo_loss(params, obs, actions, old_logp, old_value, advantages, returns, kl_
 
     ent_loss = entropy.mean()
 
-    # penalidade de KL: estimador de Schulman (k3), baixa variância, não exige
-    # os logits antigos completos -- só old_logp da ação amostrada
+    # KL penalty: Schulman's (k3) estimator, low variance, and it doesn't need
+    # the full old logits -- just old_logp of the sampled action
     approx_kl = jnp.mean((ratio - 1) - logratio)
 
     loss = (pg_loss - cfg["ent_coef"] * ent_loss + cfg["vf_coef"] * v_loss
@@ -154,7 +154,7 @@ def main():
     minibatch_size = batch_size // cfg["minibatches"]
     num_updates = TOTAL_TIMESTEPS // batch_size
 
-    # LR com annealing linear -- optax schedule
+    # LR with linear annealing -- optax schedule
     lr_schedule = optax.linear_schedule(
         init_value=cfg["lr"], end_value=0.0, transition_steps=num_updates * cfg["n_epochs"] * cfg["minibatches"]
     )
@@ -182,7 +182,7 @@ def main():
     obs_rms.update(raw_obs)
     next_obs = normalize_obs(raw_obs, obs_rms)
     next_done = np.zeros(n_envs, dtype=np.float32)
-    ep_returns = np.zeros(n_envs)  # retorno RAW (não-normalizado), pra log comparável com as outras libs
+    ep_returns = np.zeros(n_envs)  # RAW (unnormalized) return, so the log stays comparable with the other libs
     reward_history = []
     global_step = 0
 
@@ -207,7 +207,7 @@ def main():
             raw_obs, raw_reward, terminated, truncated, infos = envs.step(action_np)
             done = np.logical_or(terminated, truncated)
 
-            # normalização de reward: divide pelo std do retorno descontado rodante
+            # reward normalization: divide by the running std of the discounted return
             running_ret = running_ret * cfg["gamma"] + raw_reward
             ret_rms.update(running_ret.reshape(-1, 1).squeeze(-1) if running_ret.ndim else running_ret)
             norm_reward = np.clip(raw_reward / np.sqrt(ret_rms.var + 1e-8), -10.0, 10.0)
@@ -219,7 +219,7 @@ def main():
             logp_buf[step] = np.array(logp)
             val_buf[step] = np.array(value)
             rew_buf[step] = norm_reward
-            ep_returns += raw_reward  # log continua em escala RAW, comparável com as outras libs
+            ep_returns += raw_reward  # log stays on the RAW scale, comparable with the other libs
 
             for i, d in enumerate(done):
                 if d:
@@ -266,8 +266,8 @@ def main():
                 )
                 kl_this_update.append(float(approx_kl))
 
-        # ajuste dinâmico do coeficiente de KL, igual ao RLlib: sobe se passou
-        # do alvo, desce se ficou bem abaixo -- reavaliado a cada iteração de coleta+update
+        # dynamic adjustment of the KL coefficient, like RLlib: it goes up when the target
+        # is exceeded and down when it stays well below -- re-evaluated at each collection+update iteration
         mean_kl = float(np.mean(kl_this_update))
         if mean_kl > 1.5 * RLLIB_KL_TARGET:
             kl_coeff *= 1.5
@@ -289,7 +289,7 @@ def main():
     save_result("jax_tuned_kl", elapsed, smoothed)
     envs.close()
 
-    # congela obs_rms no estado final de treino -- avaliação usa as MESMAS estatísticas
+    # freeze obs_rms at its final training state -- evaluation uses the SAME statistics
     eval_key = [key]
 
     def act_fn(obs):

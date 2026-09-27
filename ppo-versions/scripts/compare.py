@@ -1,3 +1,7 @@
+"""Post-processing: one chart of mean +/- std training curve per library.
+Interpolates every seed run found in results/<ENV_TAG>/*.json onto a common timestep grid and
+prints a Markdown summary table (final reward, wall time) sorted by final reward.
+"""
 import json
 import glob
 import re
@@ -19,13 +23,13 @@ colors = {
 }
 labels = {
     "stable_baselines3": "Stable-Baselines3",
-    "cleanrl_style_pytorch": "PyTorch puro (estilo CleanRL)",
-    "jax_pure": "JAX puro",
+    "cleanrl_style_pytorch": "Pure PyTorch (CleanRL style)",
+    "jax_pure": "Pure JAX",
     "rllib": "RLlib (Ray)",
-    "cleanrl_original": "CleanRL (oficial)",
+    "cleanrl_original": "CleanRL (official)",
 }
 
-# agrupa arquivos por lib (ignorando sufixo _seedN)
+# group files by library (ignoring the _seedN suffix)
 runs = defaultdict(list)
 for path in glob.glob(f"{RESULTS_DIR}/*.json"):
     fname = path.split("/")[-1].replace(".json", "")
@@ -69,9 +73,9 @@ for name, seed_runs in runs.items():
     })
 
 ax.set_xlabel("Timesteps")
-ax.set_ylabel("Reward médio (janela de 20 episódios)")
-ax.set_title("PPO no CartPole-v1 — média ± desvio padrão entre seeds")
-ax.axhline(500, color="gray", linestyle="--", alpha=0.4, label="Max possível (500)")
+ax.set_ylabel("Mean reward (20-episode window)")
+ax.set_title("PPO on CartPole-v1 — mean ± std deviation across seeds")
+ax.axhline(500, color="gray", linestyle="--", alpha=0.4, label="Max possible (500)")
 ax.legend(loc="lower right", fontsize=9)
 ax.grid(alpha=0.3)
 fig.tight_layout()
@@ -79,7 +83,7 @@ fig.savefig(OUT_PATH, dpi=150)
 print(f"saved chart to {OUT_PATH}")
 
 summary_rows.sort(key=lambda r: -r["final_mean"])
-print("\n| Lib | Seeds | Reward final (média ± std) | Tempo médio (s) |")
+print("\n| Library | Seeds | Final reward (mean ± std) | Mean time (s) |")
 print("|---|---|---|---|")
 for r in summary_rows:
     print(f"| {r['name']} | {r['n_seeds']} | {r['final_mean']:.1f} ± {r['final_std']:.1f} | {r['time_mean']:.1f} |")

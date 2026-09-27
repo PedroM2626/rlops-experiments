@@ -1,19 +1,19 @@
-"""Versão do PPO em JAX ESPECIFICAMENTE tunada pro LunarLander -- não é mais
-'PPO genérico implementado do zero', é 'PPO customizado pra essa tarefa'.
+"""JAX PPO version tuned SPECIFICALLY for LunarLander -- it is no longer
+'generic PPO implemented from scratch', it is 'PPO customized for this task'.
 
-Mudanças em relação ao train_jax.py genérico:
-1. Normalização de observação (running mean/std, estilo VecNormalize) -- as 8
-   dimensões do LunarLander têm escalas bem diferentes (posição, velocidade
-   angular, contato binário das pernas).
-2. Normalização de reward (running std do retorno descontado, estilo
-   VecNormalize) -- os picos de +100/-100 no pouso/crash desestabilizam o
-   gradiente sem isso.
-3. Rede maior: 128x128 em vez de 64x64 (LunarLander tem 2x mais observações
-   e 2x mais ações que CartPole).
-4. Learning rate com annealing linear até 0.
+Changes relative to the generic train_jax.py:
+1. Observation normalization (running mean/std, VecNormalize style) -- the 8
+   LunarLander dimensions have very different scales (position, angular
+   velocity, binary leg contact).
+2. Reward normalization (running std of the discounted return, VecNormalize
+   style) -- without it, the +100/-100 spikes on landing/crash destabilize the
+   gradient.
+3. Larger network: 128x128 instead of 64x64 (LunarLander has 2x more observations
+   and 2x more actions than CartPole).
+4. Learning rate with linear annealing down to 0.
 
-Tudo isso é código real, não é so mudar 1 hiperparâmetro -- por isso é uma
-implementação separada em vez de flags no train_jax.py original.
+All of this is real code, not just changing 1 hyperparameter -- that is why it is
+a separate implementation instead of flags on the original train_jax.py.
 """
 import time
 import sys
@@ -26,11 +26,11 @@ import jax.numpy as jnp
 import optax
 import gymnasium as gym
 
-HIDDEN = 128  # em vez de 64
+HIDDEN = 128  # instead of 64
 
 
 class RunningMeanStd:
-    """Welford/Chan's algorithm -- média e variância rodantes, atualizadas em batch."""
+    """Welford/Chan's algorithm -- running mean and variance, updated in batches."""
     def __init__(self, shape=()):
         self.mean = np.zeros(shape, dtype=np.float64)
         self.var = np.ones(shape, dtype=np.float64)
@@ -138,7 +138,7 @@ def main():
     minibatch_size = batch_size // cfg["minibatches"]
     num_updates = TOTAL_TIMESTEPS // batch_size
 
-    # LR com annealing linear -- optax schedule
+    # LR with linear annealing -- optax schedule
     lr_schedule = optax.linear_schedule(
         init_value=cfg["lr"], end_value=0.0, transition_steps=num_updates * cfg["n_epochs"] * cfg["minibatches"]
     )
@@ -165,7 +165,7 @@ def main():
     obs_rms.update(raw_obs)
     next_obs = normalize_obs(raw_obs, obs_rms)
     next_done = np.zeros(n_envs, dtype=np.float32)
-    ep_returns = np.zeros(n_envs)  # retorno RAW (não-normalizado), pra log comparável com as outras libs
+    ep_returns = np.zeros(n_envs)  # RAW (unnormalized) return, so the log stays comparable with the other libs
     reward_history = []
     global_step = 0
 
@@ -190,7 +190,7 @@ def main():
             raw_obs, raw_reward, terminated, truncated, infos = envs.step(action_np)
             done = np.logical_or(terminated, truncated)
 
-            # normalização de reward: divide pelo std do retorno descontado rodante
+            # reward normalization: divide by the running std of the discounted return
             running_ret = running_ret * cfg["gamma"] + raw_reward
             ret_rms.update(running_ret.reshape(-1, 1).squeeze(-1) if running_ret.ndim else running_ret)
             norm_reward = np.clip(raw_reward / np.sqrt(ret_rms.var + 1e-8), -10.0, 10.0)
@@ -202,7 +202,7 @@ def main():
             logp_buf[step] = np.array(logp)
             val_buf[step] = np.array(value)
             rew_buf[step] = norm_reward
-            ep_returns += raw_reward  # log continua em escala RAW, comparável com as outras libs
+            ep_returns += raw_reward  # log stays on the RAW scale, comparable with the other libs
 
             for i, d in enumerate(done):
                 if d:
@@ -259,7 +259,7 @@ def main():
     save_result("jax_tuned", elapsed, smoothed)
     envs.close()
 
-    # congela obs_rms no estado final de treino -- avaliação usa as MESMAS estatísticas
+    # freeze obs_rms at its final training state -- evaluation uses the SAME statistics
     eval_key = [key]
 
     def act_fn(obs):

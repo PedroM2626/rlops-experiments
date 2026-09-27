@@ -10,7 +10,7 @@ The experiments fall into three groups:
   trained with PPO from Stable Baselines3, tracked in MLflow, with Docker images for headless runs.
 - **PPO implementation studies** (`ppo-versions`, `PPO-SB3-CleanRL-JAX`) — controlled comparisons
   of many PPO implementations across libraries and numerical stacks.
-- **Evolutionary and neuroevolution work** (`evolutionary-estrategies`, `smw-evolutionary-agent`)
+- **Evolutionary and neuroevolution work** (`evolutionary-strategies`, `smw-evolutionary-agent`)
   — genetic programming / EDA / evolution-strategy benchmarks in JAX, and NEAT vs. GP agents
   playing *Super Mario World* in an emulator.
 
@@ -53,7 +53,7 @@ fixed while swapping the stack (Torch vs. JAX) and holds the stack fixed while s
 (SB3 vs. CleanRL), plus a hand-written "bridge" implementation and single-delta ablations to
 localise where a performance gap actually comes from.
 
-### [evolutionary-estrategies](evolutionary-estrategies/README.md)
+### [evolutionary-strategies](evolutionary-strategies/README.md)
 
 Benchmark of three evolutionary families on canonical RL tasks with JAX-vectorised fitness
 evaluation (`vmap` + `jit` over `gymnax`): direct parameter vectors (SimpleGA, Differential
@@ -77,10 +77,10 @@ setup. [docs/comparison.md](smw-evolutionary-agent/docs/comparison.md) is the wr
 | RL interface | Gymnasium + Stable Baselines3 PPO (`DummyVecEnv`, `VecNormalize`) | Chase, Parkour, Race |
 | Experiment tracking | MLflow (local file store per project) | Chase, Parkour, Race |
 | Alternative PPO stacks | CleanRL-style Torch, pure PyTorch, RLlib/Ray, TorchRL, Tianshou, JAX + Optax | ppo-versions, PPO-SB3-CleanRL-JAX |
-| Vectorised evolution search | JAX (`vmap`/`jit`/`lax.scan`) + gymnax | evolutionary-estrategies, PPO-SB3-CleanRL-JAX |
-| Evolutionary algorithms | GA, DE, OpenAI-ES, CMA-ES, PBIL, Linear/Cartesian GP, NEAT | evolutionary-estrategies, smw-evolutionary-agent |
+| Vectorised evolution search | JAX (`vmap`/`jit`/`lax.scan`) + gymnax | evolutionary-strategies, PPO-SB3-CleanRL-JAX |
+| Evolutionary algorithms | GA, DE, OpenAI-ES, CMA-ES, PBIL, Linear/Cartesian GP, NEAT | evolutionary-strategies, smw-evolutionary-agent |
 | Emulation / game interface | BizHawk 2.9.x + Lua API, Snes9x core | smw-evolutionary-agent |
-| Statistics / figures | Matplotlib + NumPy everywhere; `scipy.stats` for the hypothesis tests in `ppo-versions`, NumPy bootstrap resampling in `evolutionary-estrategies` | ppo-versions, PPO-SB3-CleanRL-JAX, evolutionary-estrategies |
+| Statistics / figures | Matplotlib + NumPy everywhere; `scipy.stats` for the hypothesis tests in `ppo-versions`, NumPy bootstrap resampling in `evolutionary-strategies` | ppo-versions, PPO-SB3-CleanRL-JAX, evolutionary-strategies |
 | Containerisation | Docker + Docker Compose (CUDA image path available) | Chase, Parkour, Race |
 
 ## Repository layout
@@ -133,7 +133,7 @@ setup. [docs/comparison.md](smw-evolutionary-agent/docs/comparison.md) is the wr
 │   ├── requirements-torch.txt, requirements-jax.txt
 │   └── results/                  # curves/tables/plots/meta committed, models ignored
 │
-├── evolutionary-estrategies/     # 3 evolutionary families, JAX/gymnax
+├── evolutionary-strategies/      # 3 evolutionary families, JAX/gymnax
 │   ├── src/{environments,family1_direct,family2_programs,family3_eda}.py
 │   ├── src/{benchmark,evaluation,visualization}.py
 │   ├── run_benchmark.py, run_gp_only.py
@@ -179,7 +179,7 @@ source .venv/bin/activate
 | Race | `pip install -r Race/requirements.txt` |
 | ppo-versions | `pip install -r ppo-versions/requirements.txt` |
 | PPO-SB3-CleanRL-JAX | `pip install -r requirements-torch.txt` **and** `-r requirements-jax.txt` into a single interpreter |
-| evolutionary-estrategies | no requirements file; the pinned install line is in its README |
+| evolutionary-strategies | no requirements file; the pinned install line is in its README |
 | smw-evolutionary-agent | Python standard library only; the heavy dependency is BizHawk 2.9.x plus a legally dumped SMW ROM |
 
 Environment configuration for the three PyBullet projects is optional:
@@ -283,7 +283,7 @@ and both plotters drop out on it. Note that `results/` and `results_eval/`
 are the committed record of the benchmark, and a re-run overwrites files with the same name in
 place — set `PPO_RUN_TAG` to keep a new run separate.
 
-### evolutionary-estrategies (from `evolutionary-estrategies/`)
+### evolutionary-strategies (from `evolutionary-strategies/`)
 
 ```bash
 python run_validation_100.py                     # out-of-sample 100-episode protocol
@@ -371,7 +371,7 @@ Per `.gitignore`:
 - **Secrets and editor state**: `.env`, `Race/.env`, `.DS_Store`, `Thumbs.db`, `.vscode/`, `.idea/`.
 
 Committed on purpose, in contrast: the study outputs that *are* the record of the non-PyBullet
-experiments — `ppo-versions/results*`, `evolutionary-estrategies/results`, and the
+experiments — `ppo-versions/results*`, `evolutionary-strategies/results`, and the
 `curves/tables/plots/meta` subtrees plus runner logs under `PPO-SB3-CleanRL-JAX/results`
 (its `results/logs/` directory is ignored). `.dockerignore` mirrors the artifact exclusions so
 images are not built with checkpoints inside.
@@ -385,7 +385,7 @@ images are not built with checkpoints inside.
 | Race | Python 3.10+ | same family plus matplotlib, pandas, pytest |
 | PPO-SB3-CleanRL-JAX | Python 3.10–3.11, one interpreter with Torch **and** JAX installed together, CPU only | `requirements-torch.txt`, `requirements-jax.txt` |
 | ppo-versions | recorded on Python 3.12.3 / Ubuntu 24.04, CPU only | dated snapshot in `ppo-versions/requirements.txt` (SB3, JAX, Ray, TorchRL, Tianshou, box2d) |
-| evolutionary-estrategies | Python 3.11 recommended | JAX, gymnax, NumPy, matplotlib (its install line also pins `flax` and `orbax-checkpoint`) |
+| evolutionary-strategies | Python 3.11 recommended | JAX, gymnax, NumPy, matplotlib (its install line also pins `flax` and `orbax-checkpoint`) |
 | smw-evolutionary-agent | Windows 10/11 x64; Python standard library only | BizHawk 2.9.1, .NET 8 runtime, VC++ 2015-2022 redist, DirectX end-user runtime, `Super Mario World (USA).sfc` |
 
 Paths in every project are relative to that project's own directory: run commands from inside the

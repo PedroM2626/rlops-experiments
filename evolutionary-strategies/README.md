@@ -311,7 +311,7 @@ All figures are rendered in a high-resolution academic dark-mode style and saved
 ## 9. Repository Structure
 
 ```
-evolutionary-estrategies/
+evolutionary-strategies/
 ├── src/
 │   ├── environments.py       # Gymnax 1.0.0 wrapper + vectorized JAX MLP forward pass
 │   ├── family1_direct.py     # Family 1: SimpleGA, DE, OpenAI-ES

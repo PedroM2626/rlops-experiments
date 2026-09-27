@@ -150,7 +150,6 @@ class ParkourEnv(gym.Env):
         self._step_count               = 0
         self._prev_dist_to_goal        = 0.0
         self._spawn_y                  = 0.0
-        self._platform_z               = 0.0  # surface Z of the start platform
 
         # URDF path (relative to project root, resolved at load time)
         self._urdf_path = os.path.join(
@@ -231,7 +230,6 @@ class ParkourEnv(gym.Env):
         self._prev_dist_to_goal = float(
             np.linalg.norm(self._get_torso_pos() - self._goal_pos))
         self._spawn_y    = float(self._start_pos[1])
-        self._platform_z = float(self._start_pos[2])  # top surface of start platform
 
         return self._get_obs(), {}
 

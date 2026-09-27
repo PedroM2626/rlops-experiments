@@ -24,6 +24,11 @@ runtime/
 *.nes
 *.dll
 
+# BizHawk savestates and evolved population pools (regenerable run output)
+*.state
+*.pool
+*.gppool
+
 # Env files with secrets
 .env
 Race/.env

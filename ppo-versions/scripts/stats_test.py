@@ -26,7 +26,7 @@ labels = {
 
 runs = defaultdict(list)
 for path in glob.glob(f"{RESULTS_DIR}/*.json"):
-    fname = path.split("/")[-1].replace(".json", "")
+    fname = os.path.basename(path).replace(".json", "")
     m = re.match(r"(.+)_seed\d+$", fname)
     name = m.group(1) if m else fname
     with open(path) as f:
@@ -34,8 +34,11 @@ for path in glob.glob(f"{RESULTS_DIR}/*.json"):
 
 finals = {name: np.array([r["final_reward"] for r in seed_runs]) for name, seed_runs in runs.items()}
 
+counts = [len(v) for v in finals.values()]
+n_label = (f"{min(counts)}-{max(counts)}"
+           if min(counts) != max(counts) else str(counts[0]))
 print("=" * 70)
-print("DESCRIPTIVE STATISTICS (n=20 seeds each)")
+print(f"DESCRIPTIVE STATISTICS (n={n_label} seeds per library)")
 print("=" * 70)
 for name, vals in sorted(finals.items(), key=lambda kv: -kv[1].mean()):
     print(f"{labels.get(name, name):32s} mean ={vals.mean():7.1f}  median ={np.median(vals):7.1f}  "

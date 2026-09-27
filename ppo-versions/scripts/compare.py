@@ -34,7 +34,7 @@ labels = {
 # group files by library (ignoring the _seedN suffix)
 runs = defaultdict(list)
 for path in glob.glob(f"{RESULTS_DIR}/*.json"):
-    fname = path.split("/")[-1].replace(".json", "")
+    fname = os.path.basename(path).replace(".json", "")
     m = re.match(r"(.+)_seed\d+$", fname)
     name = m.group(1) if m else fname
     with open(path) as f:

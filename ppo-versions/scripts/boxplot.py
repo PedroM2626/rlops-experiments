@@ -35,7 +35,7 @@ colors = {
 
 runs = defaultdict(list)
 for path in glob.glob(f"{RESULTS_DIR}/*.json"):
-    fname = path.split("/")[-1].replace(".json", "")
+    fname = os.path.basename(path).replace(".json", "")
     m = re.match(r"(.+)_seed\d+$", fname)
     name = m.group(1) if m else fname
     with open(path) as f:
@@ -43,7 +43,9 @@ for path in glob.glob(f"{RESULTS_DIR}/*.json"):
 
 order = sorted(runs.keys(), key=lambda n: -np.mean([r["final_reward"] for r in runs[n]]))
 data = [np.array([r["final_reward"] for r in runs[n]]) for n in order]
-n_seeds = len(data[0])
+seed_counts = [len(d) for d in data]
+n_seeds = (f"{min(seed_counts)}-{max(seed_counts)}"
+           if min(seed_counts) != max(seed_counts) else str(seed_counts[0]))
 
 h_stat, p_kw = stats.kruskal(*data)
 
@@ -60,7 +62,7 @@ for i, d in enumerate(data):
 
 ax.axhline(500, color="gray", linestyle="--", alpha=0.4, label="Max possible (500)")
 ax.set_ylabel("Final reward (mean of the last 20 episodes)")
-ax.set_title(f"Distribution of final reward per library (n={n_seeds} seeds each)\n"
+ax.set_title(f"Distribution of final reward per library (n={n_seeds} seeds per library)\n"
              f"Kruskal-Wallis: H={h_stat:.2f}, p={p_kw:.4f}")
 ax.legend(loc="lower right")
 ax.grid(alpha=0.3, axis="y")

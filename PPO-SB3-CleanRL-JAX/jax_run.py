@@ -64,15 +64,14 @@ def train_main(args) -> None:
             -madv * ratio,
             -madv * jnp.clip(ratio, 1 - _c.CLIP_RANGE,
                              1 + _c.CLIP_RANGE)).mean()
+        vhalf = 0.5 if spec["value_loss_half"] else 1.0
         if spec["clip_value_loss"]:
             v_un = (nv - mrt) ** 2
             v_c = jnp.clip(nv - mv, -_c.CLIP_RANGE,
                            _c.CLIP_RANGE) + mv
-            vf = 0.5 * jnp.maximum(v_un, (v_c - mrt) ** 2).mean()
+            vf = vhalf * jnp.maximum(v_un, (v_c - mrt) ** 2).mean()
         else:
-            vf = jnp.mean((nv - mrt) ** 2)
-            if spec["value_loss_half"]:
-                vf = 0.5 * vf
+            vf = vhalf * jnp.mean((nv - mrt) ** 2)
         return pg - _c.ENT_COEF * jnp.mean(ent) + _c.VF_COEF * vf
 
     obs = _np.asarray(env.reset(seed=args.seed + 999)[0], dtype=_np.float32)

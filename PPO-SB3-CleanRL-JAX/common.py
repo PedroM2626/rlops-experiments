@@ -71,12 +71,21 @@ def compute_gae(
 
     Args:
         rewards: (T,) step rewards (already timeout-bootstrapped if SB3 spec).
-        values:  (T,) value estimates V(s_t).
+        values:  (T,) value estimates V(s_t), for the observation acted on at t.
         dones:   (T,) 1.0 where the episode ENDED (terminated OR truncated).
         last_value: V(s_T) of the obs following the rollout.
         last_done: whether the rollout ended in a terminal state.
     Returns:
         (advantages, returns) with returns = advantages + values.
+
+    Indexing caveat: the recursion gates V(s_{t+1}) with dones[t + 1], taking
+    the terminal flag from the step after the transition it should mask; SB3
+    and CleanRL gate it with dones[t]. Every episode boundary is therefore
+    shifted one step - the step that ends an episode bootstraps from the first
+    observation of the next one, and the step before it loses its bootstrap.
+    All manual arms call this one function, so the arms stay comparable to each
+    other, but they are not faithful to SB3's GAE. Correcting the index changes
+    the algorithm and would require retraining the committed arms.
     """
     T = len(rewards)
     adv = np.zeros(T, dtype=np.float64)

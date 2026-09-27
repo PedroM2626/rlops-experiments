@@ -153,6 +153,14 @@ Tables: `results/tables/contrasts_*.md` and `contrasts_ablation_*.md`.
   with the manual SB3 spec + the relevant ablations were **retrained from
   scratch**; the numbers above already reflect the fix. The ablation shows the
   delta had an effect ≈ 0 on these envs (NS), so the Q2/Q4/Q6 conclusions held.
+- **Known deviation, deliberately unfixed**: the shared `common.compute_gae`
+  gates the bootstrap with `dones[t + 1]`, whereas SB3 and CleanRL gate it with
+  `dones[t]`. Each episode boundary is therefore shifted one step, so the step
+  that ends an episode bootstraps from the first observation of the next one.
+  Both manual arms (Torch and JAX) call this same function, so the comparison
+  between them is internally consistent, but neither is faithful to SB3's GAE
+  and this is a confound in any manual-vs-SB3 delta. Fixing the index changes
+  the algorithm, so it takes a retrain of the manual arms, not an edit.
 - Power: 10 seeds in the main arms and 5 in the ablations; Q1 still has a wide
   CI because of SB3's collapsed seed. `solved` (≥200 on LunarLander)
   requires extra seeds or per-env tuning, out of scope for this comparison.

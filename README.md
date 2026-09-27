@@ -369,6 +369,9 @@ Per `.gitignore`:
 - **Emulator run output**: `*.state` savestates, `*.pool` and `*.gppool` evolved population files —
   these are per-session state that `launch_mario.py` regenerates or restores.
 - **Secrets and editor state**: `.env`, `Race/.env`, `.DS_Store`, `Thumbs.db`, `.vscode/`, `.idea/`.
+  The two env files were committed before those rules existed and are now untracked; neither
+  holds a credential — the root one is identical to `.env.example`, and `Race/.env` differs from
+  its example only by lacking a commented-out DagsHub block.
 
 Committed on purpose, in contrast: the study outputs that *are* the record of the non-PyBullet
 experiments — `ppo-versions/results*`, `evolutionary-strategies/results`, and the

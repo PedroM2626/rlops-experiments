@@ -71,9 +71,13 @@ def train_main(args) -> None:
 
     @jax.jit
     def fwd(p, o):
+        """Jitted forward -> (logits, value); used only to value the truncation observation and
+        the final state of a rollout, since actions and log-probs come from ``act_fn``."""
         return forward(p, o)
 
     def loss_fn(p, mo, ma, mlp, mv, madv, mrt):
+        """Clipped-surrogate PPO loss for one minibatch; ``spec`` (closed over, so fixed at trace
+        time) drives both the value-clip epsilon and the 0.5 MSE factor. No KL term anywhere."""
         logits, nv = forward(p, mo)
         nlp = cat_logprob(logits, ma)
         ent = cat_entropy(logits)
@@ -93,9 +97,13 @@ def train_main(args) -> None:
 
     @jax.jit
     def epoch(params, opt_state, rollout, perm):
+        """One PPO epoch (the caller runs N_EPOCHS of them): a jitted ``lax.scan`` of ``one_mb``
+        over ``perm`` reshaped into N_STEPS//BATCH_SIZE contiguous minibatches."""
         jo, ja, jlp, jv, jadv, jret = rollout
 
         def one_mb(carry, mb):
+            """One minibatch SGD step inside the scan: normalises that minibatch's advantages
+            (eps 1e-8), differentiates ``loss_fn``, then applies the optax update."""
             params, opt_state = carry
             mba = jadv[mb]
             mba = (mba - mba.mean()) / (mba.std() + 1e-8)

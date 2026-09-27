@@ -1,3 +1,8 @@
+"""Parameter initialisation for the JAX PPO agent: an orthogonal init helper
+and the actor/critic MLP weights, built to match PyTorch's init semantics.
+"""
+
+
 def orthogonal(key, shape, gain):
     """Orthogonal init with explicit gain (matches torch semantics)."""
     import jax
@@ -6,6 +11,8 @@ def orthogonal(key, shape, gain):
 
 
 def init_params(key, obs_dim, act_dim, spec):
+    """Fresh actor/critic weights from 8 subkeys of ``key``: orthogonal matrices laid out
+    (out, in) like ``nn.Linear``, with the spec's per-head gains and zero biases, all float32."""
     import numpy as _np
     import jax
     import config as _cc

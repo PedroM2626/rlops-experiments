@@ -1,3 +1,8 @@
+"""Learning-curve loading for plot_results.py: collects the per-seed curve CSVs
+per variant and interpolates them onto a shared step grid for mean +/- sd bands.
+"""
+
+
 def load_curves(env_id):
     import csv as _csv
     import numpy as _np

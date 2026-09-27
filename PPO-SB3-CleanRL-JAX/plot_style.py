@@ -1,3 +1,7 @@
+"""Shared plotting style for plot_results.py: variant id -> line colour and the
+legend label shown for that variant.
+"""
+
 COLORS = {
     "sb3_torch": "#58a6ff",
     "cleanrl_torch": "#3fb950",

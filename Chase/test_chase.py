@@ -1,3 +1,7 @@
+"""Manual smoke test for ChaseEnv: runs the PyBullet chase headless with zero
+thrust for 100 steps, printing heights, the gap between them and chaser vel.
+"""
+
 import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))

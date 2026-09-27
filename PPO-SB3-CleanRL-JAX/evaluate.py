@@ -10,6 +10,8 @@ from variants import VARIANTS
 
 
 def eval_sb3_zip(env_id, model_path, n_ep):
+    """Rolls out ``n_ep`` greedy episodes of an SB3 ``.zip`` (``predict(deterministic=True)``, so
+    the critic head is unused) on fixed seeds ``EVAL_SEED_OFFSET + i``; returns undiscounted returns."""
     import sys as _sys
     _sys.path.insert(0, str(config.BASE_DIR))
     from sb3_shim import ensure_sb3_importable
@@ -34,6 +36,8 @@ def eval_sb3_zip(env_id, model_path, n_ep):
 
 
 def eval_jax_npz(env_id, model_path, n_ep):
+    """Same greedy protocol on saved JAX ``.npz`` params: takes the argmax of the actor logits
+    (critic head unused) over the same fixed eval seeds, so it is comparable with ``eval_sb3_zip``."""
     import jax.numpy as jnp
     import gymnasium as gym
     from jax_fwd import forward

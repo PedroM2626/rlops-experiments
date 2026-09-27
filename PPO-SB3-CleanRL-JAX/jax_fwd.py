@@ -1,3 +1,8 @@
+"""Actor/critic forward pass and categorical-distribution ops (action sampling,
+log-probs, entropy) for the JAX PPO agent.
+"""
+
+
 def forward(params, obs):
     """MLP forward -> (logits, values). obs: (B, obs_dim)."""
     import jax.numpy as jnp
@@ -11,12 +16,15 @@ def forward(params, obs):
 
 
 def cat_sample(key, logits):
+    """One Categorical sample per row of unnormalised ``logits`` (Gumbel-max, as torch's
+    ``Categorical(logits=...).sample()``)."""
     import jax
     import jax.numpy as jnp
     return jax.random.categorical(key, logits)
 
 
 def cat_logprob(logits, actions):
+    """Log-prob of ``actions`` under the Categorical defined by ``logits``, via logsumexp."""
     import jax
     import jax.numpy as jnp
     lse = jax.scipy.special.logsumexp(logits, axis=-1)
@@ -25,6 +33,7 @@ def cat_logprob(logits, actions):
 
 
 def cat_entropy(logits):
+    """Shannon entropy -sum(p*log p) of the Categorical defined by ``logits``, one value per row."""
     import jax
     import jax.numpy as jnp
     lse = jax.scipy.special.logsumexp(logits, axis=-1, keepdims=True)

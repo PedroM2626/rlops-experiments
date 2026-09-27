@@ -1,3 +1,9 @@
+"""Reference JAX+Optax PPO training loop for discrete envs: same math as
+jax_run_fast.py but with per-minibatch gradient steps driven from Python.
+Saves the model params, the learning curve and a metadata JSON per run.
+"""
+
+
 def train_main(args) -> None:
     import random as _prng
     import time

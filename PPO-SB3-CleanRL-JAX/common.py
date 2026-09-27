@@ -112,6 +112,8 @@ class RollingMean:
 
 
 def write_curve_csv(path: Path, rows: list[tuple[int, float]]) -> None:
+    """Writes a learning curve as ``step,mean_reward`` CSV, creating parent dirs and truncating
+    any file already there."""
     path.parent.mkdir(parents=True, exist_ok=True)
     with open(path, "w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
@@ -120,6 +122,8 @@ def write_curve_csv(path: Path, rows: list[tuple[int, float]]) -> None:
 
 
 def read_curve_csv(path: Path) -> tuple[np.ndarray, np.ndarray]:
+    """Counterpart of ``write_curve_csv``: looks the two columns up by header name, so column
+    order in the file is irrelevant. Returns ``(steps, mean_rewards)``."""
     steps, rews = [], []
     with open(path, encoding="utf-8") as f:
         for row in csv.DictReader(f):
@@ -129,6 +133,8 @@ def read_curve_csv(path: Path) -> tuple[np.ndarray, np.ndarray]:
 
 
 def write_meta_json(path: Path, payload: dict) -> None:
+    """Writes run metadata as sorted, indented JSON, defaulting only the ``platform`` and
+    ``python`` keys; the caller's dict is copied, never mutated."""
     path.parent.mkdir(parents=True, exist_ok=True)
     payload = dict(payload)
     payload.setdefault("platform", platform.platform())

@@ -22,7 +22,9 @@ Observation space (44-dim):
   [43]    time remaining fraction (steps_left / MAX_STEPS)
 
 Action space (10-dim continuous, clipped [-1, 1]):
-  Mapped to joint torques scaled by per-joint MAX_TORQUE.
+  Each dimension maps linearly to a target angle within that joint's limits,
+  served by PyBullet's PD position controller; per-joint max torque from
+  _JOINT_CFG caps the force the controller may apply.
   Joint order: [l_shoulder, l_elbow, r_shoulder, r_elbow,
                 l_hip, l_knee, l_ankle, r_hip, r_knee, r_ankle]
 """
@@ -387,7 +389,8 @@ class ParkourEnv(gym.Env):
                              spinningFriction=0.1,
                              physicsClientId=self._client)
 
-        # Disable default velocity motors (let torque control drive everything)
+        # Disable the URDF's default velocity motors so _apply_action's PD
+        # position control is the only actuator driving the joints
         for ji in self._joint_indices:
             p.setJointMotorControl2(
                 self._agent_id, ji,

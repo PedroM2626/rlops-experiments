@@ -1,3 +1,7 @@
+"""Launcher for play mode: puts this project on sys.path and delegates to
+src.play.main, which loads a trained PPO agent and runs it in PyBullet.
+"""
+
 import sys
 import os
 

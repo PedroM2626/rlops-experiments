@@ -46,6 +46,8 @@ VARIANT_IDS = [v["id"] for v in VARIANTS]
 
 
 def get_hyperparam_dict() -> dict:
+    """The hyperparameters shared by every arm, for ``meta.json``. Deliberately excludes the
+    SB3/CleanRL spec deltas (those are logged under ``spec``); list values are ``str()``ified."""
     from config import (
         ACTIVATION, ADAM_EPS, BATCH_SIZE, CLIP_RANGE, ENVS, ENT_COEF,
         GAE_LAMBDA, GAMMA, LEARNING_RATE, MAX_GRAD_NORM, N_ENVS, N_EPOCHS,
@@ -65,6 +67,8 @@ def get_hyperparam_dict() -> dict:
 
 
 def timesteps_for(env_id: str, scale: float = 1.0) -> int:
+    """Budget for an env after scaling, floored at one whole ``N_STEPS`` rollout; rounding the
+    result down to a multiple of ``N_STEPS`` is left to the caller."""
     from config import TOTAL_TIMESTEPS, N_STEPS
     raw = int(TOTAL_TIMESTEPS[env_id] * scale)
     # Always allow at least one full rollout (needed for smoke tests with

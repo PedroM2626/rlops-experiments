@@ -1,3 +1,8 @@
+"""Statistics used by analyze.py: paired bootstrap confidence interval (plus a
+bootstrap two-sided p-value) for variant differences, and Cliff's delta.
+"""
+
+
 def bootstrap_paired_ci(diffs, n_boot, rng):
     import numpy as _np
     diffs = _np.asarray(diffs, float)

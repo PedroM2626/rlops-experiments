@@ -21,6 +21,8 @@ from common import (RollingMean, compute_gae, make_env, obs_act_dims,
 
 
 def layer_init(layer, std: float):
+    """Orthogonal weight init plus zero bias. The arg is named ``std`` (CleanRL's naming) but is
+    passed as the orthogonal gain; the gains come from ``spec`` and are identical in both arms."""
     import torch.nn as nn
     nn.init.orthogonal_(layer.weight, std)
     nn.init.constant_(layer.bias, 0.0)
@@ -28,6 +30,8 @@ def layer_init(layer, std: float):
 
 
 def build_agent(nn, obs_dim: int, act_dim: int, spec: dict):
+    """Builds a fresh, untrained PPO actor/critic: two tanh MLPs over ``config.NET_ARCH`` whose
+    output layers use the spec's per-head orthogonal gains. Reused by eval_torch.py to reload."""
     class Agent(nn.Module):
         def __init__(self):
             super().__init__()
@@ -70,6 +74,9 @@ def build_agent(nn, obs_dim: int, act_dim: int, spec: dict):
 
 
 def collect_rollout(env, agent, torch, spec, obs, T, obs_dim):
+    """Buffers T single-env steps as (obs, action, logp, reward, done, V(obs)) using a forward
+    pass jitted inside this function, so the SB3 spec can timeout-bootstrap a TimeLimit truncation
+    with +GAMMA*V(that observation) while clearing its done flag; the CleanRL spec stores done=1."""
     import numpy as _np
     finished: list[float] = []
     b_obs = _np.zeros((T, obs_dim), _np.float32)

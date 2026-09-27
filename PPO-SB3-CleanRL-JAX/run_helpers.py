@@ -1,3 +1,6 @@
+"""Subprocess helper for run_all.py: runs a script from this directory with a
+chosen interpreter (torch vs JAX venv) and reports whether it succeeded.
+"""
 from __future__ import annotations
 
 import subprocess

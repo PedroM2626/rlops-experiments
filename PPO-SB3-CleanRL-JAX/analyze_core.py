@@ -1,3 +1,8 @@
+"""Data loading for analyze.py: reads the per-variant/per-seed evaluation
+reward table and collapses its columns into one array of seed means per variant.
+"""
+
+
 def load_rewards(env_id):
     import csv as _csv
     import numpy as _np

@@ -1,3 +1,8 @@
+"""Greedy evaluation of a saved CleanRL-style PyTorch PPO agent: rebuilds the
+network from a state dict and returns the per-episode undiscounted returns.
+"""
+
+
 def greedy_torch_logits(agent, obs):
     import numpy as _np
     import torch

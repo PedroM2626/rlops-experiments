@@ -1,5 +1,5 @@
 #!/bin/bash
-cd /home/claude/ppo-benchmark
+cd "$(dirname "${BASH_SOURCE[0]}")/.." || exit 1
 export PPO_TIMESTEPS=150000
 SEEDS="1 2 3 4 5"
 

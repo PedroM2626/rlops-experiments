@@ -15,10 +15,13 @@ PY="${2:-python}"
 ENVIRONMENT="${1:-cartpole}"
 
 case "$ENVIRONMENT" in
-  cartpole)    ENV_ID=CartPole-v1;     SCALE=0.1; SEEDS="0 1 2 3 4 5 6 7 8 9 10 11 12 13 14" ;;
-  lunarlander) ENV_ID=LunarLander-v3;  SCALE=0.2; SEEDS="0 1 2 3 4 5 6 7 8 9 10 11 12 13 14" ;;
+  cartpole)    ENV_ID=CartPole-v1;     SCALE=0.1 ;;
+  lunarlander) ENV_ID=LunarLander-v3;  SCALE=0.4 ;;
   *) echo "environment must be cartpole|lunarlander" >&2; exit 2 ;;
 esac
+
+# override to extend the sample, e.g. SEEDS="15 16 17" bash run_probe.sh lunarlander
+SEEDS="${SEEDS:-0 1 2 3 4 5 6 7 8 9 10 11 12 13 14}"
 
 WORK="$HERE/workspace"
 BUGGY='next_non_term = 1.0 - float(dones\[t + 1\])'

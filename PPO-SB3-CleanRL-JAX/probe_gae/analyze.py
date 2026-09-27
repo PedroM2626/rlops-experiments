@@ -7,18 +7,19 @@ the only difference is which value gates the bootstrap.
 needs scipy (as the study's own statistics do).
 """
 import csv
+import glob
 import os
 import statistics as st
 
 from scipy import stats
 
 DATA = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
-TCRIT = 2.145  # t(14, 0.975)
 
 
 def report(name, av, bv, seeds):
     diffs = [b - a for a, b in zip(av, bv)]
     se = st.stdev(diffs) / len(diffs) ** 0.5
+    tcrit = stats.t.ppf(0.975, len(diffs) - 1)
     t, p_t = stats.ttest_rel(bv, av)
     w, p_w = stats.wilcoxon(bv, av)
     lev, p_lev = stats.levene(av, bv, center="median")
@@ -27,18 +28,26 @@ def report(name, av, bv, seeds):
     print(f"  A (dones[t+1]): mean {st.mean(av):7.1f}  sd {st.pstdev(av):6.1f}")
     print(f"  B (dones[t]) : mean {st.mean(bv):7.1f}  sd {st.pstdev(bv):6.1f}")
     print(f"  paired B-A   : mean {st.mean(diffs):+.1f}  SE {se:.1f}  "
-          f"95% CI [{st.mean(diffs) - TCRIT * se:+.1f}, {st.mean(diffs) + TCRIT * se:+.1f}]")
+          f"95% CI [{st.mean(diffs) - tcrit * se:+.1f}, "
+          f"{st.mean(diffs) + tcrit * se:+.1f}]")
     print(f"  t={t:+.2f} p={p_t:.4f} | Wilcoxon p={p_w:.4f} | "
           f"Levene p={p_lev:.4f} | MWU p={p_u:.4f}")
     print(f"  effect: {st.mean(diffs) / st.pstdev(av + bv):+.2f} pooled sd")
+    if p_t > 0.05 and abs(st.mean(diffs)) > 1e-9:
+        need = (2.8 * st.stdev(diffs) / abs(st.mean(diffs))) ** 2
+        print(f"  seeds needed for 80% power at this observed effect: {need:.0f} "
+              f"(have {len(diffs)})")
 
 
 def ll_eval(arm):
-    rows = list(csv.reader(open(os.path.join(DATA, f"ll_eval_rewards_{arm}.csv"),
-                                encoding="utf-8")))
+    """Union every eval matrix present for this arm (the base 15 seeds plus any
+    ll_eval_rewards_<arm>_*.csv extension)."""
     out = {}
-    for i, header in enumerate(rows[0]):
-        out[int(header.rsplit("__seed", 1)[1])] = st.mean([float(r[i]) for r in rows[1:]])
+    for path in sorted(glob.glob(os.path.join(DATA, f"ll_eval_rewards_{arm}*.csv"))):
+        rows = list(csv.reader(open(path, encoding="utf-8")))
+        for i, header in enumerate(rows[0]):
+            out[int(header.rsplit("__seed", 1)[1])] = st.mean(
+                [float(r[i]) for r in rows[1:]])
     return out
 
 

@@ -47,9 +47,11 @@ including on the spread (Levene p = 0.136 on LunarLander, 0.210 on CartPole).
 - **The bound is the useful output.** On CartPole any true mean shift is under
   ~22% of the arm's score; on LunarLander the data cannot exclude a −58 shift,
   which is why the LunarLander number is the one worth chasing if this is revisited.
-- **Resolving LunarLander needs ~41 seeds per arm** (80% power to detect the
-  observed −25.2 at σ=57.6), roughly 4 h of CPU. The full-study retrain the
-  deviation would imply is ~17.6 h, and this probe gives no reason to spend it.
+- **Resolving LunarLander needs ~44 seeds per arm** (the 80%-power figure
+  `analyze.py` prints for the observed -25.2 at σ=57.6), roughly 4 h of CPU. The
+  15 seeds here are not enough, so the sign of that point estimate is not a
+  finding. The full-study retrain the deviation would imply is ~17.6 h, and the
+  CartPole evidence alone gives no reason to spend it.
 - **Seeds, not episodes, are the lever.** Within a LunarLander policy the
   per-episode sd is 120.4, so a 200-episode mean carries ±8.5 of measurement error
   against a between-seed sd of 34.0. Doubling evaluation episodes again would cut

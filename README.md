@@ -130,6 +130,7 @@ setup. [docs/comparison.md](smw-evolutionary-agent/docs/comparison.md) is the wr
 │   ├── run_all.py                # sequential orchestrator
 │   ├── run_full_background.py    # resume-safe parallel runner
 │   ├── evaluate.py, analyze*.py, plot_*.py
+│   ├── probe_gae/                # A/B measurement of the GAE indexing deviation
 │   ├── requirements-torch.txt, requirements-jax.txt
 │   └── results/                  # curves/tables/plots/meta committed, models ignored
 │

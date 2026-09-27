@@ -161,6 +161,27 @@ Tables: `results/tables/contrasts_*.md` and `contrasts_ablation_*.md`.
   between them is internally consistent, but neither is faithful to SB3's GAE
   and this is a confound in any manual-vs-SB3 delta. Fixing the index changes
   the algorithm, so it takes a retrain of the manual arms, not an edit.
+  *Measured, not assumed*: an A/B probe on `cleanrl_torch` CartPole-v1, 15
+  paired seeds at a 50k-step budget on the same interpreter and library
+  versions as the runs above, gives 323.3 ± 73.5 with the committed index
+  against 302.8 ± 48.8 with `dones[t]`. Paired mean -20.5 (SE 23.5),
+  t = -0.87, p = 0.397 (Wilcoxon p = 0.454, Levene p = 0.210), 95% CI
+  [-70.8, +29.8]. No detectable effect on CartPole; the useful output is the
+  bound, since any true mean shift is under ~22% of the arm's own score there.
+  The same probe on LunarLander-v3 (15 paired seeds, 400k steps, every policy
+  scored over 200 deterministic episodes) gives 78.6 ± 34.0 against 53.4 ± 54.2:
+  paired -25.2, 95% CI [-58.2, +7.8], p = 0.124. Still nothing significant, and
+  the point estimate favours the committed index rather than the correction.
+  Resolving that would need ~41 seeds per arm (~4 h); the ~17.6 h retrain of the
+  manual arms is not justified by this evidence, so the deviation stays as it is.
+  Driver, statistics and raw per-episode data: `probe_gae/`.
+- Power here comes from seeds, not from evaluation episodes. In the committed
+  `results/tables/eval_rewards_LunarLander-v3.csv` the per-episode sd inside a
+  single policy is 118.8, so a 100-episode mean carries only ±11.9 of
+  measurement error, while the sd *between* seeds is 46.7 - measurement is ~6%
+  of the variance. The SE of a two-arm paired contrast is 39.3 at n=3 with
+  100 episodes and 38.2 with infinitely many, but 17.6 at n=15 with 100.
+  Adding seeds buys precision; adding episodes does not.
 - Power: 10 seeds in the main arms and 5 in the ablations; Q1 still has a wide
   CI because of SB3's collapsed seed. `solved` (≥200 on LunarLander)
   requires extra seeds or per-env tuning, out of scope for this comparison.

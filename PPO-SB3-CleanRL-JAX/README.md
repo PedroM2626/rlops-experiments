@@ -168,12 +168,18 @@ Tables: `results/tables/contrasts_*.md` and `contrasts_ablation_*.md`.
   t = -0.87, p = 0.397 (Wilcoxon p = 0.454, Levene p = 0.210), 95% CI
   [-70.8, +29.8]. No detectable effect on CartPole; the useful output is the
   bound, since any true mean shift is under ~22% of the arm's own score there.
-  The same probe on LunarLander-v3 (15 paired seeds, 400k steps, every policy
-  scored over 200 deterministic episodes) gives 78.6 ± 34.0 against 53.4 ± 54.2:
-  paired -25.2, 95% CI [-58.2, +7.8], p = 0.124. Still nothing significant, and
-  the point estimate favours the committed index rather than the correction.
-  Resolving that would need ~41 seeds per arm (~4 h); the ~17.6 h retrain of the
-  manual arms is not justified by this evidence, so the deviation stays as it is.
+  The same probe on LunarLander-v3, extended to 41 paired seeds with every policy
+  scored over 200 deterministic episodes, **does** resolve: 85.3 ± 27.8 for the
+  committed index against 64.1 ± 48.2 for `dones[t]`, paired -21.1, 95% CI
+  [-36.9, -5.4], p = 0.0098 (Wilcoxon p = 0.022), and Levene p = 0.0025 on the
+  spread. It replicates in an independent block of 26 seeds run separately
+  (-18.8, p = 0.041), so it is not a batch artifact. The off-by-one therefore made
+  the manual arms score ~25% *better* and more consistently than a textbook GAE
+  would have on this environment - which does not make it correct, but does mean
+  every manual-vs-SB3 contrast above carries it as a confound. Correcting the index
+  would lower the manual arms' reported LunarLander scores by about a quarter and
+  widen their spread, so it is measured and documented rather than silently fixed:
+  the ~17.6 h retrain is a research decision, not a cleanup.
   Driver, statistics and raw per-episode data: `probe_gae/`.
 - Power here comes from seeds, not from evaluation episodes. In the committed
   `results/tables/eval_rewards_LunarLander-v3.csv` the per-episode sd inside a

@@ -20,7 +20,7 @@ runtime/
 **/results/logs/
 
 # Scratch workspace the GAE probe copies the study sources into
-PPO-SB3-CleanRL-JAX/probe_gae/workspace/
+**/probe_gae/workspace/
 
 # Emulator ROMs and native cores (binary payloads, not source)
 *.sfc

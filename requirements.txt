@@ -1,7 +1,7 @@
 # Monorepo Core Dependencies
 # For subproject-specific frameworks (JAX, RLlib, Tianshou, TorchRL), see:
-# - ppo-versions/requirements.txt
-# - PPO-SB3-CleanRL-JAX/requirements-torch.txt & requirements-jax.txt
+# - ppo-empirical-studies/01_ecosystem_benchmark/requirements.txt
+# - ppo-empirical-studies/02_factorial_attribution/requirements-torch.txt & requirements-jax.txt
 # - evolutionary-strategies/requirements.txt
 
 torch>=2.0.0

@@ -10,10 +10,11 @@ The upstream GitHub repository is [`PedroM2626/rlops-experiments`](https://githu
 
 The repository focuses strictly on mathematically grounded, reproducible benchmarks adhering to academic empirical standards:
 
-1. **PPO Multi-Library Empirical Spectrum** (`ppo-versions`) — A 12-part controlled study evaluating how algorithmic design choices, framework ecosystems (CleanRL, Stable-Baselines3, RLlib, TorchRL, Tianshou, PyTorch, JAX), and hyperparameter tuning regimes impact sample efficiency, asymptotic stability, and variance across continuous and discrete environments.
-2. **PPO Factorial Attribution & GAE Mechanics** (`PPO-SB3-CleanRL-JAX`) — A $2 \times 2$ factorial attribution study isolating the algorithmic specification (SB3 spec vs. CleanRL spec) from the computation engine (PyTorch vs. JAX + Optax), complemented by single-delta ablations and an empirical probe isolating Generalized Advantage Estimation (GAE) episode-boundary indexing differences.
-3. **Evolutionary Computation Taxonomy & JAX Benchmark** (`evolutionary-strategies`) — A formal taxonomy and comparative evaluation of three evolutionary computation paradigms (Direct Parameter Search, Symbolic Genetic Programming, and Probabilistic Models / Estimation of Distribution Algorithms like CMA-ES and PBIL) accelerated via JAX (`vmap` + `jit`) on canonical control tasks, with a 100-episode out-of-sample generalization protocol.
-4. **Neuroevolution vs. Symbolic Programs in Complex Video Games** (`smw-evolutionary-agent`) — An empirical study comparing Neuroevolution of Augmenting Topologies (NEAT) against Genetic Programming (GP) playing *Super Mario World* via the BizHawk emulator, contrasting topological neural networks against interpretable symbolic decision trees under identical sensory receptors ($13 \times 13$ tile grid).
+1. **PPO Empirical Studies: Reproducibility, Ecosystem Variance & Factorial Attribution** (`ppo-empirical-studies`) — A rigorous two-phase empirical investigation into Proximal Policy Optimization:
+   - **Phase 1: Multi-Library Ecosystem Benchmark** (`01_ecosystem_benchmark`): Evaluating empirical divergence, sample efficiency, and variance across 7 PPO implementations (CleanRL, Stable-Baselines3, RLlib, TorchRL, Tianshou, PyTorch, JAX) on `CartPole-v1` and `LunarLander-v3` with formal non-parametric hypothesis testing (Mann-Whitney U, Levene, Bonferroni).
+   - **Phase 2: Factorial Attribution & Advantage Mechanics** (`02_factorial_attribution`): Disentangling algorithmic specification from software runtime via a $2 \times 2$ factorial matrix (SB3 vs. CleanRL spec $\times$ PyTorch vs. JAX engine), single-delta ablations (value clipping, LR annealing, MSE scaling, timeout bootstrapping), and a dedicated empirical probe isolating Generalized Advantage Estimation (GAE) episode boundary indexing.
+2. **Evolutionary Computation Taxonomy & JAX Benchmark** (`evolutionary-strategies`) — A formal taxonomy and comparative evaluation of three evolutionary computation paradigms (Direct Parameter Search, Symbolic Genetic Programming, and Probabilistic Models / Estimation of Distribution Algorithms like CMA-ES and PBIL) accelerated via JAX (`vmap` + `jit`) on canonical control tasks, with a 100-episode out-of-sample generalization protocol.
+3. **Neuroevolution vs. Symbolic Programs in Complex Video Games** (`smw-evolutionary-agent`) — An empirical study comparing Neuroevolution of Augmenting Topologies (NEAT) against Genetic Programming (GP) playing *Super Mario World* via the BizHawk emulator, contrasting topological neural networks against interpretable symbolic decision trees under identical sensory receptors ($13 \times 13$ tile grid).
 
 > [!NOTE]
 > **Repository Curation & Deprecated Modules**:
@@ -23,36 +24,24 @@ The repository focuses strictly on mathematically grounded, reproducible benchma
 
 ## Sub-Project Directory
 
-### 1. [`ppo-versions`](ppo-versions/README.md)
-* **Objective**: Investigate the variance and performance discrepancies among 7 distinct PPO implementations on `CartPole-v1` and `LunarLander-v3`.
-* **Implementations Tested**:
-  - `cleanrl_original`: Canonical single-file implementation.
-  - `cleanrl_style_pytorch`: Modularized PyTorch clean implementation.
-  - `stable_baselines3`: Standard production baseline (`VecEnv` + modular policy).
-  - `stable_baselines3_zoo`: Stable-Baselines3 with tuned RL Zoo hyperparameters.
-  - `jax_pure`: Hardware-accelerated functional PPO using JAX and Optax.
-  - `rllib`: Scalable distributed implementation via Ray RLlib.
-  - `torchrl`: TensorDict-driven high-throughput implementation.
-  - `tianshou`: Modular replay-driven framework.
-* **Methodology**: 10 seeds per configuration, formal statistical significance testing (Mann-Whitney U tests, Levene's variance homogeneity tests, Bonferroni multiplicity corrections), and empirical evaluation of RL Zoo hyperparameter sets.
+### 1. [`ppo-empirical-studies`](ppo-empirical-studies/README.md)
+* **Objective**: Investigate variance, reproducibility, and mechanical attribution across PPO implementations and runtime stacks.
+* **Phase 1: Multi-Library Ecosystem Benchmark** ([`01_ecosystem_benchmark`](ppo-empirical-studies/01_ecosystem_benchmark/README.md)):
+  - Evaluates 7 distinct implementations: `cleanrl_original`, `cleanrl_style_pytorch`, `stable_baselines3`, `stable_baselines3_zoo`, `jax_pure`, `rllib`, `torchrl`, `tianshou`.
+  - 10 seeds per configuration, formal hypothesis testing (Mann-Whitney U, Levene's variance homogeneity, Bonferroni corrections across 12 sequential empirical parts).
+* **Phase 2: Factorial Attribution & Advantage Mechanics** ([`02_factorial_attribution`](ppo-empirical-studies/02_factorial_attribution/README.md)):
+  - $2 \times 2$ factorial matrix (SB3 vs. CleanRL specification $\times$ PyTorch vs. JAX runtime).
+  - Single-delta ablations (value clipping, LR annealing, MSE scaling, timeout bootstrapping).
+  - GAE boundary indexing isolation probe ([`probe_gae`](ppo-empirical-studies/02_factorial_attribution/probe_gae/README.md)) isolating off-by-one advantage truncation.
 
-### 2. [`PPO-SB3-CleanRL-JAX`](PPO-SB3-CleanRL-JAX/README.md)
-* **Objective**: Disentangle the contributions of algorithmic specification vs. software runtime.
-* **Factorial Matrix**:
-  - Spec SB3 $\times$ Engine PyTorch
-  - Spec SB3 $\times$ Engine JAX
-  - Spec CleanRL $\times$ Engine PyTorch
-  - Spec CleanRL $\times$ Engine JAX
-* **Ablations & Probes**: Value-function loss clipping, learning rate annealing, MSE factor conventions ($0.5$ vs. $1.0$), timeout bootstrapping, and a dedicated `probe_gae` study quantifying off-by-one boundary indexing in advantage computations.
-
-### 3. [`evolutionary-strategies`](evolutionary-strategies/README.md)
+### 2. [`evolutionary-strategies`](evolutionary-strategies/README.md)
 * **Objective**: Comparative empirical evaluation of evolutionary algorithms classified by their mathematical object of variation:
   - **Family 1: Direct Solutions** (Direct Representation): Simple Genetic Algorithm (SimpleGA), Differential Evolution (DE), OpenAI Evolution Strategy (OpenAI-ES).
   - **Family 2: Symbolic Programs** (Genetic Programming): Linear Genetic Programming (LinearGP), Cartesian Genetic Programming (CartesianGP).
   - **Family 3: Probabilistic Models** (Estimation of Distribution Algorithms - EDA): Covariance Matrix Adaptation Evolution Strategy (CMA-ES), Population-Based Incremental Learning (PBIL).
 * **Speedup & Evaluation**: Vectorized rollouts via JAX `vmap` and `jit` over `gymnax` environments (`CartPole-v1`, `Pendulum-v1`, `Acrobot-v1`, `MountainCar-v0`, `MountainCarContinuous-v0`). Includes a 100-episode out-of-sample evaluation protocol to measure the generalization gap.
 
-### 4. [`smw-evolutionary-agent`](smw-evolutionary-agent/README.md)
+### 3. [`smw-evolutionary-agent`](smw-evolutionary-agent/README.md)
 * **Objective**: Compare topological neural network neuroevolution (NEAT) against symbolic tree genetic programming (GP) navigating *Super Mario World* (Yoshi's Island 1).
 * **Architecture**: BizHawk emulator (Snes9x core) running custom Lua controllers (`MarIO.lua` and `MarIO_GP.lua`) interfacing with Python test harnesses.
 * **Perception & Fitness**: Equivalent $13 \times 13$ tile perception window around Mario, with identical fitness metrics based on horizontal progress ($\Delta X$), timeout penalties, and velocity bonuses.
@@ -63,12 +52,12 @@ The repository focuses strictly on mathematically grounded, reproducible benchma
 
 | Concern | Technologies | Active Projects |
 |---|---|---|
-| **Core DL & Tensors** | PyTorch (`torch`), JAX (`jax`, `jaxlib`, `optax`) | `ppo-versions`, `PPO-SB3-CleanRL-JAX`, `evolutionary-strategies` |
-| **RL Baselines & Stacks** | Stable-Baselines3, CleanRL, Ray/RLlib, TorchRL, Tianshou | `ppo-versions`, `PPO-SB3-CleanRL-JAX` |
-| **Vectorized RL Simulation** | `gymnax`, `lax.scan`, `vmap`, `jit` | `evolutionary-strategies`, `PPO-SB3-CleanRL-JAX` |
+| **Core DL & Tensors** | PyTorch (`torch`), JAX (`jax`, `jaxlib`, `optax`) | `ppo-empirical-studies`, `evolutionary-strategies` |
+| **RL Baselines & Stacks** | Stable-Baselines3, CleanRL, Ray/RLlib, TorchRL, Tianshou | `ppo-empirical-studies` |
+| **Vectorized RL Simulation** | `gymnax`, `lax.scan`, `vmap`, `jit` | `evolutionary-strategies`, `ppo-empirical-studies` |
 | **Evolutionary Frameworks** | Custom JAX-accelerated ES/EDA/GA, Lua MarIO engine | `evolutionary-strategies`, `smw-evolutionary-agent` |
 | **Emulation & Environment** | BizHawk 2.9.x, LuaJIT / Lua 5.1, Snes9x core | `smw-evolutionary-agent` |
-| **Statistical Analysis** | SciPy, NumPy, Pandas (Mann-Whitney U, Levene, bootstrap confidence intervals, Cliff's delta) | `ppo-versions`, `PPO-SB3-CleanRL-JAX`, `evolutionary-strategies` |
+| **Statistical Analysis** | SciPy, NumPy, Pandas (Mann-Whitney U, Levene, bootstrap confidence intervals, Cliff's delta) | `ppo-empirical-studies`, `evolutionary-strategies` |
 | **Visualization** | Matplotlib, Seaborn | All projects |
 
 ---
@@ -77,34 +66,39 @@ The repository focuses strictly on mathematically grounded, reproducible benchma
 
 ```text
 .
-├── ppo-versions/                 # 12-part PPO multi-framework benchmark
-│   ├── scripts/
-│   │   ├── common.py             # Shared logging, evaluation protocol, serialization
-│   │   ├── train_*.py            # CleanRL, SB3, PyTorch, JAX, RLlib, TorchRL, Tianshou
-│   │   ├── compare.py            # Comparative curve plotting
-│   │   ├── boxplot.py            # Return distribution boxplots
-│   │   ├── stats_test.py         # Mann-Whitney U & Levene hypothesis tests
-│   │   └── eval_stats.py         # Evaluation statistics aggregation
-│   ├── results/                  # Committed seed training curves (JSON)
-│   ├── results_eval/             # Committed evaluation distributions (JSON)
-│   ├── figures/                  # Publication-ready plots (.png)
-│   └── requirements.txt
-│
-├── PPO-SB3-CleanRL-JAX/          # 2x2 Factorial attribution study (spec vs. stack)
-│   ├── config.py, specs.py       # Algorithmic specifications and run hyperparameters
-│   ├── train_sb3.py              # Stable-Baselines3 driver
-│   ├── train_cleanrl_torch.py    # CleanRL PyTorch driver
-│   ├── train_jax_ppo.py          # Pure JAX PPO driver
-│   ├── run_all.py                # Sequential benchmark runner
-│   ├── run_full_background.py    # Resilient parallel runner
-│   ├── evaluate.py               # Deterministic multi-seed evaluation
-│   ├── analyze.py                # Bootstrap resampling and attribution contrasts
-│   ├── plot_results.py           # Training curves and attribution boxplots
-│   ├── probe_gae/                # Empirical GAE boundary indexing isolation study
-│   │   ├── analyze.py, run_probe.sh, README.md, data/
-│   ├── requirements-torch.txt    # PyTorch stack requirements
-│   ├── requirements-jax.txt      # JAX stack requirements
-│   └── results/                  # Committed tables (.csv, .md), curves (.npz), plots (.png)
+├── ppo-empirical-studies/        # Two-phase PPO empirical investigation
+│   ├── README.md                 # Unified academic paper and synthesis
+│   ├── 01_ecosystem_benchmark/   # Phase 1: 12-part multi-framework benchmark
+│   │   ├── README.md             # Ecosystem benchmark report
+│   │   ├── requirements.txt      # Multi-framework dependencies
+│   │   ├── figures/              # High-resolution plots (.png)
+│   │   ├── scripts/              # Implementation scripts and evaluation runners
+│   │   │   ├── common.py         # Shared logging, evaluation, serialization
+│   │   │   ├── train_*.py        # CleanRL, SB3, PyTorch, JAX, RLlib, TorchRL, Tianshou
+│   │   │   ├── compare.py        # Multi-seed comparative curve plotting
+│   │   │   ├── boxplot.py        # Return distribution boxplots
+│   │   │   ├── eval_stats.py     # Evaluation statistics aggregation
+│   │   │   └── stats_test.py     # Mann-Whitney U & Levene hypothesis tests
+│   │   ├── results/              # Committed seed training curves (JSON)
+│   │   └── results_eval/         # Committed evaluation distributions (JSON)
+│   └── 02_factorial_attribution/ # Phase 2: 2x2 Factorial attribution & GAE probe
+│       ├── README.md             # Factorial study documentation
+│       ├── requirements-torch.txt# PyTorch stack requirements
+│       ├── requirements-jax.txt  # JAX stack requirements
+│       ├── config.py, specs.py   # Algorithmic specifications and hyperparameters
+│       ├── variants.py           # Arm configurations and registry
+│       ├── common.py, sb3_shim.py# Shared rollouts and NumPy 2 compatibility
+│       ├── train_sb3.py          # Stable-Baselines3 driver
+│       ├── train_cleanrl_torch.py# CleanRL PyTorch driver (cleanrl & sb3 modes)
+│       ├── train_jax_ppo.py      # Pure JAX PPO driver (cleanrl, sb3, ablations)
+│       ├── run_all.py            # Sequential benchmark runner
+│       ├── run_full_background.py# Parallel multi-worker runner
+│       ├── evaluate.py           # Deterministic multi-seed evaluation
+│       ├── analyze.py            # Bootstrap resampling and attribution contrasts
+│       ├── plot_results.py       # Training curves and attribution boxplots
+│       ├── probe_gae/            # Empirical GAE boundary indexing isolation study
+│       │   ├── analyze.py, run_probe.sh, README.md, data/
+│       └── results/              # Committed tables (.csv, .md), curves (.npz), plots (.png)
 │
 ├── evolutionary-strategies/      # 3 Evolutionary families benchmarked with JAX
 │   ├── src/
@@ -168,8 +162,8 @@ pip install -r requirements.txt
 
 | Sub-Project | Requirements File | Notes |
 |---|---|---|
-| **`ppo-versions`** | [`ppo-versions/requirements.txt`](ppo-versions/requirements.txt) | Includes PyTorch, JAX, Tianshou, TorchRL, RLlib, SB3. |
-| **`PPO-SB3-CleanRL-JAX`** | [`PPO-SB3-CleanRL-JAX/requirements-torch.txt`](PPO-SB3-CleanRL-JAX/requirements-torch.txt)<br>[`PPO-SB3-CleanRL-JAX/requirements-jax.txt`](PPO-SB3-CleanRL-JAX/requirements-jax.txt) | Separate files allow isolated CPU/CUDA wheels for Torch and JAX. |
+| **`ppo-empirical-studies` (Phase 1)** | [`ppo-empirical-studies/01_ecosystem_benchmark/requirements.txt`](ppo-empirical-studies/01_ecosystem_benchmark/requirements.txt) | Includes PyTorch, JAX, Tianshou, TorchRL, RLlib, SB3. |
+| **`ppo-empirical-studies` (Phase 2)** | [`ppo-empirical-studies/02_factorial_attribution/requirements-torch.txt`](ppo-empirical-studies/02_factorial_attribution/requirements-torch.txt)<br>[`ppo-empirical-studies/02_factorial_attribution/requirements-jax.txt`](ppo-empirical-studies/02_factorial_attribution/requirements-jax.txt) | Separate files allow isolated CPU/CUDA wheels for Torch and JAX. |
 | **`evolutionary-strategies`** | [`evolutionary-strategies/requirements.txt`](evolutionary-strategies/requirements.txt) | Pure JAX, NumPy, SciPy, Matplotlib. |
 | **`smw-evolutionary-agent`** | Python Standard Library + BizHawk 2.9+ | Cross-platform (Windows, Linux via Mono/native, macOS), SNES ROM. |
 
@@ -177,8 +171,8 @@ pip install -r requirements.txt
 
 ## Execution Guide
 
-### 1. `ppo-versions`
-From inside `ppo-versions/`:
+### 1. `ppo-empirical-studies` (Phase 1: Ecosystem Benchmark)
+From inside `ppo-empirical-studies/01_ecosystem_benchmark/`:
 ```bash
 # Execute CleanRL style on LunarLander-v3 with seed 42
 python scripts/train_cleanrl.py --env-id LunarLander-v3 --seed 42
@@ -190,8 +184,8 @@ PPO_ENV=LunarLander-v3 PPO_SEED=42 python scripts/train_sb3_zoo.py
 python scripts/stats_test.py
 ```
 
-### 2. `PPO-SB3-CleanRL-JAX`
-From inside `PPO-SB3-CleanRL-JAX/`:
+### 2. `ppo-empirical-studies` (Phase 2: Factorial Attribution)
+From inside `ppo-empirical-studies/02_factorial_attribution/`:
 ```bash
 # Smoke test (CartPole-v1, 1 seed, 1% timestep budget)
 python run_all.py --env CartPole-v1 --seeds 0 --timesteps-scale 0.01
@@ -203,6 +197,9 @@ python run_full_background.py --workers 4 --env LunarLander-v3
 python evaluate.py
 python analyze.py
 python plot_results.py
+
+# Run GAE indexing probe analysis
+python probe_gae/analyze.py
 ```
 
 ### 3. `evolutionary-strategies`

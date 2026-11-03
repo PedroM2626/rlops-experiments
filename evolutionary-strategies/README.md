@@ -296,11 +296,13 @@ All figures are rendered in a high-resolution academic dark-mode style and saved
 * **`results/optimism_gap_analysis.png`**: Quantitative analysis of the **Optimism Gap (*Winner's Curse*)** ($\Delta = f_{\text{train}} - R_{\text{test}}$), highlighting severely overfit policies in red and robust policies in green.
 
 ### 7.2 Training Curves and Evolutionary Dynamics
-* **`results/all_families_curves.png`**: Learning curves comparing the 3 families on the discrete environments.
-* **`results/all_families_bar.png`**: Comparative performance of all 7 algorithms grouped by family.
-* **`results/learning_curves.png`**: Learning curves of Families 1 and 3 on the 4 environments.
-* **`results/family_comparison.png`**: Final fitness comparison on the 4 environments.
-* **`results/time_vs_performance.png`**: Scatter plot relating computational cost (seconds) to the score achieved.
+* **`results/all_families_curves.png`**: Learning curves comparing the 3 families on CartPole and Acrobot.
+* **`results/all_families_bar.png`**: Comparative bar chart of all 7 algorithms on CartPole and Acrobot.
+* **`results/learning_curves.png`**: Learning curves from the latest benchmark run (`run_benchmark.py`, CartPole-v1).
+* **`results/family_comparison.png`**: Grouped bar chart comparing all 7 algorithms from the latest benchmark run (`run_benchmark.py`, CartPole-v1).
+* **`results/time_vs_performance.png`**: Scatter plot relating computational cost (seconds) to fitness for the latest benchmark run.
+* **`results/validation_100_ci95_bars.png`**: Comprehensive 100-episode out-of-sample evaluation across all 4 environments (CartPole, Acrobot, Pendulum, MountainCarContinuous).
+* **`results/optimism_gap_analysis.png`**: Generalization gap and optimism bias analysis across all 4 environments.
 
 ---
 

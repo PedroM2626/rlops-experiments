@@ -35,9 +35,10 @@ Both agents use the **same fitness function** and the **same input representatio
 
 ## Prerequisites and Environment Setup
 
-### 1. Operating System
+### 1. Operating System & Platform Support
 
-Windows 10/11 (64-bit). BizHawk has no official support for Linux/macOS.
+- **Windows 10/11 (64-bit)**: Native execution with official BizHawk binaries.
+- **Linux / macOS**: Supported via Mono or native Linux BizHawk ports (`EmuHawkMono.sh` or `mono EmuHawk.exe`), with automatic platform discovery provided by [`env_config.py`](env_config.py).
 
 ### 2. BizHawk — Emulator
 

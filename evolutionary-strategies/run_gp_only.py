@@ -1,6 +1,6 @@
 """
-Separate script that runs only Family 2 (GP) on CartPole and Acrobot.
-Slower because it is interpreted in Python.
+Targeted runner for Family 2 (Genetic Programming: LinearGP + CartesianGP).
+Accelerated via pure JAX vectorized compilation (vmap + lax.scan).
 """
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))

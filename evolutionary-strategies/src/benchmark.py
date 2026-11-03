@@ -1,9 +1,10 @@
 """
 Benchmark module: evolutionary training loop for every algorithm.
 
-For Family 2 (Programs), fitness is evaluated via rollouts interpreted in
-Python (not JAX-jit) because the programs are DAGs/sequences of discrete
-instructions. Families 1 and 3 use fully JAX-based evaluation (vmap+jit).
+All 3 families (Family 1: Direct Solutions, Family 2: Symbolic Programs, and 
+Family 3: Probabilistic Models/EDA) are accelerated via pure JAX vectorized 
+compilation (vmap + lax.scan). A fallback Python interpreted mode is retained 
+for debugging.
 
 Returns: dict with the fitness history (mean, max, std) per generation.
 """

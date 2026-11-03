@@ -208,14 +208,13 @@ def run_param_based_v2(
 
 
 # ---------------------------------------------------------------------------
-# Benchmark Family 2 (Programs — evaluation interpreted in Python/NumPy)
+# Benchmark Family 2 (Programs — Pure JAX Vectorized Rollout & Evaluation)
 # ---------------------------------------------------------------------------
 
 def _rollout_program_python(policy_fn: Callable, env_name: str,
                              n_rollouts: int, seed: int) -> float:
     """
-    Evaluate a program-based policy through gymnax in Python (no JIT).
-    Necessary because the programs are discrete DAGs, not differentiable JAX code.
+    Evaluate a program-based policy through gymnax in Python (fallback interpreter).
     """
     import gymnax
     env, env_params = gymnax.make(env_name)
@@ -265,12 +264,14 @@ def run_program_based(
     n_rollouts: int = 4,
     seed: int = 42,
     log_every: int = 10,
+    pure_jax: bool = True,
 ) -> RunResult:
     """
-    Training loop for Family 2 (Programs LGP/CGP) algorithms.
-    Evaluation is interpreted (Python + gymnax), hence slower.
+    Training loop for Family 2 (Programs: LinearGP and CartesianGP).
+    Accelerated via pure JAX vectorized compilation (vmap + lax.scan) across
+    episodes and individuals.
     """
-    from src.family2_programs import LinearGP, CartesianGP
+    from src.environments import make_program_pop_eval_fn
 
     result  = RunResult(algo_name, env_name, family)
     rng     = jax.random.PRNGKey(seed)
@@ -278,24 +279,32 @@ def run_program_based(
     rng, rng_init = jax.random.split(rng)
     state = algo.init(rng_init)
 
+    if pure_jax:
+        eval_fn = make_program_pop_eval_fn(env_name, algo, n_rollouts=n_rollouts)
+
     t0 = time.time()
     for gen in range(n_generations):
         t_gen = time.time()
+        rng, rng_eval = jax.random.split(rng)
 
-        # Evaluate the current population
-        programs = np.array(state.programs)
-        fitness_list = []
-        for i in range(len(programs)):
-            prog = programs[i]
-            pf   = algo.get_policy_fn(prog)
-            f    = _rollout_program_python(pf, env_name, n_rollouts, seed + gen * 1000 + i)
-            fitness_list.append(f)
-
-        fitness_np = np.array(fitness_list, dtype=np.float32)
-        fitness_jnp = jnp.array(fitness_np)
+        if pure_jax:
+            # Entire population evaluated in parallel in pure JAX
+            fitness = eval_fn(state.programs, rng_eval)
+            fitness.block_until_ready()
+            fitness_np = np.array(fitness, dtype=np.float32)
+        else:
+            # Fallback Python interpreted evaluation
+            programs = np.array(state.programs)
+            fitness_list = []
+            for i in range(len(programs)):
+                prog = programs[i]
+                pf   = algo.get_policy_fn(prog)
+                f    = _rollout_program_python(pf, env_name, n_rollouts, seed + gen * 1000 + i)
+                fitness_list.append(f)
+            fitness_np = np.array(fitness_list, dtype=np.float32)
 
         # Update the algorithm
-        state = algo.tell(state, fitness_jnp)
+        state = algo.tell(state, jnp.array(fitness_np))
 
         result.generations.append(gen)
         result.mean_fitness.append(float(np.mean(fitness_np)))
@@ -303,13 +312,13 @@ def run_program_based(
         result.std_fitness.append(float(np.std(fitness_np)))
         result.best_fitness.append(float(state.best_fitness))
         result.wall_time.append(time.time() - t_gen)
-        result.n_evals += len(programs)
+        result.n_evals += len(state.programs)
 
         if gen % log_every == 0 or gen == n_generations - 1:
             print(f"  [{algo_name:12s}|{env_name:28s}] gen={gen:3d}  "
                   f"best={float(state.best_fitness):8.2f}  "
                   f"mean={float(np.mean(fitness_np)):8.2f}  "
-                  f"t={time.time()-t_gen:.1f}s")
+                  f"t={time.time()-t_gen:.2f}s")
 
     result.total_time = time.time() - t0
     result.best_program = np.array(state.best_program)

@@ -208,8 +208,11 @@ python plot_results.py
 ### 3. `evolutionary-strategies`
 From inside `evolutionary-strategies/`:
 ```bash
-# Run benchmark across direct solutions and probability models
+# Run benchmark across all 3 evolutionary families (all vectorized in pure JAX)
 python run_benchmark.py --quick
+
+# Run Family 2 (LinearGP & CartesianGP) targeted benchmark in pure JAX
+python run_gp_only.py
 
 # Run 100-episode out-of-sample generalization validation
 python run_validation_100.py

@@ -128,3 +128,87 @@ def make_pop_eval_fn(env_name: str, n_rollouts: int = 8) -> Callable:
     evaluate_jit.n_params = rollout_fn.n_params
     evaluate_jit.env_name = env_name
     return evaluate_jit
+
+
+# ---------------------------------------------------------------------------
+# Family 2 (Programs — Pure JAX Vectorized Rollout & Population Evaluation)
+# ---------------------------------------------------------------------------
+
+def make_program_rollout_fn(env_name: str, algo, n_rollouts: int = 8) -> Callable:
+    """
+    Returns a JIT-compiled rollout function for Family 2 (Programs):
+        rollout(program, rng) -> scalar mean return
+    Accelerated entirely in pure JAX via jax.lax.scan and jax.vmap.
+    """
+    from src.family2_programs import forward_lgp_jax, forward_cgp_jax
+    import gymnax
+
+    env, env_params = gymnax.make(env_name)
+    meta      = ENV_META[env_name]
+    obs_dim   = meta["obs_dim"]
+    act_dim   = meta["act_dim"]
+    discrete  = meta["discrete"]
+    max_steps = meta["max_steps"]
+    act_scale = meta.get("act_scale", 1.0) or 1.0
+
+    algo_type = getattr(algo, "algo_type", "lgp")
+    if algo_type == "lgp":
+        n_regs = algo.n_regs
+        out_start = algo.out_start
+        def forward_act(prog, obs):
+            return forward_lgp_jax(prog, obs, obs_dim, act_dim, n_regs, out_start)
+    else:
+        n_cols = algo.n_cols
+        def forward_act(prog, obs):
+            return forward_cgp_jax(prog, obs, obs_dim, act_dim, n_cols)
+
+    def single_episode(program: jnp.ndarray, rng: jax.Array) -> jnp.ndarray:
+        rng_reset, rng_run = jax.random.split(rng)
+        obs, state = env.reset(rng_reset, env_params)
+
+        def step_fn(carry, _):
+            obs, state, done, total_r, rng = carry
+            rng, sub = jax.random.split(rng)
+            raw_act = forward_act(program, obs)
+            if discrete:
+                action = jnp.argmax(raw_act)
+            else:
+                action = jnp.clip(jnp.tanh(raw_act) * act_scale, -act_scale, act_scale)
+            obs, state, reward, terminated, truncated, _ = env.step(sub, state, action, env_params)
+            done_step = terminated | truncated
+            done_new  = done | done_step
+            total_r   = total_r + jnp.where(done, 0.0, reward)
+            return (obs, state, done_new, total_r, rng), None
+
+        init = (obs, state, jnp.bool_(False), jnp.float32(0.0), rng_run)
+        (_, _, _, total_r, _), _ = jax.lax.scan(step_fn, init, None, length=max_steps)
+        return total_r
+
+    def rollout(program: jnp.ndarray, rng: jax.Array) -> jnp.ndarray:
+        rngs    = jax.random.split(rng, n_rollouts)
+        returns = jax.vmap(single_episode, in_axes=(None, 0))(program, rngs)
+        return jnp.mean(returns)
+
+    rollout_jit = jax.jit(rollout)
+    rollout_jit.env_name = env_name
+    rollout_jit.obs_dim = obs_dim
+    rollout_jit.act_dim = act_dim
+    return rollout_jit
+
+
+def make_program_pop_eval_fn(env_name: str, algo, n_rollouts: int = 8) -> Callable:
+    """
+    Returns a JIT-compiled population evaluator for Family 2 (Programs):
+        evaluate(pop_programs [pop_size, ...], rng) -> fitness [pop_size]
+    Evaluates the entire population in parallel using nested vmap in pure JAX.
+    """
+    rollout_fn = make_program_rollout_fn(env_name, algo, n_rollouts)
+
+    def evaluate(programs: jnp.ndarray, rng: jax.Array) -> jnp.ndarray:
+        pop_size = programs.shape[0]
+        rngs     = jax.random.split(rng, pop_size)
+        return jax.vmap(rollout_fn)(programs, rngs)
+
+    evaluate_jit = jax.jit(evaluate)
+    evaluate_jit.env_name = env_name
+    return evaluate_jit

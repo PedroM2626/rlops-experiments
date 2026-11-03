@@ -113,6 +113,65 @@ def evaluate_program_100(policy_fn: Callable, env_name: str,
     return np.array(returns, dtype=np.float32)
 
 
+def make_program_test_eval_fn(env_name: str, algo, n_episodes: int = 100) -> Callable:
+    """
+    Returns a JIT-compiled function that evaluates a GP program policy over n_episodes
+    independent test episodes in pure JAX:
+        test_eval(program, rng) -> returns [n_episodes]
+    """
+    from src.family2_programs import forward_lgp_jax, forward_cgp_jax
+    import gymnax
+
+    env, env_params = gymnax.make(env_name)
+    meta      = ENV_META[env_name]
+    obs_dim   = meta["obs_dim"]
+    act_dim   = meta["act_dim"]
+    discrete  = meta["discrete"]
+    max_steps = meta["max_steps"]
+    act_scale = meta.get("act_scale", 1.0) or 1.0
+
+    algo_type = getattr(algo, "algo_type", "lgp")
+    if algo_type == "lgp":
+        n_regs = algo.n_regs
+        out_start = algo.out_start
+        def forward_act(prog, obs):
+            return forward_lgp_jax(prog, obs, obs_dim, act_dim, n_regs, out_start)
+    else:
+        n_cols = algo.n_cols
+        def forward_act(prog, obs):
+            return forward_cgp_jax(prog, obs, obs_dim, act_dim, n_cols)
+
+    def single_episode(program: jnp.ndarray, rng: jax.Array) -> jnp.ndarray:
+        rng_reset, rng_run = jax.random.split(rng)
+        obs, state = env.reset(rng_reset, env_params)
+
+        def step_fn(carry, _):
+            obs, state, done, total_r, rng = carry
+            rng, sub = jax.random.split(rng)
+            raw_act = forward_act(program, obs)
+            if discrete:
+                action = jnp.argmax(raw_act)
+            else:
+                action = jnp.clip(jnp.tanh(raw_act) * act_scale, -act_scale, act_scale)
+            obs, state, reward, terminated, truncated, _ = env.step(sub, state, action, env_params)
+            done_step = terminated | truncated
+            done_new  = done | done_step
+            total_r   = total_r + jnp.where(done, 0.0, reward)
+            return (obs, state, done_new, total_r, rng), None
+
+        init = (obs, state, jnp.bool_(False), jnp.float32(0.0), rng_run)
+        (_, _, _, total_r, _), _ = jax.lax.scan(step_fn, init, None, length=max_steps)
+        return total_r
+
+    def evaluate_test(program: jnp.ndarray, rng: jax.Array) -> jnp.ndarray:
+        rngs = jax.random.split(rng, n_episodes)
+        return jax.vmap(single_episode, in_axes=(None, 0))(program, rngs)
+
+    eval_jit = jax.jit(evaluate_test)
+    eval_jit.env_name = env_name
+    return eval_jit
+
+
 def compute_statistical_metrics(
     returns: np.ndarray,
     f_train_best: float | None = None,

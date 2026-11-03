@@ -57,12 +57,90 @@ OP_MIN  = 9
 N_OPS   = 10
 
 def apply_op(op_id: int, a: float, b: float) -> float:
-    """Applies a binary/unary operator."""
+    """Applies a binary/unary operator (Python/NumPy fallback)."""
     ops = [
         a + b, a - b, a * b, np.tanh(a), np.sin(a), np.cos(a),
         np.abs(a), a, np.maximum(a, b), np.minimum(a, b)
     ]
     return ops[int(op_id)]
+
+
+def apply_op_jax(op_id: jnp.ndarray, a: jnp.ndarray, b: jnp.ndarray) -> jnp.ndarray:
+    """Pure JAX evaluation of primitive operations without Python branching."""
+    branches = (
+        lambda a, b: a + b,                     # 0: ADD
+        lambda a, b: a - b,                     # 1: SUB
+        lambda a, b: a * b,                     # 2: MUL
+        lambda a, b: jnp.tanh(a),               # 3: TANH
+        lambda a, b: jnp.sin(a),                # 4: SIN
+        lambda a, b: jnp.cos(a),                # 5: COS
+        lambda a, b: jnp.abs(a),                # 6: ABS
+        lambda a, b: a,                         # 7: NOOP
+        lambda a, b: jnp.maximum(a, b),         # 8: MAX
+        lambda a, b: jnp.minimum(a, b),         # 9: MIN
+    )
+    res = jax.lax.switch(op_id, branches, a, b)
+    res = jnp.clip(res, -100.0, 100.0)
+    return jnp.where(jnp.isnan(res) | jnp.isinf(res), 0.0, res)
+
+
+def forward_lgp_jax(
+    program: jnp.ndarray,
+    obs: jnp.ndarray,
+    obs_dim: int,
+    act_dim: int,
+    n_regs: int,
+    out_start: int,
+) -> jnp.ndarray:
+    """Pure JAX execution of an LGP instruction sequence via jax.lax.scan."""
+    regs = jnp.zeros(n_regs, dtype=jnp.float32)
+    regs = regs.at[:obs_dim].set(jnp.clip(obs[:obs_dim], -10.0, 10.0))
+
+    def step_fn(regs, instr):
+        op, dst, s1, s2 = instr[0], instr[1], instr[2], instr[3]
+        a = regs[s1]
+        b = regs[s2]
+        res = apply_op_jax(op, a, b)
+        regs = regs.at[dst].set(res)
+        return regs, None
+
+    regs, _ = jax.lax.scan(step_fn, regs, program)
+    return regs[out_start : out_start + act_dim]
+
+
+def forward_cgp_jax(
+    prog: jnp.ndarray,
+    obs: jnp.ndarray,
+    obs_dim: int,
+    act_dim: int,
+    n_cols: int,
+) -> jnp.ndarray:
+    """Pure JAX execution of a Cartesian GP DAG via jax.lax.fori_loop."""
+    buf = jnp.zeros(obs_dim + n_cols, dtype=jnp.float32)
+    buf = buf.at[:obs_dim].set(jnp.clip(obs[:obs_dim], -10.0, 10.0))
+
+    # Split prog into node genes [n_cols, 3] and output genes [act_dim]
+    node_genes = prog[: n_cols * 3].reshape(n_cols, 3)
+    out_genes = prog[n_cols * 3 : n_cols * 3 + act_dim]
+
+    def col_fn(col, buf):
+        op = node_genes[col, 0]
+        c1 = node_genes[col, 1]
+        c2 = node_genes[col, 2]
+
+        max_conn = jnp.maximum(1, obs_dim + col)
+        c1 = jnp.clip(c1, 0, max_conn - 1)
+        c2 = jnp.clip(c2, 0, max_conn - 1)
+
+        a = buf[c1]
+        b = buf[c2]
+        res = apply_op_jax(op, a, b)
+        buf = buf.at[obs_dim + col].set(res)
+        return buf
+
+    buf = jax.lax.fori_loop(0, n_cols, col_fn, buf)
+    out_idxs = jnp.clip(out_genes, 0, obs_dim + n_cols - 1)
+    return buf[out_idxs]
 
 
 # ===========================================================================
@@ -112,6 +190,7 @@ class LinearGP:
         self.cx_prob      = cx_prob
         # Indices of the output registers
         self.out_start    = obs_dim + n_extra_regs
+        self.algo_type    = "lgp"
 
     def _rand_program(self, rng: jax.Array) -> np.ndarray:
         """Generates a random program [prog_len, 4] as a NumPy ndarray."""
@@ -122,32 +201,26 @@ class LinearGP:
         return np.stack([ops, dst, src1, src2], axis=1).astype(np.int32)
 
     def init(self, rng: jax.Array, **kwargs) -> LGPState:
-        # Programs as NumPy arrays (interpreted execution)
+        # Programs initialized as JAX arrays
         np.random.seed(int(jax.random.randint(rng, (), 0, 2**30, dtype=jnp.int32)))
         programs = np.stack([self._rand_program(rng) for _ in range(self.pop_size)])
         return LGPState(
-            programs     = jnp.array(programs),
+            programs     = jnp.array(programs, dtype=jnp.int32),
             fitness      = jnp.full(self.pop_size, -jnp.inf),
             best_program = jnp.zeros((self.prog_len, 4), dtype=jnp.int32),
             best_fitness = jnp.array(-jnp.inf),
             generation   = jnp.array(0),
         )
 
-    def execute_program(self, program: np.ndarray, obs: np.ndarray) -> np.ndarray:
+    def execute_program(self, program: np.ndarray | jnp.ndarray, obs: np.ndarray | jnp.ndarray) -> np.ndarray:
         """
-        Executes an LGP program given an observation.
-        Returns the output registers.
+        Executes an LGP program given an observation via pure JAX forward execution.
+        Returns the output action vector.
         """
-        regs = np.zeros(self.n_regs, dtype=np.float32)
-        regs[:self.obs_dim] = obs[:self.obs_dim]
-        regs = np.clip(regs, -10.0, 10.0)
-        for instr in program:
-            op, dst, s1, s2 = int(instr[0]), int(instr[1]), int(instr[2]), int(instr[3])
-            result = apply_op(op, float(regs[s1]), float(regs[s2]))
-            result = np.clip(result, -100.0, 100.0)
-            if not np.isnan(result) and not np.isinf(result):
-                regs[dst] = result
-        return regs[self.out_start: self.out_start + self.act_dim]
+        prog_jnp = jnp.asarray(program, dtype=jnp.int32)
+        obs_jnp = jnp.asarray(obs, dtype=jnp.float32)
+        act = forward_lgp_jax(prog_jnp, obs_jnp, self.obs_dim, self.act_dim, self.n_regs, self.out_start)
+        return np.asarray(act)
 
     def get_policy_fn(self, program: np.ndarray) -> Callable:
         """Returns the policy function: obs -> action (discrete or continuous)."""
@@ -260,6 +333,7 @@ class CartesianGP:
         self.n_nodes  = n_cols  # 1 linha, n_cols colunas
         # Total number of genes: n_nodes * 3  +  act_dim (outputs)
         self.prog_genes = n_cols * 3 + act_dim
+        self.algo_type  = "cgp"
 
     def _rand_program(self) -> np.ndarray:
         """CGP program: [n_nodes*3 + act_dim] integers."""
@@ -279,36 +353,19 @@ class CartesianGP:
         np.random.seed(int(jax.random.randint(rng, (), 0, 2**30, dtype=jnp.int32)))
         programs = np.stack([self._rand_program() for _ in range(self.pop_size)])
         return CGPState(
-            programs     = jnp.array(programs),
+            programs     = jnp.array(programs, dtype=jnp.int32),
             fitness      = jnp.full(self.pop_size, -jnp.inf),
             best_program = jnp.zeros(self.prog_genes, dtype=jnp.int32),
             best_fitness = jnp.array(-jnp.inf),
             generation   = jnp.array(0),
         )
 
-    def execute_program(self, prog: np.ndarray, obs: np.ndarray) -> np.ndarray:
-        """Evaluates the CGP graph for one observation."""
-        obs = obs.astype(np.float32)
-        # Buffer: inputs first, then the computational nodes
-        buf = np.zeros(self.obs_dim + self.n_cols, dtype=np.float32)
-        buf[:self.obs_dim] = np.clip(obs, -10.0, 10.0)
-
-        for col in range(self.n_cols):
-            op   = int(prog[col*3 + 0])
-            c1   = int(prog[col*3 + 1])
-            c2   = int(prog[col*3 + 2])
-            c1   = min(c1, self.obs_dim + col - 1) if self.obs_dim + col > 0 else 0
-            c2   = min(c2, self.obs_dim + col - 1) if self.obs_dim + col > 0 else 0
-            a, b = float(buf[c1]), float(buf[c2])
-            result = apply_op(op, a, b)
-            result = np.clip(result, -100.0, 100.0)
-            if not np.isnan(result) and not np.isinf(result):
-                buf[self.obs_dim + col] = result
-
-        # Read the outputs
-        out_idxs = prog[self.n_cols*3: self.n_cols*3 + self.act_dim]
-        out_idxs = np.clip(out_idxs, 0, self.obs_dim + self.n_cols - 1)
-        return buf[out_idxs]
+    def execute_program(self, prog: np.ndarray | jnp.ndarray, obs: np.ndarray | jnp.ndarray) -> np.ndarray:
+        """Evaluates the CGP graph for one observation via pure JAX forward execution."""
+        prog_jnp = jnp.asarray(prog, dtype=jnp.int32)
+        obs_jnp = jnp.asarray(obs, dtype=jnp.float32)
+        act = forward_cgp_jax(prog_jnp, obs_jnp, self.obs_dim, self.act_dim, self.n_cols)
+        return np.asarray(act)
 
     def get_policy_fn(self, prog: np.ndarray) -> Callable:
         def policy(obs: np.ndarray) -> np.ndarray:

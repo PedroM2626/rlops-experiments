@@ -1,396 +1,253 @@
-# RLOps Experiments
+# RLOps Experiments: Empirical Benchmarks and Comparative Studies in RL & Neuroevolution
 
-A monorepo of self-contained machine-learning experiments around reinforcement learning and
-evolutionary computation. The GitHub repository is `PedroM2626/rlops-experiments`; the working
-copy is still checked out in a folder named `ML-Games`.
+A curated monorepo dedicated to reproducible, controlled experimental studies across Deep Reinforcement Learning (Proximal Policy Optimization) and Evolutionary Computation (Direct Search, Genetic Programming, Estimation of Distribution Algorithms). 
 
-The experiments fall into three groups:
+The upstream GitHub repository is [`PedroM2626/rlops-experiments`](https://github.com/PedroM2626/rlops-experiments); the local workspace is checked out in `ML-Games`.
 
-- **PyBullet humanoid control** (`Chase`, `Parkour-Obstacles`, `Race`) — Gymnasium environments
-  trained with PPO from Stable Baselines3, tracked in MLflow, with Docker images for headless runs.
-- **PPO implementation studies** (`ppo-versions`, `PPO-SB3-CleanRL-JAX`) — controlled comparisons
-  of many PPO implementations across libraries and numerical stacks.
-- **Evolutionary and neuroevolution work** (`evolutionary-strategies`, `smw-evolutionary-agent`)
-  — genetic programming / EDA / evolution-strategy benchmarks in JAX, and NEAT vs. GP agents
-  playing *Super Mario World* in an emulator.
+---
 
-Each project is standalone: its own README, its own dependencies, its own entry points, and no
-shared code with the others. This file is only the index and the machine-level setup.
+## Scientific Scope and Architectural Overview
 
-## Experiment index
+The repository focuses strictly on mathematically grounded, reproducible benchmarks adhering to academic empirical standards:
 
-### [Chase](Chase/README.md)
+1. **PPO Multi-Library Empirical Spectrum** (`ppo-versions`) — A 12-part controlled study evaluating how algorithmic design choices, framework ecosystems (CleanRL, Stable-Baselines3, RLlib, TorchRL, Tianshou, PyTorch, JAX), and hyperparameter tuning regimes impact sample efficiency, asymptotic stability, and variance across continuous and discrete environments.
+2. **PPO Factorial Attribution & GAE Mechanics** (`PPO-SB3-CleanRL-JAX`) — A $2 \times 2$ factorial attribution study isolating the algorithmic specification (SB3 spec vs. CleanRL spec) from the computation engine (PyTorch vs. JAX + Optax), complemented by single-delta ablations and an empirical probe isolating Generalized Advantage Estimation (GAE) episode-boundary indexing differences.
+3. **Evolutionary Computation Taxonomy & JAX Benchmark** (`evolutionary-strategies`) — A formal taxonomy and comparative evaluation of three evolutionary computation paradigms (Direct Parameter Search, Symbolic Genetic Programming, and Probabilistic Models / Estimation of Distribution Algorithms like CMA-ES and PBIL) accelerated via JAX (`vmap` + `jit`) on canonical control tasks, with a 100-episode out-of-sample generalization protocol.
+4. **Neuroevolution vs. Symbolic Programs in Complex Video Games** (`smw-evolutionary-agent`) — An empirical study comparing Neuroevolution of Augmenting Topologies (NEAT) against Genetic Programming (GP) playing *Super Mario World* via the BizHawk emulator, contrasting topological neural networks against interpretable symbolic decision trees under identical sensory receptors ($13 \times 13$ tile grid).
 
-Humanoid evasion task: a 10-DOF PyBullet agent flees a rule-based chaser that walks with a
-programmed gait and closes in over time. Trains with SB3 PPO, logs to MLflow, and ships an
-interactive PyBullet GUI trainer with live sliders, a pause/save panel and an in-scene HUD.
+> [!NOTE]
+> **Repository Curation & Deprecated Modules**:
+> Early procedural 3D robotics and locomotion prototypes (`Chase`, `Race`, and `Parkour-Obstacles`) were permanently removed from the repository. Rigorous empirical auditing revealed fundamental physical and algorithmic discrepancies (such as non-physical kinematic chaser resets, unphysical lateral spring stabilizers $F_y = -80 \cdot y$, 0% goal completion rates, and severe policy collapse after $2.1\times 10^6$ steps). The monorepo has been streamlined to retain only scientifically validated, fully converging benchmarks.
 
-### [Parkour-Obstacles](Parkour-Obstacles/README.md)
+---
 
-Procedural parkour: the same humanoid class must cross platforms, gaps, ledges, ramps, stairs,
-stepping stones and low-friction "icy" tiles, with a fresh course generated every episode. The
-most fully documented project here (observation/action spec, reward terms, runtime physics
-overrides, checkpoint layout) and the one the root `Dockerfile` builds.
+## Sub-Project Directory
 
-### [Race](Race/README.md)
+### 1. [`ppo-versions`](ppo-versions/README.md)
+* **Objective**: Investigate the variance and performance discrepancies among 7 distinct PPO implementations on `CartPole-v1` and `LunarLander-v3`.
+* **Implementations Tested**:
+  - `cleanrl_original`: Canonical single-file implementation.
+  - `cleanrl_style_pytorch`: Modularized PyTorch clean implementation.
+  - `stable_baselines3`: Standard production baseline (`VecEnv` + modular policy).
+  - `stable_baselines3_zoo`: Stable-Baselines3 with tuned RL Zoo hyperparameters.
+  - `jax_pure`: Hardware-accelerated functional PPO using JAX and Optax.
+  - `rllib`: Scalable distributed implementation via Ray RLlib.
+  - `torchrl`: TensorDict-driven high-throughput implementation.
+  - `tianshou`: Modular replay-driven framework.
+* **Methodology**: 10 seeds per configuration, formal statistical significance testing (Mann-Whitney U tests, Levene's variance homogeneity tests, Bonferroni multiplicity corrections), and empirical evaluation of RL Zoo hyperparameter sets.
 
-Multi-agent variant: several humanoids race over procedurally generated terrain with rocks,
-hills, pillars and ramps. Uses parameter sharing — one PPO policy updated from all agent
-trajectories — plus rank and finishing-order rewards, and a pytest suite for the environment.
+### 2. [`PPO-SB3-CleanRL-JAX`](PPO-SB3-CleanRL-JAX/README.md)
+* **Objective**: Disentangle the contributions of algorithmic specification vs. software runtime.
+* **Factorial Matrix**:
+  - Spec SB3 $\times$ Engine PyTorch
+  - Spec SB3 $\times$ Engine JAX
+  - Spec CleanRL $\times$ Engine PyTorch
+  - Spec CleanRL $\times$ Engine JAX
+* **Ablations & Probes**: Value-function loss clipping, learning rate annealing, MSE factor conventions ($0.5$ vs. $1.0$), timeout bootstrapping, and a dedicated `probe_gae` study quantifying off-by-one boundary indexing in advantage computations.
 
-### [ppo-versions](ppo-versions/README.md)
+### 3. [`evolutionary-strategies`](evolutionary-strategies/README.md)
+* **Objective**: Comparative empirical evaluation of evolutionary algorithms classified by their mathematical object of variation:
+  - **Family 1: Direct Solutions** (Direct Representation): Simple Genetic Algorithm (SimpleGA), Differential Evolution (DE), OpenAI Evolution Strategy (OpenAI-ES).
+  - **Family 2: Symbolic Programs** (Genetic Programming): Linear Genetic Programming (LinearGP), Cartesian Genetic Programming (CartesianGP).
+  - **Family 3: Probabilistic Models** (Estimation of Distribution Algorithms - EDA): Covariance Matrix Adaptation Evolution Strategy (CMA-ES), Population-Based Incremental Learning (PBIL).
+* **Speedup & Evaluation**: Vectorized rollouts via JAX `vmap` and `jit` over `gymnax` environments (`CartPole-v1`, `Pendulum-v1`, `Acrobot-v1`, `MountainCar-v0`, `MountainCarContinuous-v0`). Includes a 100-episode out-of-sample evaluation protocol to measure the generalization gap.
 
-The PPO Benchmark: a twelve-part comparison of PPO as implemented in Stable Baselines3, CleanRL
-(both ours and the official script), pure PyTorch, pure JAX, RLlib, TorchRL and Tianshou on
-CartPole and LunarLander. Its README records the experimental arc and the conceptual conclusions;
-`results/` and `results_eval/` hold the raw curves and evaluation stats. This is the successor of
-the folder formerly called `PPO-Comparison`.
+### 4. [`smw-evolutionary-agent`](smw-evolutionary-agent/README.md)
+* **Objective**: Compare topological neural network neuroevolution (NEAT) against symbolic tree genetic programming (GP) navigating *Super Mario World* (Yoshi's Island 1).
+* **Architecture**: BizHawk emulator (Snes9x core) running custom Lua controllers (`MarIO.lua` and `MarIO_GP.lua`) interfacing with Python test harnesses.
+* **Perception & Fitness**: Equivalent $13 \times 13$ tile perception window around Mario, with identical fitness metrics based on horizontal progress ($\Delta X$), timeout penalties, and velocity bonuses.
 
-### [PPO-SB3-CleanRL-JAX](PPO-SB3-CleanRL-JAX/README.md)
+---
 
-An attribution study rather than a leaderboard: a factorial design that holds the algorithm spec
-fixed while swapping the stack (Torch vs. JAX) and holds the stack fixed while swapping the spec
-(SB3 vs. CleanRL), plus a hand-written "bridge" implementation and single-delta ablations to
-localise where a performance gap actually comes from.
+## Technology Stack
 
-### [evolutionary-strategies](evolutionary-strategies/README.md)
-
-Benchmark of three evolutionary families on canonical RL tasks with JAX-vectorised fitness
-evaluation (`vmap` + `jit` over `gymnax`): direct parameter vectors (SimpleGA, Differential
-Evolution, OpenAI-ES), symbolic programs (LinearGP, CartesianGP) and probability models
-(CMA-ES, PBIL), followed by a 100-episode out-of-sample validation protocol that quantifies the
-optimism gap between in-training fitness and true generalisation.
-
-### [smw-evolutionary-agent](smw-evolutionary-agent/README.md)
-
-NEAT versus Genetic Programming on *Super Mario World* (Yoshi's Island 1), driven through Lua
-scripts inside the BizHawk emulator, with both agents sharing one fitness function and one tile
-grid observation so the representations — an opaque network graph versus readable per-button
-expression trees — are the only difference. Windows-only; see its README for emulator and ROM
-setup. [docs/comparison.md](smw-evolutionary-agent/docs/comparison.md) is the write-up.
-
-## Technology stack
-
-| Concern | Technology | Used by |
+| Concern | Technologies | Active Projects |
 |---|---|---|
-| Physics simulation | PyBullet (articulated 10-DOF URDF humanoid) | Chase, Parkour, Race |
-| RL interface | Gymnasium + Stable Baselines3 PPO (`DummyVecEnv`, `VecNormalize`) | Chase, Parkour, Race |
-| Experiment tracking | MLflow (local file store per project) | Chase, Parkour, Race |
-| Alternative PPO stacks | CleanRL-style Torch, pure PyTorch, RLlib/Ray, TorchRL, Tianshou, JAX + Optax | ppo-versions, PPO-SB3-CleanRL-JAX |
-| Vectorised evolution search | JAX (`vmap`/`jit`/`lax.scan`) + gymnax | evolutionary-strategies, PPO-SB3-CleanRL-JAX |
-| Evolutionary algorithms | GA, DE, OpenAI-ES, CMA-ES, PBIL, Linear/Cartesian GP, NEAT | evolutionary-strategies, smw-evolutionary-agent |
-| Emulation / game interface | BizHawk 2.9.x + Lua API, Snes9x core | smw-evolutionary-agent |
-| Statistics / figures | Matplotlib + NumPy everywhere; `scipy.stats` for the hypothesis tests in `ppo-versions`, NumPy bootstrap resampling in `evolutionary-strategies` | ppo-versions, PPO-SB3-CleanRL-JAX, evolutionary-strategies |
-| Containerisation | Docker + Docker Compose (CUDA image path available) | Chase, Parkour, Race |
+| **Core DL & Tensors** | PyTorch (`torch`), JAX (`jax`, `jaxlib`, `optax`) | `ppo-versions`, `PPO-SB3-CleanRL-JAX`, `evolutionary-strategies` |
+| **RL Baselines & Stacks** | Stable-Baselines3, CleanRL, Ray/RLlib, TorchRL, Tianshou | `ppo-versions`, `PPO-SB3-CleanRL-JAX` |
+| **Vectorized RL Simulation** | `gymnax`, `lax.scan`, `vmap`, `jit` | `evolutionary-strategies`, `PPO-SB3-CleanRL-JAX` |
+| **Evolutionary Frameworks** | Custom JAX-accelerated ES/EDA/GA, Lua MarIO engine | `evolutionary-strategies`, `smw-evolutionary-agent` |
+| **Emulation & Environment** | BizHawk 2.9.x, LuaJIT / Lua 5.1, Snes9x core | `smw-evolutionary-agent` |
+| **Statistical Analysis** | SciPy, NumPy, Pandas (Mann-Whitney U, Levene, bootstrap confidence intervals, Cliff's delta) | `ppo-versions`, `PPO-SB3-CleanRL-JAX`, `evolutionary-strategies` |
+| **Visualization** | Matplotlib, Seaborn | All projects |
 
-## Repository layout
+---
 
-```
+## Repository Tree
+
+```text
 .
-├── Chase/                        # PyBullet evasion env (SB3 + MLflow)
-│   ├── src/env/chase_env.py
-│   ├── src/agent/callbacks.py    # MLflow callback
-│   ├── src/train_interactive.py  # GUI trainer (run as -m src.train_interactive)
-│   ├── train.py                  # batch training entry point (project root)
-│   ├── play_chase.py             # playback of a trained policy
-│   ├── test_chase.py             # headless smoke test
-│   ├── Dockerfile, requirements.txt
-│   └── models/, mlruns/          # git-ignored
-│
-├── Parkour-Obstacles/            # Procedural parkour env (SB3 + MLflow)
-│   ├── src/env/parkour_env.py
-│   ├── src/env/level_generator.py
-│   ├── src/agent/callbacks.py
-│   ├── src/train.py, src/train_interactive.py, src/play.py
-│   ├── train.py, play.py         # thin sys.path wrappers around the src modules
-│   ├── test_env.py
-│   ├── assets/humanoid.urdf
-│   └── models/, mlruns/          # git-ignored
-│
-├── Race/                         # Multi-agent race (SB3 + MLflow)
-│   ├── src/env/race_env.py, src/env/terrain_generator.py
-│   ├── src/agent/callbacks.py
-│   ├── src/train.py, src/play.py
-│   ├── tests/                    # pytest suite
-│   ├── Dockerfile, requirements.txt, .env.example
-│   └── models/, mlruns/          # git-ignored
-│
-├── ppo-versions/                 # PPO Benchmark (12 parts)
-│   ├── scripts/common.py         # shared config, evaluate_policy, save_result
-│   ├── scripts/train_*.py        # one script per implementation/variant
-│   ├── scripts/{compare,boxplot,stats_test,eval_stats}.py
-│   ├── scripts/run_all.sh        # multi-seed sweep used during the study
-│   ├── results/, results_eval/   # committed JSON curves + evaluation stats
+├── ppo-versions/                 # 12-part PPO multi-framework benchmark
+│   ├── scripts/
+│   │   ├── common.py             # Shared logging, evaluation protocol, serialization
+│   │   ├── train_*.py            # CleanRL, SB3, PyTorch, JAX, RLlib, TorchRL, Tianshou
+│   │   ├── compare.py            # Comparative curve plotting
+│   │   ├── boxplot.py            # Return distribution boxplots
+│   │   ├── stats_test.py         # Mann-Whitney U & Levene hypothesis tests
+│   │   └── eval_stats.py         # Evaluation statistics aggregation
+│   ├── results/                  # Committed seed training curves (JSON)
+│   ├── results_eval/             # Committed evaluation distributions (JSON)
+│   ├── figures/                  # Publication-ready plots (.png)
 │   └── requirements.txt
 │
-├── PPO-SB3-CleanRL-JAX/          # Spec-vs-stack attribution study
-│   ├── config.py, specs.py, variants.py, common.py, run_helpers.py
-│   ├── train_sb3.py, train_cleanrl_torch.py, train_jax_ppo.py
-│   ├── jax_core.py, jax_run.py, jax_run_fast.py, jax_fwd.py, sb3_shim.py
-│   ├── run_all.py                # sequential orchestrator
-│   ├── run_full_background.py    # resume-safe parallel runner
-│   ├── evaluate.py, analyze*.py, plot_*.py
-│   ├── probe_gae/                # A/B measurement of the GAE indexing deviation
-│   ├── requirements-torch.txt, requirements-jax.txt
-│   └── results/                  # curves/tables/plots/meta committed, models ignored
+├── PPO-SB3-CleanRL-JAX/          # 2x2 Factorial attribution study (spec vs. stack)
+│   ├── config.py, specs.py       # Algorithmic specifications and run hyperparameters
+│   ├── train_sb3.py              # Stable-Baselines3 driver
+│   ├── train_cleanrl_torch.py    # CleanRL PyTorch driver
+│   ├── train_jax_ppo.py          # Pure JAX PPO driver
+│   ├── run_all.py                # Sequential benchmark runner
+│   ├── run_full_background.py    # Resilient parallel runner
+│   ├── evaluate.py               # Deterministic multi-seed evaluation
+│   ├── analyze.py                # Bootstrap resampling and attribution contrasts
+│   ├── plot_results.py           # Training curves and attribution boxplots
+│   ├── probe_gae/                # Empirical GAE boundary indexing isolation study
+│   │   ├── analyze.py, run_probe.sh, README.md, data/
+│   ├── requirements-torch.txt    # PyTorch stack requirements
+│   ├── requirements-jax.txt      # JAX stack requirements
+│   └── results/                  # Committed tables (.csv, .md), curves (.npz), plots (.png)
 │
-├── evolutionary-strategies/      # 3 evolutionary families, JAX/gymnax
-│   ├── src/{environments,family1_direct,family2_programs,family3_eda}.py
-│   ├── src/{benchmark,evaluation,visualization}.py
-│   ├── run_benchmark.py, run_gp_only.py
-│   ├── run_validation_100.py, generate_final_plots.py
-│   └── results/                  # committed JSON/CSV/PNG
+├── evolutionary-strategies/      # 3 Evolutionary families benchmarked with JAX
+│   ├── src/
+│   │   ├── environments.py       # gymnax environment wrappers and JAX rollouts
+│   │   ├── family1_direct.py     # SimpleGA, Differential Evolution, OpenAI-ES
+│   │   ├── family2_programs.py   # LinearGP, CartesianGP
+│   │   ├── family3_eda.py        # CMA-ES, PBIL
+│   │   ├── benchmark.py          # JAX-accelerated training loops
+│   │   ├── evaluation.py         # 100-episode out-of-sample validation engine
+│   │   └── visualization.py      # Curve and family comparison renderers
+│   ├── run_benchmark.py          # Benchmark driver across 5 control tasks
+│   ├── run_gp_only.py            # Targeted GP evaluation script
+│   ├── run_validation_100.py     # 100-episode out-of-sample validation runner
+│   ├── generate_final_plots.py   # Publication figures generator
+│   ├── requirements.txt          # Python dependencies (jax, numpy, scipy, matplotlib)
+│   └── results/                  # Committed training curves, logs, and validation summaries
 │
-├── smw-evolutionary-agent/       # NEAT vs GP on Super Mario World
-│   ├── MarIO.lua                 # NEAT agent (Lua, runs inside BizHawk)
-│   ├── MarIO_GP.lua              # Genetic Programming agent
-│   ├── launch_mario.py           # autonomous setup + launch pipeline
-│   ├── setup_environment.py      # ROM / emulator / savestate integrity check
-│   ├── train_neat.py, train_gp.py
-│   ├── docs/comparison.md
-│   └── *.sfc, *.dll, *.state, *.pool, *.gppool   # git-ignored
+├── smw-evolutionary-agent/       # NEAT vs. GP on Super Mario World (BizHawk)
+│   ├── env_config.py             # Cross-platform environment resolution (Windows/Linux/macOS)
+│   ├── MarIO.lua                 # NEAT agent controller (BizHawk Lua script)
+│   ├── MarIO_GP.lua              # Genetic Programming symbolic tree controller
+│   ├── launch_mario.py           # Cross-platform supervisor and savestate bootstrapper
+│   ├── setup_environment.py      # ROM validation (SHA-1 checksum verification)
+│   ├── train_neat.py             # Timed NEAT training harness
+│   ├── train_gp.py               # Timed GP training harness
+│   ├── plot_comparative_progress.py # Unified analytical visualization & Pareto engine
+│   ├── neat_training_results.txt # Empirical generation logs (NEAT)
+│   ├── gp_training_results.txt   # Empirical generation logs (GP)
+│   ├── docs/
+│   │   ├── comparison.md         # Mathematical comparison and complexity analysis
+│   │   ├── comparative_metrics_summary.md # Generational contrast table
+│   │   └── figures/              # Pareto & trajectory plots
+│   └── README.md
 │
-├── Dockerfile                    # Parkour training image (installs root requirements.txt)
-├── docker-compose.yml            # trainers + MLflow UI services
-├── requirements.txt              # shared deps; Parkour is the project that reads it
-├── .env.example                  # hyperparameter defaults for the PyBullet projects
-└── .dockerignore, .editorconfig, .gitattributes, .gitignore
+├── requirements.txt              # Shared foundational Python dependencies
+└── .gitignore, .gitattributes, .editorconfig
 ```
 
-`PPO-Comparison/`, the directory named in older versions of this file, no longer exists: it was
-removed in `6cb19b0` and replaced by `ppo-versions/` and `PPO-SB3-CleanRL-JAX/`.
+---
 
-## Quick start
+## Quick Start & Setup
 
-The projects pin different versions of the same libraries (for example SB3 2.7.1 vs 2.9.0, and
-three different Gymnasium lines), so use one virtualenv per project rather than one shared env.
+Because subprojects explore different computational paradigms (PyTorch, JAX, BizHawk Lua), dependencies can be installed either via individual project requirements or via a shared virtual environment:
+
+### Core Environment Setup
 
 ```bash
-python -m venv .venv
-# Windows
-.venv\Scripts\activate
+# Create and activate virtual environment
+python -m venv venv
+
+# Windows (PowerShell)
+.\venv\Scripts\Activate.ps1
 # Linux / macOS
-source .venv/bin/activate
+source venv/bin/activate
+
+# Install shared core dependencies
+pip install -r requirements.txt
 ```
 
-| Project | Dependencies |
-|---|---|
-| Parkour-Obstacles | `pip install -r requirements.txt` (root file) |
-| Chase | `pip install -r Chase/requirements.txt` |
-| Race | `pip install -r Race/requirements.txt` |
-| ppo-versions | `pip install -r ppo-versions/requirements.txt` |
-| PPO-SB3-CleanRL-JAX | `pip install -r requirements-torch.txt` **and** `-r requirements-jax.txt` into a single interpreter |
-| evolutionary-strategies | no requirements file; the pinned install line is in its README |
-| smw-evolutionary-agent | Python standard library only; the heavy dependency is BizHawk 2.9.x plus a legally dumped SMW ROM |
+### Sub-Project Environments
 
-Environment configuration for the three PyBullet projects is optional:
+| Sub-Project | Requirements File | Notes |
+|---|---|---|
+| **`ppo-versions`** | [`ppo-versions/requirements.txt`](ppo-versions/requirements.txt) | Includes PyTorch, JAX, Tianshou, TorchRL, RLlib, SB3. |
+| **`PPO-SB3-CleanRL-JAX`** | [`PPO-SB3-CleanRL-JAX/requirements-torch.txt`](PPO-SB3-CleanRL-JAX/requirements-torch.txt)<br>[`PPO-SB3-CleanRL-JAX/requirements-jax.txt`](PPO-SB3-CleanRL-JAX/requirements-jax.txt) | Separate files allow isolated CPU/CUDA wheels for Torch and JAX. |
+| **`evolutionary-strategies`** | [`evolutionary-strategies/requirements.txt`](evolutionary-strategies/requirements.txt) | Pure JAX, NumPy, SciPy, Matplotlib. |
+| **`smw-evolutionary-agent`** | Python Standard Library + BizHawk 2.9+ | Cross-platform (Windows, Linux via Mono/native, macOS), SNES ROM. |
 
+---
+
+## Execution Guide
+
+### 1. `ppo-versions`
+From inside `ppo-versions/`:
 ```bash
-cp .env.example .env     # repo root
+# Execute CleanRL style on LunarLander-v3 with seed 42
+python scripts/train_cleanrl.py --env-id LunarLander-v3 --seed 42
+
+# Execute Stable-Baselines3 Zoo configuration
+PPO_ENV=LunarLander-v3 PPO_SEED=42 python scripts/train_sb3_zoo.py
+
+# Run hypothesis testing (Mann-Whitney U / Levene) across collected seeds
+python scripts/stats_test.py
 ```
 
-`train.py` / `src.train` read it through `python-dotenv`, which searches upward from the script's
-directory, so the root `.env` supplies defaults for `EXPERIMENT_NAME`, `MLFLOW_TRACKING_URI`,
-`TOTAL_TIMESTEPS`, `LEARNING_RATE`, `N_STEPS`, `BATCH_SIZE`, `GAMMA`, `N_EPOCHS`, `GAE_LAMBDA`,
-`CLIP_RANGE`, `ENT_COEF`, `NET_ARCH`, `N_ENVS` and `CHECKPOINT_FREQ`. Command-line flags win over
-`.env`. `Race` also ships its own `.env.example` with the extra `N_AGENTS` key.
-
-## How to run each experiment
-
-All commands are copied from the working entry points; each project README lists the full flag set.
-
-### Chase (from `Chase/`)
-
+### 2. `PPO-SB3-CleanRL-JAX`
+From inside `PPO-SB3-CleanRL-JAX/`:
 ```bash
-python test_chase.py                                   # env smoke test, no training
-python train.py                                        # batch PPO -> models/ppo_chase_final
-python train.py --n-steps 4096 --n-epochs 20 --net-arch 512,512
-python train.py --test --model models/ppo_chase_final.zip --episodes 5
-python play_chase.py                                   # GUI playback (random if no checkpoint)
-python -m src.train_interactive --timesteps 500000     # interactive GUI trainer
-```
-
-`train.py` has no `--timesteps` flag: its budget is derived as `n_steps * n_epochs * 100`, so
-resize the run through `--n-steps` / `--n-epochs`. `src/train_interactive.py` uses `--timesteps`
-(0 = unlimited) and must be launched as a module, or with `PYTHONPATH=.` exported.
-
-### Parkour-Obstacles (from `Parkour-Obstacles/`)
-
-```bash
-python test_env.py                                                    # headless smoke test
-python -m src.train                                                   # defaults: 1M steps, 4 envs
-python -m src.train --timesteps 3000000 --n-envs 8 --net-arch 512,512
-python -m src.train --model models/ppo_parkour_0000500000.zip         # resume
-python -m src.train_interactive --timesteps 3000000                   # GUI sliders + HUD
-python -m src.play --model models/ppo_parkour_final --n-episodes 3    # watch the policy
-python -m src.play --no-render --n-episodes 20 --level-seed 42        # headless benchmark
-python -m src.train --test --model models/ppo_parkour_final.zip --episodes 5
-```
-
-Use the `-m src.xxx` form. The modules import each other as `src.env...`, so
-`python src/train_interactive.py` fails with `ModuleNotFoundError: No module named 'src'` unless
-`PYTHONPATH=.` is exported; the root `train.py` and `play.py` wrappers exist to avoid that.
-
-### Race (from `Race/`)
-
-```bash
-python -m pytest tests/test_race_env.py -v
-python -m src.play --random --n-agents 4                       # untrained agents, no training run
-python -m src.train --n-agents 4 --n-envs 4 --timesteps 5000000
-python -m src.train --model models/ppo_race_0000500000.zip     # resume
-python -m src.play --model models/ppo_race_final.zip --episodes 3
-```
-
-### PPO-SB3-CleanRL-JAX (from `PPO-SB3-CleanRL-JAX/`)
-
-```bash
-# smoke test: one env, one seed, 1% of the budget
+# Smoke test (CartPole-v1, 1 seed, 1% timestep budget)
 python run_all.py --env CartPole-v1 --seeds 0 --timesteps-scale 0.01
 
-python run_all.py                                  # full sequential run (slow, CPU)
-python run_full_background.py --workers 8           # resume-safe parallel runner
-python run_full_background.py --workers 8 --env LunarLander-v3 --only jax_sb3,jax_cleanrl
+# Execute complete background run with multi-worker parallelism
+python run_full_background.py --workers 4 --env LunarLander-v3
 
-python evaluate.py       # deterministic evaluation per model -> results/tables
-python analyze.py        # seed-paired bootstrap contrasts
-python plot_results.py   # curves and boxplots -> results/plots
+# Statistical evaluation, bootstrap resampling, and plot generation
+python evaluate.py
+python analyze.py
+python plot_results.py
 ```
 
-`run_all.py` also accepts `--only`, `--skip-train`, `--skip-eval` and, if you split Torch and JAX
-across interpreters, `--python-torch` / `--python-jax`. Individual arms can be run directly, e.g.
-`python train_jax_ppo.py --env LunarLander-v3 --seed 0 --mode cleanrl`.
-
-### ppo-versions (from `ppo-versions/`)
-
-The scripts take no CLI flags; they are configured through environment variables read by
-`scripts/common.py`: `PPO_ENV` (default `CartPole-v1`), `PPO_SEED`, `PPO_TIMESTEPS`,
-`PPO_EVAL_EPISODES` and `PPO_RUN_TAG` (a suffix that keeps different configurations from
-colliding in `results/`).
-
+### 3. `evolutionary-strategies`
+From inside `evolutionary-strategies/`:
 ```bash
-PPO_ENV=LunarLander-v3 PPO_SEED=42 python scripts/train_sb3_zoo.py
-PPO_ENV=LunarLander-v3 PPO_TIMESTEPS=1000000 PPO_SEED=42 PPO_RUN_TAG=-zoo python scripts/train_torchrl.py
-PPO_ENV=LunarLander-v3 PPO_SEED=42 PPO_RUN_TAG=-zoo python scripts/eval_stats.py
+# Run benchmark across direct solutions and probability models
+python run_benchmark.py --quick
+
+# Run 100-episode out-of-sample generalization validation
+python run_validation_100.py
+
+# Regenerate publication figures from committed JSONs
+python generate_final_plots.py
 ```
 
-Output paths resolve relative to the script, so a re-run writes inside the project:
-`results/` and `results_eval/` for the JSON, `figures/` for the PNGs the post-processing
-scripts produce. The study itself ran on a throwaway Linux sandbox that wrote to
-`/home/claude/ppo-benchmark` and `/mnt/user-data/outputs`; the nine figures under `figures/`
-were regenerated from the committed JSON alone, and their statistics match the tables in the
-project README. One arm is missing from the LunarLander plots:
-`results/LunarLander-v3/tianshou_seed42.json` stores an empty curve and a null final reward, so
-the post-processors skip it and name it in the figure title instead of dropping it silently. Note that `results/` and `results_eval/`
-are the committed record of the benchmark, and a re-run overwrites files with the same name in
-place — set `PPO_RUN_TAG` to keep a new run separate.
-
-### evolutionary-strategies (from `evolutionary-strategies/`)
-
+### 4. `smw-evolutionary-agent`
+From inside `smw-evolutionary-agent/` (Windows, Linux, macOS):
 ```bash
-python run_validation_100.py                     # out-of-sample 100-episode protocol
-python run_benchmark.py --quick --no-gp          # families 1 and 3, short run
-python run_benchmark.py --env CartPole-v1 --seed 7
-python run_gp_only.py                            # family 2 (LinearGP + CartesianGP)
-python generate_final_plots.py                   # regenerate results/ figures
-```
+# Verify emulator setup and ROM SHA-1 integrity
+python setup_environment.py
 
-Install the pinned JAX/gymnax stack first (see section 10 of the project README); it targets
-Python 3.11.
+# Launch NEAT agent
+python launch_mario.py
 
-### smw-evolutionary-agent (from `smw-evolutionary-agent/`, Windows only)
+# Launch Genetic Programming agent
+python launch_mario.py --gp
 
-```bash
-python setup_environment.py           # validate ROM SHA-1, BizHawk, savestate, Lua scripts
-python launch_mario.py                # NEAT run
-python launch_mario.py --gp           # Genetic Programming run
-python launch_mario.py --reboot-state # regenerate DP1.state from scratch
-python train_neat.py 180              # paired 180 s benchmark run (arg = seconds)
+# Generate analytical Pareto plots and contrast tables
+python plot_comparative_progress.py
+
+# Run timed 180-second benchmark comparison
+python train_neat.py 180
 python train_gp.py 180
 ```
 
-The launcher scripts expect the emulator and the ROM under a fixed `C:\BizHawk` directory and copy
-the Lua agents there themselves; BizHawk 2.9.x is required because newer releases break the Lua
-API these scripts use.
+---
 
-## MLflow tracking
+## Versioning & Artifact Policy
 
-Only the three PyBullet projects use MLflow; the comparison and evolutionary studies write JSON,
-CSV and PNG under their own `results/` directories instead.
+In accordance with scientific open-source best practices, large transient binary files are excluded from Git via [`.gitignore`](.gitignore):
+- Model weights, checkpoints, and archives (`*.zip`, `*.pt`, `*.pkl`, `*.npz`)
+- Video and render outputs (`*.mp4`, `*.gif`)
+- Local virtual environments (`.venv/`, `venv/`)
+- Emulator binary cores, savestates, and population dump pools (`*.sfc`, `*.state`, `*.pool`, `*.gppool`)
 
-Each of `Chase`, `Parkour-Obstacles` and `Race` keeps an independent local file store in its own
-directory. From the project dir:
-
-```bash
-mlflow ui --backend-store-uri ./mlruns     # http://localhost:5000
-```
-
-Runs log the PPO hyperparameters and the resolved device, `episode_reward` and `episode_length`
-per completed episode, and periodic checkpoints (default every 50k steps) plus the final policy
-and `VecNormalize` stats as artifacts. The experiment name comes from `EXPERIMENT_NAME` /
-`--experiment-name`, the store location from `MLFLOW_TRACKING_URI` / `--tracking-uri`.
-
-## Docker
-
-`docker-compose.yml` at the repo root defines six services:
-
-| Service | Build | Command | Notes |
-|---|---|---|---|
-| `chase-trainer` | `Chase/Dockerfile` | `python train.py` | bind-mounts `Chase/models`, `Chase/mlruns` |
-| `chase-mlflow` | `python:3.10-slim` | `mlflow ui` | port 5000 |
-| `parkour-trainer` | root `Dockerfile` | `python -m src.train` | reads root `.env`; mounts `models`, `mlruns` |
-| `parkour-mlflow` | `python:3.10-slim` | `mlflow ui` | port 5003 |
-| `race-trainer` | `Race/Dockerfile` | `python -m src.train` | reads `Race/.env` |
-| `race-mlflow` | `python:3.10-slim` | `mlflow ui` | port 5001 |
-
-```bash
-docker compose up --build chase-trainer
-docker compose up parkour-trainer
-docker compose up race-trainer
-docker compose up chase-mlflow parkour-mlflow race-mlflow
-```
-
-Caveats:
-
-- `race-trainer` loads `env_file: ./Race/.env`, and `parkour-trainer` loads the root `.env`;
-  `.env` files are ignored, so copy the matching `.env.example` before starting those services.
-- Every trainer declares an NVIDIA GPU reservation. On a CPU-only host, build and run directly
-  instead, e.g. `docker build -t parkour-ml .` from the repo root then
-  `docker run --rm parkour-ml python test_env.py`, or `docker build -t chase-ml .` from `Chase/`.
-  Training itself works on CPU (`device="auto"`).
-
-## What is deliberately not versioned
-
-Per `.gitignore`:
-
-- **Model artifacts**: `*.zip`, `*.pkl`, `*.pt`, `*.npz`, `*.onnx`, plus `**/results/logs/` and
-  `runtime/`. Checkpoints are regenerable by training and would add hundreds of MB.
-- **MLflow stores**: `mlruns/` at any depth.
-- **Virtualenvs and caches**: `.venv/`, `venv/`, `/ENV/`, `__pycache__/`, `*.pyc`, `*.pyo`.
-- **Emulator payloads**: `*.sfc`, `*.nes` (ROMs must be dumped by the user) and `*.dll` native cores.
-- **Emulator run output**: `*.state` savestates, `*.pool` and `*.gppool` evolved population files —
-  these are per-session state that `launch_mario.py` regenerates or restores.
-- **Secrets and editor state**: `.env`, `Race/.env`, `.DS_Store`, `Thumbs.db`, `.vscode/`, `.idea/`.
-  The two env files were committed before those rules existed and are now untracked; neither
-  holds a credential — the root one is identical to `.env.example`, and `Race/.env` differs from
-  its example only by lacking a commented-out DagsHub block.
-
-Committed on purpose, in contrast: the study outputs that *are* the record of the non-PyBullet
-experiments — `ppo-versions/results*`, `evolutionary-strategies/results`, and the
-`curves/tables/plots/meta` subtrees plus runner logs under `PPO-SB3-CleanRL-JAX/results`
-(its `results/logs/` directory is ignored). `.dockerignore` mirrors the artifact exclusions so
-images are not built with checkpoints inside.
-
-## Python and tooling versions
-
-| Project | Interpreter / platform | Key pins |
-|---|---|---|
-| Parkour-Obstacles | Python 3.10+ (root images use `python:3.10-slim`) | PyBullet 3.2.6, SB3 2.7.1, Gymnasium 1.1.1, Torch 2.10.0, MLflow 3.10.1 |
-| Chase | Python 3.10+ | same family, per `Chase/requirements.txt` |
-| Race | Python 3.10+ | same family plus matplotlib, pandas, pytest |
-| PPO-SB3-CleanRL-JAX | Python 3.10–3.11, one interpreter with Torch **and** JAX installed together, CPU only | `requirements-torch.txt`, `requirements-jax.txt` |
-| ppo-versions | recorded on Python 3.12.3 / Ubuntu 24.04, CPU only | dated snapshot in `ppo-versions/requirements.txt` (SB3, JAX, Ray, TorchRL, Tianshou, box2d) |
-| evolutionary-strategies | Python 3.11 recommended | JAX, gymnax, NumPy, matplotlib (its install line also pins `flax` and `orbax-checkpoint`) |
-| smw-evolutionary-agent | Windows 10/11 x64; Python standard library only | BizHawk 2.9.1, .NET 8 runtime, VC++ 2015-2022 redist, DirectX end-user runtime, `Super Mario World (USA).sfc` |
-
-Paths in every project are relative to that project's own directory: run commands from inside the
-experiment folder, not from the repo root.
+Preserved as primary scientific records:
+- Evaluated metric summaries, CSV contrast tables, and benchmark JSON data.
+- High-resolution comparative plots and figures.

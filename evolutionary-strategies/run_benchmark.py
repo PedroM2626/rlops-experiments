@@ -7,7 +7,7 @@ Runs 3 families of evolutionary algorithms on 5 gymnax/JAX environments:
   Family 3 (EDA):      CMA-ES, PBIL
 
 Usage:
-    C:\\ev\\Scripts\\python run_benchmark.py [--quick] [--env ENV_NAME]
+    python run_benchmark.py [--quick] [--env ENV_NAME]
 
     --quick : quick mode (fewer generations, for testing)
     --env   : run only 1 specific environment

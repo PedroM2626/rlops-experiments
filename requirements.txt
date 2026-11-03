@@ -1,9 +1,15 @@
-stable-baselines3==2.7.1
-gymnasium==1.1.1
-pybullet==3.2.6
-mlflow==3.10.1
-numpy==2.4.3
-torch==2.10.0
-python-dotenv==1.0.1
-rich==13.7.1
-tqdm==4.66.4
+# Monorepo Core Dependencies
+# For subproject-specific frameworks (JAX, RLlib, Tianshou, TorchRL), see:
+# - ppo-versions/requirements.txt
+# - PPO-SB3-CleanRL-JAX/requirements-torch.txt & requirements-jax.txt
+# - evolutionary-strategies/requirements.txt
+
+torch>=2.0.0
+gymnasium>=1.0.0
+stable-baselines3>=2.0.0
+numpy>=1.26.0
+scipy>=1.10.0
+matplotlib>=3.7.0
+pandas>=2.0.0
+rich>=13.0.0
+tqdm>=4.66.0

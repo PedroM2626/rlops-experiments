@@ -73,26 +73,51 @@ You will need a legally obtained ROM of the game:
 > Do not distribute ROMs.
 
 ### 4. Emulator Setup and Savestate
-Both emulator detection and the provisioning of the native `DP1.state` plus script synchronization are handled automatically by [`launch_mario.py`](file:///c:/Users/Acer/Downloads/smw-evolutionary-agent/launch_mario.py) or [`setup_environment.py`](file:///c:/Users/Acer/Downloads/smw-evolutionary-agent/setup_environment.py). No manual intervention in the emulator is needed.
+Both emulator detection and the provisioning of the native `DP1.state` plus script synchronization are handled automatically by [`launch_mario.py`](launch_mario.py) or [`setup_environment.py`](setup_environment.py). No manual intervention in the emulator is needed.
 
 ---
 
-## Autonomous Execution (No Manual Intervention)
+## Cross-Platform Autonomous Execution
 
-The project ships a 100% autonomous execution pipeline through [`launch_mario.py`](file:///c:/Users/Acer/Downloads/smw-evolutionary-agent/launch_mario.py):
+The project features a 100% autonomous, cross-platform execution pipeline through [`launch_mario.py`](launch_mario.py) and [`env_config.py`](env_config.py), compatible with **Windows, Linux (via Mono or native BizHawk), and macOS**:
 
 ```bash
+# Verify environment and dependencies:
+python setup_environment.py
+
 # Run NEAT (original MarI/O):
 python launch_mario.py
 
 # Run Genetic Programming (interpretable MarI/O-GP):
 python launch_mario.py --gp
+
+# Specify custom BizHawk installation path:
+python launch_mario.py --bizhawk-dir /opt/bizhawk
+# Or set environment variable:
+export BIZHAWK_HOME=/opt/bizhawk
 ```
 
 ### What the autonomous pipeline does:
-1. **Validation and synchronization:** checks the ROM SHA-1 (`6b47bb75d16514b6a476aa0c73a683a2a4c18765`), the BizHawk executables and the Lua scripts.
-2. **Automatic savestate generation (`DP1.state`):** if the native savestate is missing or corrupted, the pipeline runs a background bootstrap that navigates the title screen autonomously, selects the save and writes `DP1.state` at the exact frame where the *Yoshi's Island 1* level starts (Mode `0x14`, MarioX = 128).
-3. **Initialization and training:** opens BizHawk with the selected Lua script via `--lua`, showing the gameplay and the evolution UI in real time.
+1. **Dynamic Environment Discovery:** detects the emulator across platform-standard locations, `$PATH`, and `$BIZHAWK_HOME` (Windows `.exe`, Linux `EmuHawkMono.sh` / Mono wrappers).
+2. **Validation and synchronization:** checks the ROM SHA-1 (`6b47bb75d16514b6a476aa0c73a683a2a4c18765`), BizHawk binaries, and copies active Lua scripts.
+3. **Automatic savestate generation (`DP1.state`):** if the native savestate is missing or corrupted, the pipeline runs a headless background bootstrap that navigates the title screen autonomously, selects the save and writes `DP1.state` at the exact frame where the *Yoshi's Island 1* level starts (Mode `0x14`, MarioX = 128).
+4. **Initialization and training:** launches BizHawk with the selected Lua script via `--lua`, displaying gameplay and the evolution HUD in real time.
+
+---
+
+## Unified Visualization and Analytics Engine
+
+The analytical script [`plot_comparative_progress.py`](plot_comparative_progress.py) parses the training trajectories from `neat_training_results.txt`, `gp_training_results.txt`, and the population pools (`*.pool`, `*.gppool`), exporting publication-grade empirical visualizations:
+
+```bash
+# Generate analytical plots and summary tables:
+python plot_comparative_progress.py
+```
+
+Generated scientific records:
+- **[Pareto Complexity & Learning Dynamics](docs/figures/smw_pareto_complexity_progress.png)**: Four-panel evaluation of sample efficiency, Pareto frontier of structural complexity (active synapses vs. tree nodes) against $\Delta X$, NEAT speciation dynamics, and GP syntactic primitive composition.
+- **[Trajectory & Landmark Heatmap](docs/figures/smw_trajectory_heatmap.png)**: Trajectory reach profile along the Yoshi's Island 1 course (Start $\to$ First Chasm $\to$ Monty Mole $\to$ Banzai Bill $\to$ Goal).
+- **[Empirical Metrics Summary Table](docs/comparative_metrics_summary.md)** (`docs/comparative_metrics_summary.csv`): Generational comparison of top/mean fitness, speciation, and structural genome sizes.
 
 ---
 
@@ -100,29 +125,15 @@ python launch_mario.py --gp
 
 1. Open BizHawk and load `Super Mario World (USA).sfc`
 2. Go to `Tools -> Lua Console`
-3. In the Lua console: `Script -> Open Script` -> select `MarIO.lua`
-4. The script will automatically start evolving a population of neural networks
+3. In the Lua console: `Script -> Open Script` -> select `MarIO.lua` or `MarIO_GP.lua`
+4. The script will automatically start evolving a population
 
 **UI controls:**
-- Show Map: displays the tile grid and the neural network
+- Show Map: displays the tile grid and the network/tree
 - Show M-Rates: displays the current mutation rates
 - Restart: restarts the evolution from scratch
-- Save/Load: saves/loads the genome pool to a `.pool` file
+- Save/Load: saves/loads the genome pool to a `.pool` or `.gppool` file
 - Play Top: plays the best genome found so far
-
----
-
-## How to Run MarIO-GP
-
-1. Open BizHawk and load `Super Mario World (USA).sfc`
-2. Go to `Tools -> Lua Console`
-3. In the Lua console: `Script -> Open Script` -> select `MarIO_GP.lua`
-4. The script will evolve a population of **program trees**
-
-**Visual differences:**
-- The GP panel displays the **symbolic expression** of the best individual (interpretable!)
-- The log shows the average tree depth and the complexity of the best program
-- `.gppool` files persist the state of the GP evolution
 
 ---
 
@@ -130,14 +141,25 @@ python launch_mario.py --gp
 
 ```text
 smw-evolutionary-agent/
-|-- MarIO.lua               # NEAT — classic neuroevolution (SethBling)
-|-- MarIO_GP.lua            # Genetic Programming — interpretable symbolic trees
-|-- launch_mario.py         # 100% autonomous execution pipeline (NEAT / GP)
-|-- setup_environment.py    # Integrity validation (SHA-1) and synchronization
-|-- DP1.state               # Native savestate at the first frame of Yoshi's Island 1
-|-- README.md               # Complete project documentation
+|-- env_config.py               # Cross-platform environment resolution (Windows/Linux/macOS)
+|-- MarIO.lua                   # NEAT — classic neuroevolution (SethBling)
+|-- MarIO_GP.lua                # Genetic Programming — interpretable symbolic trees
+|-- launch_mario.py             # Cross-platform autonomous execution pipeline (NEAT / GP)
+|-- setup_environment.py        # Integrity validation (SHA-1) and synchronization
+|-- train_neat.py               # Timed benchmark runner for NEAT agent
+|-- train_gp.py                 # Timed benchmark runner for GP agent
+|-- plot_comparative_progress.py# Unified analytical visualization & Pareto engine
+|-- neat_training_results.txt   # Empirical log output for NEAT benchmark
+|-- gp_training_results.txt     # Empirical log output for GP benchmark
+|-- README.md                   # Complete project documentation
+|-- DP1.state                   # Native savestate (generated/restored dynamically, git-ignored)
 `-- docs/
-    `-- comparison.md       # Academic comparative study NEAT vs. GP
+    |-- comparison.md           # Academic comparative study NEAT vs. GP
+    |-- comparative_metrics_summary.md  # Generational contrast table
+    |-- comparative_metrics_summary.csv # Raw structured metrics
+    `-- figures/
+        |-- smw_pareto_complexity_progress.png
+        `-- smw_trajectory_heatmap.png
 ```
 
 ---

@@ -32,9 +32,12 @@ PPO-SB3-CleanRL-JAX/probe_gae/workspace/
 *.pool
 *.gppool
 
+# Media / video artifacts
+*.mp4
+*.gif
+
 # Env files with secrets
 .env
-Race/.env
 
 # OS / editor
 .DS_Store

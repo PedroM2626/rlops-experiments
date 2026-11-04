@@ -313,11 +313,11 @@ Validation over 100 episodes exposed a crucial phenomenon in evolutionary RL:
   * **CartesianGP** improved its test mean from $-1336.94$ to **$-940.34 \pm 38.81$** (median **$-853.53$**).
   * Larger $N$ and $G$ coincided with a much smaller optimism gap and a $35\%$ success rate for the best methods in the seed-42 run. In the multi-seed study (Section 6.6.2) SimpleGA and CMA-ES reach $37.2\%$ and $38.6\%$ success with $\rho<1$, so partial swing-up is reproducible, but no method solves the task consistently, and the role of the rollout budget was not isolated by ablation on Pendulum.
 
-### 6.5 Possible Plateau in Continuous Control: Black-Box ES vs. Temporal Difference RL
+### 6.5 Plateau Test in Continuous Control (CMA-ES, 250 Generations) and Black-Box ES vs. TD RL
 
-#### 6.5.1 Empirical Measurement: 250-Generation Stress Test
+#### 6.5.1 Empirical Measurement: 250-Generation Stress Test (Seed 42)
 To rigorously determine whether the remaining performance deficit on `Pendulum-v1` was simply a matter of insufficient optimization budget, a dedicated long-horizon stress test was executed and saved to `results/pendulum_stress_test_250.json` (reproducible via `run_pendulum_stress_test.py`):
-* **Optimization Budget**: $G=250$ generations, $\lambda=25$ candidates, $N_{\text{rollouts}}=8$, $H=200$ steps per rollout ($\approx 10{,}000{,}000$ simulated environment steps).
+* **Optimization Budget** (seed 42): $G=250$ generations, $\lambda=25$ candidates, $N_{\text{rollouts}}=8$, $H=200$ steps per rollout ($\approx 10{,}000{,}000$ simulated environment steps).
 * **Training Convergence**: Apparent train best fitness reached **$-70.13$** (apparent generation mean: $-455.71$).
 * **Out-of-Sample Test Evaluation ($N=100$ independent episodes, seed $99999$)**:
   * Mean Test Return: **$-242.43 \pm 15.37$** (Stratified 95% Bootstrap CI: `[-271.51, -212.91]`)
@@ -326,7 +326,24 @@ To rigorously determine whether the remaining performance deficit on `Pendulum-v
   * Optimism Gap ($\Delta$): **$+172.29$**
 * **Empirical Finding**: Increasing the computational budget by $2.5\times$ (from $G=100$ to $G=250$) yielded only a marginal gain of $+26.24$ return points and an increase of only $+2.0\%$ in success rate (from $35.0\%$ to $37.0\%$).
 * **Consistency check**: this run uses the same seed, algorithm and hyperparameters as the $G=100$ validation. Its training best at generation 100 is $-229.74$, identical to the $G=100$ value of Section 5.2, so the two runs follow the same deterministic trajectory and the train-fitness difference is only the extra 150 generations ($-229.74 \to -70.13$).
-* **Interpretation (hypothesis, not established)**: the test-return gain ($+26.24$) is of the order of the individual SEMs ($15.37$ and $18.59$), it comes from a **single seed**, and the train-best fitness kept improving while the test return barely moved (optimism gap grew from $+38.92$ to $+172.29$). This is *compatible* with a plateau or with growing overfitting to training starts, but a plateau cannot be concluded from one seed. A 5-seed repeat at $G=250$ under the same protocol would be needed.
+* **Interpretation of the seed-42 run alone (hypothesis)**: the test-return gain ($+26.24$) is of the order of the individual SEMs ($15.37$ and $18.59$), and the train-best fitness kept improving while the test return barely moved (optimism gap $+38.92 \to +172.29$). A single seed cannot establish a plateau, so it was repeated with 5 seeds (Section 6.5.1b).
+
+#### 6.5.1b Multi-Seed Repeat of the 250-Generation Test (S=5)
+`run_pendulum_stress_multiseed.py` repeats the same CMA-ES configuration ($G=250$, $N_{\text{rollouts}}=8$, test seed $99999$, 100 test episodes) for seeds $101, 202, 303, 404$ (`results/pendulum_stress_multiseed.json`); seed 42 is the run above. The $G=100$ reference is the CMA-ES Pendulum row of Section 6.6.2 (same seeds, same protocol).
+
+| Seed | Test mean $G=100$ | Test mean $G=250$ (success) | Change | Train best $G=250$ |
+|:---:|:---:|:---:|:---:|:---:|
+| 42 | −268.67 | −242.43 (37%) | +26.2 | −70.13 |
+| 101 | −701.44 | −247.97 (34%) | +453.5 | −97.37 |
+| 202 | −221.47 | −317.54 (38%) | −96.1 | −70.79 |
+| 303 | −274.77 | −210.85 (44%) | +63.9 | −65.10 |
+| 404 | −796.35 | −336.59 (53%) | +459.8 | −66.49 |
+| **Mean** | **−452.54** ($\sigma_{\text{train}}=273.39$) | **−271.08** ($\sigma_{\text{train}}=53.46$) | **+181.5** | −73.98 |
+
+* **Measured**: with 5 seeds, going from $G=100$ to $G=250$ raises the mean test return from $-452.54$ to $-271.08$, cuts the between-seed standard deviation from $273$ to $53$, and raises mean success from $38.6\%$ to $41.2\%$. Four of five seeds improve; seed 202 gets worse ($-96.1$).
+* **Therefore the single-seed "plateau" reading was not supported**: seed 42 happened to be the seed whose $G=100$ result was already good, and the multi-seed gain comes mostly from the seeds that were poor at $G=100$ (101 and 404). Under $G=250$ all five seeds end between $-211$ and $-337$.
+* **Caveats**: the paired change has mean $+181$ with standard deviation $\approx 255$ across seeds, so with $S=5$ it is suggestive but not statistically conclusive ($t \approx 1.6$). The result is for CMA-ES only; the other algorithms were not run at $G=250$. The optimism gap remains large ($\approx +170$ to $+260$ for most seeds), so the training-best fitness ($\approx -70$) is not a reliable indicator of test performance.
+* **Reading**: the remaining deficit at $G=100$ was largely an optimization-budget (and seed-fragility) effect, and returns at $G=250$ (≈ $-210$ to $-340$) are much more reproducible across seeds. Whether performance saturates beyond $G=250$ was not tested.
 
 #### 6.5.2 Theoretical Hypotheses (External Context, Not Tested Here)
 > [!NOTE]
@@ -417,7 +434,7 @@ Raw empirical data extracted directly from `results/multiseed_summary.csv` (gene
 1. **CartPole-v1 (Measured)**: SimpleGA, DE, OpenAI-ES, PBIL and CartesianGP have $\sigma_{\text{train}} \approx 149 - 185$ ($\rho$ between 1.4 and 2.0) under the standard budget ($G=30$, $N=2$). CMA-ES has $\sigma_{\text{train}} = 15.22$, $\rho = 0.35$, IQM $= 500.00$ and $87.4\%$ aggregate success. Note that CMA-ES is not "perfect" over seeds: its mean is $483.98$, and only the seed-42 run in Section 5.2 shows $500.00 \pm 0.00$.
 2. **Differential Evolution on MountainCarContinuous-v0 (Measured)**: With seed 42, DE reached $85.68$ (below the $90.0$ success threshold). Across 5 seeds the aggregate mean is $91.44 \pm 1.80$ with $60.2\%$ success. The seed-42 result is therefore not representative of DE's average behavior under this budget. With $S=5$ we cannot determine the exact cause of that seed's lower result.
 3. **PBIL on MountainCarContinuous-v0 (Measured)**: Mean $93.86 \pm 0.88$, stratified 95% CI `[92.39, 95.71]`, IQM $94.21$, $\sigma_{\text{train}} = 1.97$, $96.8\%$ success: the highest aggregate performance and lowest between-seed variance among the 7 algorithms in this environment.
-4. **Pendulum-v1 (Measured)**: SimpleGA and CMA-ES reach very similar IQM ($-288.52$ and $-288.35$) and success ($37.2\%$ and $38.6\%$), with large $\sigma_{\text{eval}} > 340$. This is consistent with, but does not establish, the single-seed 250-generation plateau of Section 6.5.1. Whether this plateau is a property of the algorithms or of the budget was not isolated for Pendulum (the ablation of Section 6.7 covers CartPole only).
+4. **Pendulum-v1 (Measured)**: SimpleGA and CMA-ES reach very similar IQM ($-288.52$ and $-288.35$) and success ($37.2\%$ and $38.6\%$), with large $\sigma_{\text{eval}} > 340$. The 5-seed $G=250$ repeat of Section 6.5.1b shows that, for CMA-ES, more generations improve and stabilize the result, so the $G=100$ numbers here should not be read as a ceiling. Whether the SimpleGA/CMA-ES similarity persists at $G=250$ was not tested. Whether this plateau is a property of the algorithms or of the budget was not isolated for Pendulum (the ablation of Section 6.7 covers CartPole only).
 5. **Zero returns on MountainCarContinuous-v0 (Measured)**: OpenAI-ES, LinearGP and CartesianGP obtained exactly $0.00$ in all 5 seeds ($500$ test episodes each). This shows the failure is not specific to seed 42. The mechanism (flat reward landscape giving no selection signal) is a **hypothesis** that was not tested here.
 6. **LinearGP on Pendulum-v1 is a degenerate policy (Measured, correction)**: LinearGP obtained exactly $-1247.90$ in all 5 seeds, hence $\sigma_{\text{train}} = 0.00$ and $\rho = 0.00$. We verified that the selected programs output a raw action of exactly $0$ at every step, and that a constant zero-torque policy on the same 100 test episodes yields mean $-1247.903$, std $393.71$ and $0\%$ success (identical to the reported values). The zero variance across seeds therefore does **not** indicate stable optimization: LinearGP never learned a non-trivial policy on Pendulum. Its apparent "train best" ($-860$ to $-896$) is the best of noisy $N=8$ evaluations of such zero-output programs (favorable initial angles), i.e., selection on noise. The LinearGP Pendulum numbers in Sections 5.2 and 6.2 must be read as the zero-torque baseline.
 
@@ -500,6 +517,7 @@ evolutionary-strategies/
 ├── run_validation_100.py     # Master out-of-sample validation script (100 eps)
 ├── run_multiseed_study.py    # Multi-seed study disentangling aleatoric vs epistemic variance (Agarwal et al., 2021)
 ├── run_pendulum_stress_test.py # Long-horizon stress test (250 generations, 10M steps)
+├── run_pendulum_stress_multiseed.py # 5-seed repeat of the 250-generation CMA-ES Pendulum test
 ├── run_causal_ablation.py    # CartPole ablation of N (rollouts) vs G (generations) over 5 seeds
 ├── generate_final_plots.py   # Consolidated visual compilation of training runs
 ├── results/                  # Raw empirical data and figures:
@@ -508,6 +526,7 @@ evolutionary-strategies/
 │   ├── validation_100_ci95_bars.png
 │   ├── optimism_gap_analysis.png
 │   ├── pendulum_stress_test_250.json
+│   ├── pendulum_stress_multiseed.json
 │   ├── multiseed_study.json
 │   ├── multiseed_summary.csv
 │   ├── multiseed_variance_analysis.png
@@ -542,6 +561,9 @@ python run_multiseed_study.py
 
 # 4. Run the 250-generation Pendulum asymptotic stress test
 python run_pendulum_stress_test.py --generations 250 --rollouts 8
+
+# 4b. Repeat the 250-generation test for seeds 101, 202, 303, 404
+python run_pendulum_stress_multiseed.py
 
 # 5. Run the CartPole causal ablation (N vs G)
 python run_causal_ablation.py

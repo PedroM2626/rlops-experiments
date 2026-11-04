@@ -295,6 +295,23 @@ Validation over 100 episodes exposed a crucial phenomenon in evolutionary RL:
   * **CartesianGP** improved its test mean from $-1336.94$ to **$-940.34 \pm 38.81$** (median **$-853.53$**).
   * This confirms empirically that continuous control with under-actuated swing-up is solvable by evolutionary algorithms once the rollout budget per evaluation adequately covers the support of the initial state distribution.
 
+### 6.5 Asymptotic Plateau in Continuous Control: Black-Box ES vs. Temporal Difference RL
+Despite the breakthrough from $-1312$ to $-268$, an empirical investigation with $G=250$ generations ($2.5\times$ compute budget, ~12.8M steps) revealed a clear asymptotic plateau: test return converged to **$-242.43 \pm 15.37$** (median **$-248.35$**) with success rate increasing only marginally from $35\%$ to **$37\%$**. This demonstrates that the remaining performance gap relative to state-of-the-art gradient-based RL (where SAC and TD3 achieve $-150 \pm 15$ with $>90\%$ success) is not a mere lack of generations, but stems from structural theoretical differences:
+1. **The Epistemic Credit Assignment Problem**:
+   * Temporal Difference RL optimizes individual transitions via the recursive Bellman expectation:
+     $$Q(s_t, a_t) = r(s_t, a_t) + \gamma \max_{a'} Q(s_{t+1}, a')$$
+   * In contrast, ES operates as an episodic black-box optimizer evaluating only the cumulative scalar sum:
+     $$f(\theta) = \sum_{t=0}^{H-1} r_t$$
+   * In `Pendulum-v1`, control is non-linearly bipartite:
+     * **Phase 1 (Bottom energy pumping)**: Positive feedback (torque aligned with angular velocity $\dot{\theta}$ to amplify kinetic resonance and escape the gravitational potential well);
+     * **Phase 2 (Top upright balance)**: Damped negative feedback (torque opposing angular velocity to arrest overshoot as $\theta \to 0$).
+   * Under a single episode scalar $f(\theta)$, a parameter perturbation improving Phase 1 frequently degrades Phase 2. The optimizer lacks temporal credit information to distinguish which specific time-steps caused trajectory failure.
+2. **Initial Condition Sensitivity at Rest**:
+   * When $\theta_0 \approx \pm \pi$ and $\dot{\theta}_0 \approx 0$, the torque limit $|u| \le 2.0$ requires precise multi-cycle resonance. A phase error of mere centiseconds dissipates kinetic energy, forcing another oscillation cycle and incurring ~300 to 500 extra penalty points over the 200-step horizon.
+3. **Population Scaling and Sample Reuse**:
+   * Salimans et al. (2017) demonstrated that ES in continuous control requires populations of $P = 1{,}440$ to $4{,}000$ to maintain gradient signal-to-noise ratio in high dimensions. Our budget ($P = 32$, $\lambda \approx 25$) maintains computational tractability on local CPU but limits exploration variance.
+   * Unlike off-policy RL which caches transitions in a Replay Buffer for thousands of gradient updates, ES discards all rollouts after each generation.
+
 ---
 
 ## 7. Generated Visualizations

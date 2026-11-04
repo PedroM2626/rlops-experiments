@@ -383,7 +383,7 @@ To rigorously determine whether the remaining performance deficit on `Pendulum-v
 * **Measured**: after 30,000 environment steps SAC and TD3 reach the same mean ($-156.4$), with $\approx 64\%$ success and SD over seeds of $2$–$3$. Compared with CMA-ES at $G=100$ ($-441.0$, 10 seeds, $\approx 4\times10^{6}$ simulated steps) and $G=250$ ($-384.6$, $\approx 10^{7}$ steps), they are better by $\approx 230$ to $285$ points, far more reproducible across seeds, and use roughly $130\times$ to $330\times$ fewer environment steps. This comparison is untuned for every method.
 * **Why success saturates near 64% (measured, `run_pendulum_angle_analysis.py`, `results/pendulum_angle_analysis.json`)**: the 100 test episodes were binned by the initial angle $|\theta_0|$ (mean return and success over seeds):
 
-| $\lvert	heta_0vert$ | Episodes | SAC mean / success | TD3 mean / success | CMA-ES $G=250$ mean / success |
+| $\lvert\theta_0\rvert$ | Episodes | SAC mean / success | TD3 mean / success | CMA-ES $G=250$ mean / success |
 |:---:|:---:|:---:|:---:|:---:|
 | $[0, \pi/3)$ | 34 | −70.4 / 100% | −73.1 / 100% | −188.7 / 68% |
 | $[\pi/3, 2\pi/3)$ | 27 | −118.8 / 100% | −120.9 / 100% | −342.9 / 37% |

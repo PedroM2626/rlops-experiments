@@ -14,7 +14,9 @@ from src.evaluation import make_test_eval_fn, compute_statistical_metrics
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "results", "pendulum_stress_multiseed.json")
 
 
-def main(seeds, generations, rollouts, test_seed):
+def main(seeds, generations, rollouts, test_seed, out=OUT):
+    global OUT
+    OUT = out
     env = "Pendulum-v1"
     records = json.load(open(OUT)) if os.path.exists(OUT) else {}
     test_fn = make_test_eval_fn(env, n_episodes=100)
@@ -41,5 +43,6 @@ if __name__ == "__main__":
     ap.add_argument("--generations", type=int, default=250)
     ap.add_argument("--rollouts", type=int, default=8)
     ap.add_argument("--test-seed", type=int, default=99999)
+    ap.add_argument("--out", default=OUT)
     a = ap.parse_args()
-    main(a.seeds, a.generations, a.rollouts, a.test_seed)
+    main(a.seeds, a.generations, a.rollouts, a.test_seed, a.out)

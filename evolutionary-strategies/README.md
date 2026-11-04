@@ -75,7 +75,7 @@ The algorithm proposed by Salimans et al. (2017) (**OpenAI-ES**), despite the hi
 * **LinearGP (LGP)** (Brameier & Banzhaf 2007):
   * Individual represented as a linear sequence of register instructions: `[op, dst, src1, src2]`.
   * Register set: $R = R_{\text{obs}} \cup R_{\text{extra}} \cup R_{\text{act}}$.
-  * Primitive function set: $\{+, -, \times, \div_{\text{safe}}, \sin, \cos, \tanh\}$.
+  * Primitive function set (10 operators, as implemented in `apply_op_jax`): $\{+, -, \times, \tanh, \sin, \cos, |\cdot|, \text{noop}, \max, \min\}$. There is no protected division.
   * Phenotype executed as a sequential imperative program, which allows reuse of intermediate variables and the presence of intrinsically neutral code (*introns*).
 * **CartesianGP (CGP)** (Miller & Thomson 2000):
   * Individual encoded as a positional 2D directed acyclic graph (DAG) ($1 \times N_{\text{cols}}$).
@@ -124,10 +124,10 @@ Total number of parameters per environment:
 * **Family 2 (Pure Vectorized Symbolic Programs in JAX)**:
   * Previously, symbolic programs in LinearGP and CartesianGP were evaluated through interpreted Python loops.
   * In the current implementation, **Family 2 is 100% compiled and vectorized in pure JAX**:
-    1. **Branchless Operator Dispatch (`apply_op_jax`)**: Primitives $\{+, -, \times, \tanh, \sin, \cos, |\cdot|, \text{noop}, \max, \min\}$ are dispatched via `jax.lax.switch`, compiling directly to branchless XLA tables with nan/inf sanitization.
+    1. **Branchless Operator Dispatch (`apply_op_jax`)**: The 10 primitives of Section 2.2 are dispatched via `jax.lax.switch`, compiling directly to branchless XLA tables; results are clipped to $[-100, 100]$ and nan/inf are replaced by 0.
     2. **LinearGP Forward Pass (`forward_lgp_jax`)**: Instructions `[op, dst, s1, s2]` iterate over register arrays via `jax.lax.scan` inside XLA.
     3. **CartesianGP Forward Pass (`forward_cgp_jax`)**: DAG column nodes iterate over execution buffers via `jax.lax.fori_loop` inside XLA.
-    4. **Nested Parallelism (`make_program_pop_eval_fn`)**: The entire population of programs is parallelized across multiple rollout episodes and time horizons via nested `jax.vmap(rollout_fn)(programs, rngs)`, achieving sub-30ms generation times (~$50\times$ to $150\times$ acceleration over Python loops).
+    4. **Nested Parallelism (`make_program_pop_eval_fn`)**: The entire population of programs is parallelized across multiple rollout episodes and time horizons via nested `jax.vmap(rollout_fn)(programs, rngs)`, evaluating the whole population in one compiled call. The speedup over the earlier Python implementation is reported only from the two recorded measurements in Section 4.1 (~$68\times$ and ~$73\times$); the legacy Python code is no longer in the repository, so those timings cannot be reproduced today.
 * In accordance with the `gymnax 1.0.0` specification, the environment transition returns 6 elements:
   `obs, state, reward, terminated, truncated, info = env.step(...)`
 
@@ -196,7 +196,7 @@ Data corresponding to the benchmark evaluation runs saved in `results/results_su
 
 *\*Legacy Python Time*: Reference benchmark measurements recorded during the initial migration from unvectorized Python loops to branchless XLA dispatch (`apply_op_jax`, `lax.scan`, `lax.fori_loop`).
 
-*Vectorization Impact*: By replacing interpreted Python rollout loops with `apply_op_jax` (`jax.lax.switch`), `forward_lgp_jax` (`jax.lax.scan`), and `forward_cgp_jax` (`jax.lax.fori_loop`), Family 2 achieved equivalent asymptotic performance with a **30× to 95× runtime acceleration**, evaluating generation steps in under 30 ms.
+*Vectorization Impact*: By replacing interpreted Python rollout loops with `apply_op_jax` (`jax.lax.switch`), `forward_lgp_jax` (`jax.lax.scan`), and `forward_cgp_jax` (`jax.lax.fori_loop`), Family 2 ran **~68× (CartesianGP) and ~73× (LinearGP) faster** on CartPole than the earlier Python implementation, according to the recorded timings above (not reproducible today). Per-generation latency was not measured separately, so no sub-30 ms claim is made.
 
 ### 4.2 Continuous Environments (All 3 Families in Pure JAX)
 
@@ -205,10 +205,12 @@ Data corresponding to the benchmark evaluation runs saved in `results/results_su
 | **F1: Direct Solutions** | **SimpleGA** | **−157.84** | −944.37 | 94.17 | −56.30 | 6.6s |
 | **F1: Direct Solutions** | **DE** | −572.58 | −1378.27 | 85.50 | −90.91 | 4.8s |
 | **F1: Direct Solutions** | **OpenAI-ES** | −885.38 | −1228.99 | **−0.00** *(Gradient failure)* | −1.12 | 5.0s |
-| **F2: Programs** | **LinearGP** | −895.69 | −1243.22 | 0.00 | −14.03 | **2.0s** |
+| **F2: Programs** | **LinearGP**† | −895.69 | −1243.22 | 0.00 | −14.03 | **2.0s** |
 | **F2: Programs** | **CartesianGP** | −642.25 | −1011.80 | −0.00 | −0.00 | **1.7s** |
 | **F3: Models (EDA)** | **CMA-ES** | **−229.74** | −924.98 | **95.83** *(Optimum)* | −59.37 | 46.0s |
 | **F3: Models (EDA)** | **PBIL** | −614.96 | −1520.16 | 94.22 | −74.45 | 4.6s |
+
+†*LinearGP on Pendulum-v1 is the degenerate zero-torque policy (Section 6.6.3 item 6): its "Best" is the best of noisy $N$-episode evaluations of a constant-zero-output program, not evidence of control. Do not use it in performance comparisons on this environment.*
 
 ---
 
@@ -259,7 +261,7 @@ Raw empirical data extracted directly from `results/validation_100_summary.csv`:
 | **F1** | **SimpleGA** | Pendulum-v1 | −157.84 | **−352.97 $\pm$ 23.94** | [−399.54, −307.80] | −272.60 | 436.69 | 239.42 | 1.47 | +195.12 | **35.0%** |
 | **F1** | **DE** | Pendulum-v1 | −572.58 | −714.67 $\pm$ 56.98 | [−827.75, −603.07] | −599.67 | 1041.44 | 569.79 | 1.25 | +142.10 | 25.0% |
 | **F1** | **OpenAI-ES** | Pendulum-v1 | −885.38 | −1075.51 $\pm$ 24.89 | [−1125.43, −1027.93] | −998.93 | 384.17 | 248.94 | **4.32** | +190.14 | 0.0% |
-| **F2** | **LinearGP** | Pendulum-v1 | −895.69 | −1247.90 $\pm$ 39.37 | [−1323.54, −1170.53] | −1254.86 | 593.47 | 393.71 | 3.17 | +352.22 | 0.0% |
+| **F2** | **LinearGP**† | Pendulum-v1 | −895.69 | −1247.90 $\pm$ 39.37 | [−1323.54, −1170.53] | −1254.86 | 593.47 | 393.71 | 3.17 | +352.22 | 0.0% |
 | **F2** | **CartesianGP**| Pendulum-v1 | −642.25 | −940.34 $\pm$ 38.81 | [−1015.10, −865.38] | −853.53 | 360.33 | 388.08 | 2.42 | +298.10 | 0.0% |
 | **F3** | **CMA-ES** | Pendulum-v1 | −229.74 | **−268.67 $\pm$ 18.59** | **[−303.78, −231.68]** | **−261.94** | 252.75 | 185.90 | 1.45 | **+38.92** | **35.0%** |
 | **F3** | **PBIL** | Pendulum-v1 | −614.96 | −641.46 $\pm$ 23.08 | [−688.33, −598.69] | −542.80 | 227.23 | 230.80 | 2.78 | **+26.49** | 0.0% |
@@ -272,7 +274,9 @@ Raw empirical data extracted directly from `results/validation_100_summary.csv`:
 | **F3** | **CMA-ES** | MountainCarCont | **95.83** | **96.43 $\pm$ 0.11** | **[96.22, 96.63]** | **96.72** | **1.76** | **1.06** | **90.99** | **−0.60** | **100.0%** |
 | **F3** | **PBIL** | MountainCarCont | 94.22 | **93.87 $\pm$ 0.12** | **[93.64, 94.10]** | **94.06** | **1.80** | **1.15** | **81.28** | **+0.35** | **100.0%** |
 
-*\*Note on DE in MountainCar*: DE consistently converged to a score of $\approx 85.7$, but the formal success criterion requires $R \ge 90.0$.
+*\*Note on DE in MountainCar*: with seed 42, DE converged to $\approx 85.7$, below the formal success criterion $R \ge 90.0$ (multi-seed behavior differs, see Section 6.6.3 item 2).
+
+†*LinearGP on Pendulum-v1 is the zero-torque baseline (constant zero action; mean $-1247.903$, std $393.71$, identical to the reported row). It says nothing about GP's ability to learn control. See Section 6.6.3 item 6.*
 
 ---
 
@@ -283,33 +287,33 @@ Validation over 100 episodes exposed a crucial phenomenon in evolutionary RL:
 1. **The Collapse of Differential Evolution (DE) on CartPole**:
    * During training ($N_{\text{rollouts}}=2$), DE reported an apparent optimal fitness of **500.00**.
    * In testing ($N=100$), the mean collapsed to **123.84** with a **success rate of only 2.0%** ($\Delta = +376.16$).
-   * *Mechanistic Diagnosis*: DE found a hypersensitive weight vector that worked exceptionally well for the pair of initial angles drawn in generation 29, but was unstable under the continuous distribution of initial states.
-2. **The Perfect Robustness of CMA-ES**:
+   * *Interpretation (hypothesis, not tested)*: the large gap is consistent with selection on a noisy fitness estimate (best-of-run chosen on 2 episodes). The causal ablation of Section 6.7 supports noisy evaluation as a main driver for DE on CartPole ($N=2 \to 8$ removes the gap), but the specific individual was not inspected.
+2. **CMA-ES on CartPole (seed 42)**:
    * **CMA-ES** reached **500.00 $\pm$ 0.00** over the 100 out-of-sample episodes, with a **standard deviation of strictly 0.00** and **100% success**.
    * *Caveat (see Section 6.6)*: this is the seed-42 run only. Across 5 training seeds, CMA-ES obtained $483.98 \pm 6.81$ with $87.4\%$ success.
-   * By modeling the curvature of the joint distribution through covariance adaptation $\Sigma$, CMA-ES found a broad attractor (*flat minimum*) in parameter space, immune to fluctuations in the initial conditions.
+   * A possible explanation (hypothesis, untested; no flatness or curvature measurement was made) is that covariance adaptation steers the search toward a broad basin that tolerates variation in the initial state. What is measured is the outcome: low $\sigma_{\text{train}}$ across seeds (Section 6.6.3 item 1).
 
 ### 6.2 Generalization of Symbolic Programs (Family 2)
 * On **CartPole-v1**, **CartesianGP** achieved an **88.0% success rate** with a test mean of **482.68 $\pm$ 4.95** and median of **500.00**, confirming that compact 2D DAGs create stable feedback loops around unstable equilibria.
-* On **Acrobot-v1**, **LinearGP** achieved a **92.0% success rate** with a test mean of **−81.66 $\pm$ 1.07** and an **SNR of 7.63** (the highest SNR among all non-CMA methods), outperforming neural algorithms such as PBIL (55%) and DE (82%).
+* On **Acrobot-v1**, **LinearGP** achieved a **92.0% success rate** with a test mean of **−81.66 $\pm$ 1.07** and an **SNR of 7.63** (the highest SNR among all seven algorithms in this seed-42 run), outperforming PBIL (55%) and DE (82%) in the seed-42 run. Across 5 seeds (Section 6.6.2) the picture changes: LinearGP obtains $-103.64$ with $64.0\%$ success versus DE $-101.54$ ($80.2\%$) and SimpleGA $-86.58$ ($82.8\%$), so the seed-42 ranking is not robust.
 * In **continuous control (Pendulum-v1)**, pure vectorized GP with continuous $u = \text{clip}(\tanh(\text{raw}) \cdot a_{\text{max}})$ reached competitive test returns under extended training (CartesianGP: −940.34 $\pm$ 38.81 with median −853.53; LinearGP: −1247.90, which we verified is the zero-torque baseline, see Section 6.6.3 item 6). CartesianGP's multi-seed mean is −1016.59 (0% success), so no claim of successful swing-up control by symbolic programs is supported by the data.
-* This demonstrates that **controllers expressed as graphs and register sequences of discrete instructions possess robust generalization in control tasks**, producing compact decision surfaces that avoid the high-dimensional overfitting of continuous neural weight vectors.
+* **Conclusion supported by the data**: symbolic programs generalize well in some single-seed runs (CartesianGP on CartPole, LinearGP on Acrobot) but not robustly across seeds: CartesianGP gets $306.65$ on CartPole and $-215.16$ on Acrobot (the worst of all algorithms, $\rho = 4.90$) and LinearGP gets $174.60$ on CartPole with $0.4\%$ success. The idea that compact programs avoid the overfitting of neural weights is a hypothesis; the data do not support a general claim of robust generalization.
 
-### 6.3 Gradient and Heuristic Collapse vs. EDAs on MountainCarContinuous
+### 6.3 Failure of OpenAI-ES and GP vs. Other Methods on MountainCarContinuous
 * **OpenAI-ES, LinearGP, and CartesianGP (Score: 0.00, Success: 0.0%)**:
-  All three methods collapsed entirely on MountainCarContinuous. For OpenAI-ES, the sparse reward signal provides zero gradient ($\nabla_\theta \mathbb{E}[f] = \mathbf{0}$). For symbolic GP, random register and node mutations in sparse reward landscapes have near-zero probability of stochastically stumbling upon the narrow energy-pumping resonance needed to escape the valley without shaped reward heuristics.
+  All three methods collapsed entirely on MountainCarContinuous. The measured fact is a return of exactly $0.00$ in all 5 seeds (Section 6.6.3 item 5). The mechanism is a **hypothesis, not tested**: a policy that outputs near-zero torque incurs ~zero action cost, so if the population never reaches the goal the fitness landscape is flat and gives no selection or gradient signal ($\nabla_\theta \mathbb{E}[f] \approx \mathbf{0}$ for OpenAI-ES; a very low chance for GP mutations to find the energy-pumping oscillation).
 * **CMA-ES and PBIL (Success: 100.0%, SNR: 91.0 and 81.3)**:
-  Both EDAs solved the environment with deterministic asymptotic stability ($\text{SEM} \approx 0.11$, $\text{Std} \le 1.15$), confirming the decisive superiority of second-order covariance-adapted and distribution-based search for sparse *exploration valley* problems.
+  Both EDAs solved the environment with deterministic asymptotic stability ($\text{SEM} \approx 0.11$, $\text{Std} \le 1.15$), in the seed-42 run. Across 5 seeds (Section 6.6.2) the EDAs are less uniform: PBIL keeps $96.8\%$ success, but CMA-ES drops to $82.05 \pm 9.20$ with $76.0\%$ success, and DE ($91.44$) and SimpleGA ($86.36$) also solve the task. The data therefore support that these methods escape the valley while OpenAI-ES and GP did not; they do not support a "decisive superiority" of covariance adaptation, and the reason was not isolated.
 
 ### 6.4 The Stochastic Sensitivity of Pendulum-v1 and Resolution via Extended Rollouts
 * **The Winner's Curse Diagnosis**: In the quick benchmark ($N_{\text{rollouts}}=2$), every method exhibited a large optimism gap ($\Delta > 500$), caused by the uniform angular perturbation $\theta_0 \sim \mathcal{U}[-\pi, \pi]$. With only 2 rollouts, individuals that merely spawned near upright equilibrium were spuriously selected as elites without possessing an actual swing-up policy.
 * **Empirical Resolution ($G=100$, $N_{\text{rollouts}}=8$)**:
-  * **CMA-ES achieves partial stabilization**: Mean test return of **$-268.67 \pm 18.59$** (median **$-261.94$**, **35.0% success rate**), with the optimism gap collapsing from $+500$ down to **$+38.92$**. Rather than "near-optimal" control across all initial states, CMA-ES achieves *partial stabilization*: it robustly solves trajectories initialized from favorable or intermediate angles ($|\theta_0| \le 2\pi/3$), but consistently fails or requires prolonged multi-cycle swinging when initialized from worst-case bottom rest ($\theta_0 \approx \pm\pi, \dot{\theta}_0 \approx 0$). In those worst-case boundary states, the policy dissipates energy or fails to time the torque inversion, causing the cumulative episode return to fall below $-400$.
+  * **CMA-ES achieves partial stabilization**: Mean test return of **$-268.67 \pm 18.59$** (median **$-261.94$**, **35.0% success rate**), with the optimism gap collapsing from $+500$ down to **$+38.92$**. Rather than "near-optimal" control across all initial states, CMA-ES achieves *partial stabilization*: $35\%$ of the 100 test episodes reach $R \ge -200$ and the distribution is wide (IQR $252.75$). The breakdown by initial angle ($|\theta_0| \le 2\pi/3$ vs. near-bottom starts) was **not measured**; the expectation that failures concentrate at near-bottom initial states is a hypothesis consistent with Section 6.5.2 item 2, not a result.
   * **SimpleGA** achieved a test mean of **$-352.97 \pm 23.94$** (median **$-272.60$**, **35.0% success rate**).
   * **CartesianGP** improved its test mean from $-1336.94$ to **$-940.34 \pm 38.81$** (median **$-853.53$**).
-  * This confirms empirically that continuous control with under-actuated swing-up is solvable by evolutionary algorithms once the rollout budget per evaluation adequately covers the support of the initial state distribution.
+  * Larger $N$ and $G$ coincided with a much smaller optimism gap and a $35\%$ success rate for the best methods in the seed-42 run. In the multi-seed study (Section 6.6.2) SimpleGA and CMA-ES reach $37.2\%$ and $38.6\%$ success with $\rho<1$, so partial swing-up is reproducible, but no method solves the task consistently, and the role of the rollout budget was not isolated by ablation on Pendulum.
 
-### 6.5 Asymptotic Plateau in Continuous Control: Black-Box ES vs. Temporal Difference RL
+### 6.5 Possible Plateau in Continuous Control: Black-Box ES vs. Temporal Difference RL
 
 #### 6.5.1 Empirical Measurement: 250-Generation Stress Test
 To rigorously determine whether the remaining performance deficit on `Pendulum-v1` was simply a matter of insufficient optimization budget, a dedicated long-horizon stress test was executed and saved to `results/pendulum_stress_test_250.json` (reproducible via `run_pendulum_stress_test.py`):
@@ -320,13 +324,15 @@ To rigorously determine whether the remaining performance deficit on `Pendulum-v
   * Median Test Return: **$-248.35$** (Interquartile Range IQR: $227.03$)
   * Success Rate ($R \ge -200$): **$37.0\%$**
   * Optimism Gap ($\Delta$): **$+172.29$**
-* **Empirical Finding**: Increasing the computational budget by $2.5\times$ (from $G=100$ to $G=250$) yielded only a marginal gain of $+26.24$ return points and an increase of only $+2.0\%$ in success rate (from $35.0\%$ to $37.0\%$). This provides concrete empirical evidence that black-box evolutionary search reaches an **asymptotic performance plateau** on continuous under-actuated control under these search space and population constraints.
+* **Empirical Finding**: Increasing the computational budget by $2.5\times$ (from $G=100$ to $G=250$) yielded only a marginal gain of $+26.24$ return points and an increase of only $+2.0\%$ in success rate (from $35.0\%$ to $37.0\%$).
+* **Consistency check**: this run uses the same seed, algorithm and hyperparameters as the $G=100$ validation. Its training best at generation 100 is $-229.74$, identical to the $G=100$ value of Section 5.2, so the two runs follow the same deterministic trajectory and the train-fitness difference is only the extra 150 generations ($-229.74 \to -70.13$).
+* **Interpretation (hypothesis, not established)**: the test-return gain ($+26.24$) is of the order of the individual SEMs ($15.37$ and $18.59$), it comes from a **single seed**, and the train-best fitness kept improving while the test return barely moved (optimism gap grew from $+38.92$ to $+172.29$). This is *compatible* with a plateau or with growing overfitting to training starts, but a plateau cannot be concluded from one seed. A 5-seed repeat at $G=250$ under the same protocol would be needed.
 
-#### 6.5.2 Theoretical Hypotheses from Literature (External Context)
+#### 6.5.2 Theoretical Hypotheses (External Context, Not Tested Here)
 > [!NOTE]
 > SAC (Haarnoja et al., 2018) and TD3 (Fujimoto et al., 2018) were **not executed in this repository**. The figure sometimes quoted for them on `Pendulum-v1` (return around $-150$, high success) is **not a result reported in those two papers** (neither evaluates Pendulum) and is **not verified here**; it should be treated as an unverified expectation until SAC/TD3 are run under the same 100-episode protocol. The references are cited only for the algorithms themselves (off-policy actor-critic with a replay buffer).
 
-The fundamental performance gap between black-box Evolutionary Strategies and state-of-the-art Temporal Difference RL is explained by three distinct theoretical hypotheses:
+No TD baseline was run here, so no performance gap against TD methods was measured. Three hypotheses that could explain such a gap, none tested in this repository:
 
 1. **The Epistemic Credit Assignment Problem (Bellman Recursion vs. Episodic Sum)**:
    * Temporal Difference RL optimizes individual transitions via recursive dynamic programming:
@@ -338,7 +344,7 @@ The fundamental performance gap between black-box Evolutionary Strategies and st
      * **Phase 2 (Top upright balance)**: Damped negative feedback (torque opposing angular velocity to arrest overshoot as $\theta \to 0$).
    * Under a single episode scalar $f(\theta)$, a parameter perturbation improving Phase 1 frequently degrades Phase 2. The optimizer lacks temporal credit information to distinguish which specific time-steps caused trajectory failure.
 2. **Initial Condition Sensitivity at Rest**:
-   * When $\theta_0 \approx \pm \pi$ and $\dot{\theta}_0 \approx 0$, the torque limit $|u| \le 2.0$ requires precise multi-cycle resonance. A phase error of mere centiseconds dissipates kinetic energy, forcing another oscillation cycle and incurring ~300 to 500 extra penalty points over the 200-step horizon.
+   * When $\theta_0 \approx \pm \pi$ and $\dot{\theta}_0 \approx 0$, the torque limit $|u| \le 2.0$ requires precise multi-cycle resonance. A phase error of mere centiseconds dissipates kinetic energy, forcing another oscillation cycle and which would incur extra penalty over the 200-step horizon (the magnitude was not measured here).
 3. **Population Scaling and Sample Reuse**:
    * Salimans et al. (2017) demonstrated that ES in continuous control requires populations of $P = 1{,}440$ to $4{,}000$ to maintain gradient signal-to-noise ratio in high dimensions. Our budget ($P = 32$, $\lambda \approx 25$) maintains computational tractability on local CPU but limits exploration variance.
    * Unlike off-policy RL (e.g., SAC, TD3) which caches transitions in a Replay Buffer for thousands of gradient updates, ES discards all rollouts after each generation, achieving lower sample efficiency.
@@ -388,7 +394,7 @@ Raw empirical data extracted directly from `results/multiseed_summary.csv` (gene
 | **F1** | **OpenAI-ES** | Pendulum-v1 | −1025.61 $\pm$ 14.86| [−1059.85, −998.08]| −1012.01 | 33.23 | 184.91 | **0.18** | 0.0% | −873.18 | +152.43 |
 | **F3** | **CMA-ES** | Pendulum-v1 | **−452.54 $\pm$ 122.26**| [−666.12, −247.93] | **−288.35** | 273.39 | 345.45 | **0.79** | **38.6%** | −185.97 | +266.57 |
 | **F3** | **PBIL** | Pendulum-v1 | −789.78 $\pm$ 91.63 | [−947.13, −625.84] | −761.61 | 204.89 | 276.89 | **0.74** | 6.2% | −676.19 | +113.60 |
-| **F2** | **LinearGP** | Pendulum-v1 | −1247.90 $\pm$ 0.00 | [−1281.84, −1213.84]| −1260.89 | 0.00 | 393.71 | **0.00** | 0.0% | −892.05 | +355.85 |
+| **F2** | **LinearGP**† | Pendulum-v1 | −1247.90 $\pm$ 0.00 | [−1281.84, −1213.84]| −1260.89 | 0.00 | 393.71 | **0.00** | 0.0% | −892.05 | +355.85 |
 | **F2** | **CartesianGP**| Pendulum-v1 | −1016.59 $\pm$ 118.96| [−1207.92, −799.79]| −966.27 | 266.00 | 308.83 | **0.86** | 0.0% | −757.69 | +258.90 |
 |:---:|:---|:---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
 | **F1** | **SimpleGA** | MountainCarCont | 86.36 $\pm$ 4.97 | [76.55, 91.98] | 91.99 | 11.11 | 14.39 | **0.77** | 69.4% | 93.39 | +7.04 |
@@ -399,6 +405,11 @@ Raw empirical data extracted directly from `results/multiseed_summary.csv` (gene
 | **F2** | **LinearGP** | MountainCarCont | 0.00 $\pm$ 0.00 | [0.00, 0.00] | 0.00 | 0.00 | 0.00 | — | 0.0% | 0.00 | 0.00 |
 | **F2** | **CartesianGP**| MountainCarCont | 0.00 $\pm$ 0.00 | [0.00, 0.00] | 0.00 | 0.00 | 0.00 | — | 0.0% | 0.00 | 0.00 |
 
+†*LinearGP on Pendulum-v1: zero-torque baseline, see item 6 below. $\rho = 0$ reflects identical degenerate programs, not stable learning. For rows with $\sigma_{\text{eval}} = 0$ (MountainCar zeros) $\rho$ is undefined ("—"); the plot shows a nominal value there, which should be ignored.*
+
+> [!NOTE]
+> **Statistical scope.** $S=5$ seeds give imprecise estimates of $\sigma_{\text{train}}$ and $\rho$ (a standard deviation estimated from 5 values has a relative error of roughly 35%), so small differences between $\rho$ values should not be over-read. The causal ablation (Section 6.7) covers only CartPole, and the 250-generation test only one seed.
+
 #### 6.6.3 Observations from the Multi-Seed Variance Decomposition
 > [!NOTE]
 > This subsection reports what was measured. Causal explanations are deliberately limited to Section 6.7, where they were tested by controlled ablation, and to clearly labeled hypotheses.
@@ -406,7 +417,7 @@ Raw empirical data extracted directly from `results/multiseed_summary.csv` (gene
 1. **CartPole-v1 (Measured)**: SimpleGA, DE, OpenAI-ES, PBIL and CartesianGP have $\sigma_{\text{train}} \approx 149 - 185$ ($\rho$ between 1.4 and 2.0) under the standard budget ($G=30$, $N=2$). CMA-ES has $\sigma_{\text{train}} = 15.22$, $\rho = 0.35$, IQM $= 500.00$ and $87.4\%$ aggregate success. Note that CMA-ES is not "perfect" over seeds: its mean is $483.98$, and only the seed-42 run in Section 5.2 shows $500.00 \pm 0.00$.
 2. **Differential Evolution on MountainCarContinuous-v0 (Measured)**: With seed 42, DE reached $85.68$ (below the $90.0$ success threshold). Across 5 seeds the aggregate mean is $91.44 \pm 1.80$ with $60.2\%$ success. The seed-42 result is therefore not representative of DE's average behavior under this budget. With $S=5$ we cannot determine the exact cause of that seed's lower result.
 3. **PBIL on MountainCarContinuous-v0 (Measured)**: Mean $93.86 \pm 0.88$, stratified 95% CI `[92.39, 95.71]`, IQM $94.21$, $\sigma_{\text{train}} = 1.97$, $96.8\%$ success: the highest aggregate performance and lowest between-seed variance among the 7 algorithms in this environment.
-4. **Pendulum-v1 (Measured)**: SimpleGA and CMA-ES reach very similar IQM ($-288.52$ and $-288.35$) and success ($37.2\%$ and $38.6\%$), with large $\sigma_{\text{eval}} > 340$. This is consistent with the single-seed 250-generation plateau of Section 6.5.1. Whether this plateau is a property of the algorithms or of the budget was not isolated for Pendulum (the ablation of Section 6.7 covers CartPole only).
+4. **Pendulum-v1 (Measured)**: SimpleGA and CMA-ES reach very similar IQM ($-288.52$ and $-288.35$) and success ($37.2\%$ and $38.6\%$), with large $\sigma_{\text{eval}} > 340$. This is consistent with, but does not establish, the single-seed 250-generation plateau of Section 6.5.1. Whether this plateau is a property of the algorithms or of the budget was not isolated for Pendulum (the ablation of Section 6.7 covers CartPole only).
 5. **Zero returns on MountainCarContinuous-v0 (Measured)**: OpenAI-ES, LinearGP and CartesianGP obtained exactly $0.00$ in all 5 seeds ($500$ test episodes each). This shows the failure is not specific to seed 42. The mechanism (flat reward landscape giving no selection signal) is a **hypothesis** that was not tested here.
 6. **LinearGP on Pendulum-v1 is a degenerate policy (Measured, correction)**: LinearGP obtained exactly $-1247.90$ in all 5 seeds, hence $\sigma_{\text{train}} = 0.00$ and $\rho = 0.00$. We verified that the selected programs output a raw action of exactly $0$ at every step, and that a constant zero-torque policy on the same 100 test episodes yields mean $-1247.903$, std $393.71$ and $0\%$ success (identical to the reported values). The zero variance across seeds therefore does **not** indicate stable optimization: LinearGP never learned a non-trivial policy on Pendulum. Its apparent "train best" ($-860$ to $-896$) is the best of noisy $N=8$ evaluations of such zero-output programs (favorable initial angles), i.e., selection on noise. The LinearGP Pendulum numbers in Sections 5.2 and 6.2 must be read as the zero-torque baseline.
 
@@ -445,7 +456,7 @@ Raw empirical data extracted directly from `results/multiseed_summary.csv` (gene
 All figures are rendered in a high-resolution academic dark-mode style and saved under `results/`:
 
 ### 7.1 Multi-Seed Uncertainty and Out-of-Sample Validation
-* **`results/multiseed_variance_analysis.png`**: 4-panel multi-seed evaluation chart across all 4 environments displaying the aggregate mean return across 5 independent training seeds ($S=5$, 500 test episodes total per algorithm), error bars for the **stratified 95% bootstrap confidence interval**, and variance ratio annotations ($\rho = \sigma_{\text{train}}/\sigma_{\text{eval}}$) according to the Agarwal et al. (NeurIPS 2021) protocol.
+* **`results/multiseed_variance_analysis.png`**: 4-panel multi-seed evaluation chart across all 4 environments displaying the aggregate mean return across 5 independent training seeds ($S=5$, 500 test episodes total per algorithm), error bars for the **stratified 95% bootstrap confidence interval**, and variance ratio annotations ($\rho = \sigma_{\text{train}}/\sigma_{\text{eval}}$) according to the Agarwal et al. (NeurIPS 2021) protocol. Caveats: the Pendulum LinearGP bar ($-1248$, $\rho=0.0$) is the zero-torque baseline (Section 6.6.3 item 6), and on MountainCar the plot annotates nominal $\rho$ values for the all-zero methods where Section 6.6.2 reports "—".
 * **`results/validation_100_ci95_bars.png`**: 4-panel comparison chart across all 4 environments (CartPole-v1, Acrobot-v1, Pendulum-v1, MountainCarContinuous-v0) showing the mean test return ($\bar{R}_{\text{test}}$), error bars for the **95% bootstrap confidence interval**, and **Signal-to-Noise Ratio (SNR)** annotations for all 7 algorithms across all 3 families.
 * **`results/optimism_gap_analysis.png`**: Complete quantitative analysis of the **Optimism Gap (*Winner's Curse*)** ($\Delta = f_{\text{train}} - \bar{R}_{\text{test}}$) across all 28 experimental configurations ($7 \text{ algorithms} \times 4 \text{ environments}$), highlighting severely overfit policies in red and robust policies in green.
 
@@ -559,6 +570,7 @@ python generate_final_plots.py
 12. **Hansen, N., & Ostermeier, A.** (2001). Completely derandomized self-adaptation in evolution strategies. *Evolutionary Computation*, 9(2), 159–195.
 13. **Hansen, N.** (2016). The CMA Evolution Strategy: A Tutorial. *arXiv:1604.00772*.
 14. **Baluja, S.** (1994). Population-Based Incremental Learning. *Technical Report CMU-CS-94-163*, Carnegie Mellon University.
-15. **Larrañaga, P., & Lozano, J. A.** (2002). *Estimation of Distribution Algorithms: A New Tool for Evolutionary Computation*. Springer.
-16. **Lange, R. T.** (2022). Gymnax: Standard Model Environments in JAX. *GitHub Repository*.
+15. **Sebag, M., & Ducoulombier, A.** (1998). Extending Population-Based Incremental Learning to Continuous Search Spaces. *Parallel Problem Solving from Nature (PPSN V)*, LNCS 1498, 418–427. Springer.
+16. **Larrañaga, P., & Lozano, J. A.** (2002). *Estimation of Distribution Algorithms: A New Tool for Evolutionary Computation*. Springer.
+17. **Lange, R. T.** (2022). Gymnax: Standard Model Environments in JAX. *GitHub Repository*.
 

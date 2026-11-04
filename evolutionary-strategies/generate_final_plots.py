@@ -98,10 +98,13 @@ for ax, env in zip(axes, ALL_ENVS):
 plt.tight_layout()
 out1 = os.path.join(OUT_DIR, "all_families_curves.png")
 out2 = os.path.join(ART_DIR, "all_families_curves.png")
+out_lc = os.path.join(OUT_DIR, "learning_curves.png")
 plt.savefig(out1, dpi=150, bbox_inches="tight", facecolor=fig.get_facecolor())
 plt.savefig(out2, dpi=150, bbox_inches="tight", facecolor=fig.get_facecolor())
+plt.savefig(out_lc, dpi=150, bbox_inches="tight", facecolor=fig.get_facecolor())
 plt.close()
 print(f"Saved: {out1}")
+print(f"Saved: {out_lc}")
 
 # ── 2. Unified 2x2 barplot: 3 families × 4 environments ───────────────────────
 fig2, axes2 = plt.subplots(2, 2, figsize=(16, 11), facecolor="#0d1117")
@@ -162,6 +165,40 @@ plt.savefig(out5, dpi=150, bbox_inches="tight", facecolor=fig2.get_facecolor())
 plt.close()
 print(f"Saved: {out3}")
 print(f"Saved: {out5}")
+
+# ── 3. Time vs Performance Scatter Plot ──────────────────────────────────────
+fig3, ax3 = plt.subplots(figsize=(10, 6.5), facecolor="#0d1117")
+ax3.set_facecolor("#161b22")
+ax3.set_title("Trade-off: Training Time × Final Benchmark Performance (4 Environments)",
+              color="white", fontsize=13, fontweight="bold", pad=10)
+ax3.set_xlabel("Total Training Time (s)", color="#8b949e", fontsize=10)
+ax3.set_ylabel("Final Best Fitness", color="#8b949e", fontsize=10)
+ax3.tick_params(colors="#8b949e")
+for spine in ax3.spines.values():
+    spine.set_edgecolor("#30363d")
+ax3.grid(True, color="#21262d", linewidth=0.5, linestyle="--")
+
+seen = set()
+for r in ROWS:
+    algo = r["algo"]
+    fam = r["family"]
+    c = algo_colors.get(algo, "#ffffff")
+    mk = MARKERS.get(algo, "o")
+    lbl = f"{algo} (F{fam})" if algo not in seen else "_"
+    seen.add(algo)
+    ax3.scatter(r["t"], r["best"], color=c, marker=mk, s=110, alpha=0.88,
+                edgecolor="#0d1117", linewidth=0.6, label=lbl, zorder=3)
+    ax3.annotate(f"{r['env'].split('-')[0]}", (r["t"], r["best"]),
+                 textcoords="offset points", xytext=(4, 4),
+                 fontsize=7, color=c, alpha=0.85)
+
+ax3.legend(fontsize=8, framealpha=0.25, labelcolor="white",
+           facecolor="#21262d", edgecolor="#30363d", loc="lower right")
+plt.tight_layout()
+out_time = os.path.join(OUT_DIR, "time_vs_performance.png")
+plt.savefig(out_time, dpi=150, bbox_inches="tight", facecolor=fig3.get_facecolor())
+plt.close()
+print(f"Saved: {out_time}")
 
 # ── Complete summary table ────────────────────────────────────────────────────
 print("\n" + "=" * 80)

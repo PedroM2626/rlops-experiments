@@ -67,7 +67,8 @@ def run_stress_test(n_generations: int = 250, n_rollouts: int = 8, train_seed: i
         env_name=env_name,
     )
 
-    pop_size = getattr(algo, "pop_size", getattr(algo, "lambda_", 25))
+    # CMA-ES offspring count lambda is stored in _hp["lam"]; the `pop_size` attribute is a stale default.
+    pop_size = algo._hp["lam"]
     out_record = {
         "experiment": "Pendulum-v1 Asymptotic Stress Test",
         "algorithm": "CMA-ES",

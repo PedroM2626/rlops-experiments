@@ -286,12 +286,13 @@ Validation over 100 episodes exposed a crucial phenomenon in evolutionary RL:
    * *Mechanistic Diagnosis*: DE found a hypersensitive weight vector that worked exceptionally well for the pair of initial angles drawn in generation 29, but was unstable under the continuous distribution of initial states.
 2. **The Perfect Robustness of CMA-ES**:
    * **CMA-ES** reached **500.00 $\pm$ 0.00** over the 100 out-of-sample episodes, with a **standard deviation of strictly 0.00** and **100% success**.
+   * *Caveat (see Section 6.6)*: this is the seed-42 run only. Across 5 training seeds, CMA-ES obtained $483.98 \pm 6.81$ with $87.4\%$ success.
    * By modeling the curvature of the joint distribution through covariance adaptation $\Sigma$, CMA-ES found a broad attractor (*flat minimum*) in parameter space, immune to fluctuations in the initial conditions.
 
 ### 6.2 Generalization of Symbolic Programs (Family 2)
 * On **CartPole-v1**, **CartesianGP** achieved an **88.0% success rate** with a test mean of **482.68 $\pm$ 4.95** and median of **500.00**, confirming that compact 2D DAGs create stable feedback loops around unstable equilibria.
 * On **Acrobot-v1**, **LinearGP** achieved a **92.0% success rate** with a test mean of **−81.66 $\pm$ 1.07** and an **SNR of 7.63** (the highest SNR among all non-CMA methods), outperforming neural algorithms such as PBIL (55%) and DE (82%).
-* In **continuous control (Pendulum-v1)**, pure vectorized GP with continuous $u = \text{clip}(\tanh(\text{raw}) \cdot a_{\text{max}})$ reached competitive test returns under extended training (CartesianGP: −940.34 $\pm$ 38.81 with median −853.53; LinearGP: −1247.90), showing that symbolic 2D DAGs can construct continuous energy-shaping feedback loops.
+* In **continuous control (Pendulum-v1)**, pure vectorized GP with continuous $u = \text{clip}(\tanh(\text{raw}) \cdot a_{\text{max}})$ reached competitive test returns under extended training (CartesianGP: −940.34 $\pm$ 38.81 with median −853.53; LinearGP: −1247.90, which we verified is the zero-torque baseline, see Section 6.6.3 item 6). CartesianGP's multi-seed mean is −1016.59 (0% success), so no claim of successful swing-up control by symbolic programs is supported by the data.
 * This demonstrates that **controllers expressed as graphs and register sequences of discrete instructions possess robust generalization in control tasks**, producing compact decision surfaces that avoid the high-dimensional overfitting of continuous neural weight vectors.
 
 ### 6.3 Gradient and Heuristic Collapse vs. EDAs on MountainCarContinuous
@@ -398,17 +399,44 @@ Raw empirical data extracted directly from `results/multiseed_summary.csv` (gene
 | **F2** | **LinearGP** | MountainCarCont | 0.00 $\pm$ 0.00 | [0.00, 0.00] | 0.00 | 0.00 | 0.00 | — | 0.0% | 0.00 | 0.00 |
 | **F2** | **CartesianGP**| MountainCarCont | 0.00 $\pm$ 0.00 | [0.00, 0.00] | 0.00 | 0.00 | 0.00 | — | 0.0% | 0.00 | 0.00 |
 
-#### 6.6.3 Key Scientific Insights from Multi-Seed Variance Decomposition
-1. **The Exceptional Robustness of CMA-ES on CartPole**:
-   * While direct search methods (SimpleGA, DE, OpenAI-ES) exhibited large epistemic training variance ($\sigma_{\text{train}} \approx 149 - 185$, $\rho > 1.4$), CMA-ES achieved $\sigma_{\text{train}} = 15.22$ and $\rho = 0.35$. Across all 5 seeds, its IQM is strictly **$500.00$** with an aggregate success rate of **$87.4\%$**. Covariance matrix adaptation consistently steers the search toward broad attractors in parameter space.
-2. **De-biasing Differential Evolution on MountainCarContinuous**:
-   * In the single-seed evaluation (`seed=42`), DE converged to $85.68$ (below the $90.0$ success threshold). The 5-seed protocol reveals that DE achieves an aggregate mean return of **$91.44 \pm 1.80$** and a success rate of **$60.2\%$**, demonstrating that the single-seed result was an unlucky draw rather than a systematic inability to solve the environment.
-3. **PBIL as the Most Reliable Sparse-Reward Optimizer**:
-   * On MountainCarContinuous, **PBIL** attained the highest aggregate performance and lowest variance of any method: Mean **$93.86 \pm 0.88$**, Stratified 95% CI `[92.39, 95.71]`, IQM **$94.21$**, $\sigma_{\text{train}} = 1.97$, and **$96.8\%$ success rate**. Probability vector shifts provide superior protection against catastrophic divergence in sparse rewards.
-4. **Confirming the Asymptotic Horizon on Pendulum-v1**:
-   * Both SimpleGA and CMA-ES converged to almost identical interquartile performance (IQM: **$-288.52$** and **$-288.35$**, success rates: **$37.2\%$** and **$38.6\%$**). The high $\sigma_{\text{eval}} > 340$ across all seeds confirms that variance is fundamentally driven by the initial angle distribution ($\theta_0 \sim \mathcal{U}[-\pi, \pi]$), and that the $\approx -288$ plateau is invariant to the optimization seed.
-5. **Systematic Inability of OpenAI-ES and GP in Sparse Continuous Control**:
-   * OpenAI-ES, LinearGP, and CartesianGP produced strictly $0.00$ return across all 5 seeds ($S=5$) and 500 test episodes on MountainCarContinuous-v0. This proves empirically that their failure is not a seed artifact, but an intrinsic inductive bias limitation of flat Gaussian perturbation and unguided symbolic mutation in sparse landscape topologies.
+#### 6.6.3 Observations from the Multi-Seed Variance Decomposition
+> [!NOTE]
+> This subsection reports what was measured. Causal explanations are deliberately limited to Section 6.7, where they were tested by controlled ablation, and to clearly labeled hypotheses.
+
+1. **CartPole-v1 (Measured)**: SimpleGA, DE, OpenAI-ES, PBIL and CartesianGP have $\sigma_{\text{train}} \approx 149 - 185$ ($\rho$ between 1.4 and 2.0) under the standard budget ($G=30$, $N=2$). CMA-ES has $\sigma_{\text{train}} = 15.22$, $\rho = 0.35$, IQM $= 500.00$ and $87.4\%$ aggregate success. Note that CMA-ES is not "perfect" over seeds: its mean is $483.98$, and only the seed-42 run in Section 5.2 shows $500.00 \pm 0.00$.
+2. **Differential Evolution on MountainCarContinuous-v0 (Measured)**: With seed 42, DE reached $85.68$ (below the $90.0$ success threshold). Across 5 seeds the aggregate mean is $91.44 \pm 1.80$ with $60.2\%$ success. The seed-42 result is therefore not representative of DE's average behavior under this budget. With $S=5$ we cannot determine the exact cause of that seed's lower result.
+3. **PBIL on MountainCarContinuous-v0 (Measured)**: Mean $93.86 \pm 0.88$, stratified 95% CI `[92.39, 95.71]`, IQM $94.21$, $\sigma_{\text{train}} = 1.97$, $96.8\%$ success: the highest aggregate performance and lowest between-seed variance among the 7 algorithms in this environment.
+4. **Pendulum-v1 (Measured)**: SimpleGA and CMA-ES reach very similar IQM ($-288.52$ and $-288.35$) and success ($37.2\%$ and $38.6\%$), with large $\sigma_{\text{eval}} > 340$. This is consistent with the single-seed 250-generation plateau of Section 6.5.1. Whether this plateau is a property of the algorithms or of the budget was not isolated for Pendulum (the ablation of Section 6.7 covers CartPole only).
+5. **Zero returns on MountainCarContinuous-v0 (Measured)**: OpenAI-ES, LinearGP and CartesianGP obtained exactly $0.00$ in all 5 seeds ($500$ test episodes each). This shows the failure is not specific to seed 42. The mechanism (flat reward landscape giving no selection signal) is a **hypothesis** that was not tested here.
+6. **LinearGP on Pendulum-v1 is a degenerate policy (Measured, correction)**: LinearGP obtained exactly $-1247.90$ in all 5 seeds, hence $\sigma_{\text{train}} = 0.00$ and $\rho = 0.00$. We verified that the selected programs output a raw action of exactly $0$ at every step, and that a constant zero-torque policy on the same 100 test episodes yields mean $-1247.903$, std $393.71$ and $0\%$ success (identical to the reported values). The zero variance across seeds therefore does **not** indicate stable optimization: LinearGP never learned a non-trivial policy on Pendulum. Its apparent "train best" ($-860$ to $-896$) is the best of noisy $N=8$ evaluations of such zero-output programs (favorable initial angles), i.e., selection on noise. The LinearGP Pendulum numbers in Sections 5.2 and 6.2 must be read as the zero-torque baseline.
+
+### 6.7 Causal Ablation on CartPole-v1: Evaluation Noise ($N$) vs. Optimization Budget ($G$)
+
+**Question.** Is the large between-seed variance on CartPole caused by (a) noisy fitness estimation (few rollouts $N$ per evaluation) or (b) insufficient optimization budget (few generations $G$)?
+
+**Design** (`run_causal_ablation.py`, results in `results/causal_ablation_cartpole.json/csv`): 5 parametric algorithms (SimpleGA, DE, OpenAI-ES, CMA-ES, PBIL), $S=5$ training seeds `[42, 101, 202, 303, 404]`, configurations $(G, N) \in \{(30,2), (30,8), (30,16), (100,2), (100,8)\}$, each policy evaluated on the same 100 test episodes (test seed 99999). The baseline $(30,2)$ exactly reproduces Section 6.6.2. A determinism check (SimpleGA, seed 42, run twice) gave identical train and test values, so the variance across seeds is not run-to-run non-determinism. The policy at test time is deterministic (`argmax` of logits), so within-seed variance comes only from the initial states.
+
+**Results** (mean test return across 5 seeds; in parentheses $\sigma_{\text{train}}$ / optimism gap $\Delta$):
+
+| Algorithm | $G{=}30,N{=}2$ | $G{=}30,N{=}8$ | $G{=}30,N{=}16$ | $G{=}100,N{=}2$ | $G{=}100,N{=}8$ |
+|:---|:---:|:---:|:---:|:---:|:---:|
+| SimpleGA | 310.1 (185.0 / 153.6) | 478.5 (31.4 / 13.6) | 425.4 (56.9 / 45.0) | 310.1 (185.0 / 189.9) | 484.9 (20.3 / 15.1) |
+| DE | 283.3 (149.5 / 191.1) | 467.9 (31.3 / −0.9) | 423.6 (37.7 / 0.7) | 375.1 (105.0 / 124.9) | 494.0 (9.2 / 4.9) |
+| OpenAI-ES | 317.1 (163.1 / 166.8) | 313.8 (112.5 / 99.5) | 344.0 (127.7 / 14.6) | 382.8 (137.1 / 117.2) | 439.9 (110.8 / 60.1) |
+| CMA-ES | 484.0 (15.2 / 16.0) | 468.2 (42.6 / 31.8) | 496.6 (3.8 / 3.4) | 484.0 (15.2 / 16.0) | 468.2 (42.6 / 31.8) |
+| PBIL | 354.9 (166.7 / 36.2) | 372.7 (101.6 / 3.6) | 438.7 (78.0 / −12.0) | 442.4 (80.0 / 51.6) | 476.7 (39.6 / 14.0) |
+
+**What the data show (measured):**
+1. **Verified: there is no run-to-run non-determinism**; identical seeds give identical results.
+2. **Evaluation noise ($N$) is a major cause for SimpleGA and DE.** Raising $N$ from 2 to 8 at fixed $G=30$ lowers $\sigma_{\text{train}}$ from 185 to 31 (SimpleGA) and from 149 to 31 (DE), and the optimism gap from +154 / +191 to +14 / −1. More generations at $N=2$ did **not** fix this for SimpleGA (identical result, see item 5) and helped DE only partially ($\sigma_{\text{train}}$ 105, gap +125).
+3. **Optimization budget ($G$) is a major cause for OpenAI-ES, PBIL (and partly DE).** For these, the training best fitness was still improving at $G=30$: at $N=2$, going from $G=30$ to $G=100$ raised the mean test return from 317 to 383 (OpenAI-ES) and from 355 to 442 (PBIL). In this sense these algorithms were under-trained at the standard budget.
+4. **CMA-ES is already close to its ceiling at the standard budget.** Its $\sigma_{\text{train}}$ is lowest at $N=16$ (3.8), but it is not monotonic in $N$ (42.6 at $N=8$), so no clear $N$-trend can be claimed with $S=5$.
+5. **Methodological caveat on the $G$ axis.** For SimpleGA and CMA-ES at $N=2$, and for CMA-ES at $N=8$, the results at $G=100$ are identical to $G=30$ down to the second decimal in every seed. The implementation returns the best-so-far individual by training fitness; once a seed reaches the fitness ceiling of $500$ on its training rollouts, that individual can never be replaced, so extra generations cannot change the output. For these cases, "more generations" is mechanically ineffective and the $G$ axis is not informative; it does **not** show that more training is useless in general.
+6. **The effect of $N$ is not strictly monotonic:** for SimpleGA and DE, $N=16$ at $G=30$ is worse than $N=8$ ($425.4$ vs $478.5$, $423.6$ vs $467.9$). With $S=5$ seeds and per-seed differences of this size, we cannot distinguish this from sampling noise; a plausible, **untested** hypothesis is that with larger $N$ the same $G=30$ budget leaves fewer effective selection steps for convergence.
+
+**Answer to the question (CartPole only).** The between-seed variance is **not a single cause** and is **algorithm-dependent**: for algorithms that rapidly find a lucky individual and keep it (SimpleGA, DE, best-so-far selection on noisy fitness) it is mainly **noisy fitness evaluation** (small $N$); for OpenAI-ES and PBIL it is mainly **insufficient generations**. The "seed" is therefore not an independent cause: it changes the initial population and the sampled training start states, and the variance it induces is amplified when selection is made on a noisy fitness estimate or when the search has not converged.
+
+**Limitations:** single environment (CartPole), $S=5$ seeds, only five $(G,N)$ points (not a full factorial), and the best-so-far ceiling effect of item 5. The ablation was not run for Pendulum-v1, MountainCarContinuous-v0, Acrobot-v1, or for the GP families.
 
 ---
 
@@ -461,6 +489,7 @@ evolutionary-strategies/
 ├── run_validation_100.py     # Master out-of-sample validation script (100 eps)
 ├── run_multiseed_study.py    # Multi-seed study disentangling aleatoric vs epistemic variance (Agarwal et al., 2021)
 ├── run_pendulum_stress_test.py # Long-horizon stress test (250 generations, 10M steps)
+├── run_causal_ablation.py    # CartPole ablation of N (rollouts) vs G (generations) over 5 seeds
 ├── generate_final_plots.py   # Consolidated visual compilation of training runs
 ├── results/                  # Raw empirical data and figures:
 │   ├── validation_100_results.json
@@ -471,6 +500,8 @@ evolutionary-strategies/
 │   ├── multiseed_study.json
 │   ├── multiseed_summary.csv
 │   ├── multiseed_variance_analysis.png
+│   ├── causal_ablation_cartpole.json
+│   ├── causal_ablation_cartpole.csv
 │   ├── all_families_curves.png
 │   ├── all_families_bar.png
 │   ├── family_comparison.png
@@ -501,7 +532,10 @@ python run_multiseed_study.py
 # 4. Run the 250-generation Pendulum asymptotic stress test
 python run_pendulum_stress_test.py --generations 250 --rollouts 8
 
-# 5. (Optional) Run the separate training benchmark and regenerate all plots
+# 5. Run the CartPole causal ablation (N vs G)
+python run_causal_ablation.py
+
+# 6. (Optional) Run the separate training benchmark and regenerate all plots
 python run_benchmark.py --quick --no-gp
 python run_gp_only.py
 python generate_final_plots.py

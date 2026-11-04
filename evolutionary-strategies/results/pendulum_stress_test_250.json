@@ -7,7 +7,7 @@
   "train_seed": 42,
   "test_seed": 99999,
   "train_time_s": 588.56,
-  "total_simulated_steps": 25600000,
+  "total_simulated_steps": 10000000,
   "training_trajectory": {
     "generations": [
       0,

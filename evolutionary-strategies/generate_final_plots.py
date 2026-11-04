@@ -155,10 +155,13 @@ for idx, env in enumerate(ALL_ENVS):
 plt.tight_layout()
 out3 = os.path.join(OUT_DIR, "all_families_bar.png")
 out4 = os.path.join(ART_DIR, "all_families_bar.png")
+out5 = os.path.join(OUT_DIR, "family_comparison.png")
 plt.savefig(out3, dpi=150, bbox_inches="tight", facecolor=fig2.get_facecolor())
 plt.savefig(out4, dpi=150, bbox_inches="tight", facecolor=fig2.get_facecolor())
+plt.savefig(out5, dpi=150, bbox_inches="tight", facecolor=fig2.get_facecolor())
 plt.close()
 print(f"Saved: {out3}")
+print(f"Saved: {out5}")
 
 # ── Complete summary table ────────────────────────────────────────────────────
 print("\n" + "=" * 80)

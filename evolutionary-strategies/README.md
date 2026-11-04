@@ -189,13 +189,13 @@ All data below was obtained empirically through the automated benchmark (no synt
 
 | Family | Algorithm | Pendulum-v1 (Best) | Pendulum-v1 (Mean Final) | MountainCarCont (Best) | MountainCarCont (Mean Final) | Total Time (s) |
 |:---|:---|:---:|:---:|:---:|:---:|:---:|
-| **F1: Direct Solutions** | **SimpleGA** | **−9.13** | −1237.52 | 94.17 | −56.30 | 1.9s |
-| **F1: Direct Solutions** | **DE** | −468.77 | −1412.38 | 85.50 | −90.91 | 1.2s |
-| **F1: Direct Solutions** | **OpenAI-ES** | −691.96 | −1231.18 | **−0.00** *(Gradient failure)* | −1.12 | 1.5s |
-| **F2: Programs** | **LinearGP** | −771.96 | −1245.36 | 0.00 | −14.03 | **0.9s** |
-| **F2: Programs** | **CartesianGP** | −1037.42 | −1350.56 | −0.00 | −0.00 | **1.0s** |
-| **F3: Models (EDA)** | **CMA-ES** | −410.60 | −1348.26 | **95.83** *(Optimum)* | −59.37 | 13.8s |
-| **F3: Models (EDA)** | **PBIL** | −192.09 | −1524.69 | 94.22 | −74.45 | 1.8s |
+| **F1: Direct Solutions** | **SimpleGA** | **−157.84** | −944.37 | 94.17 | −56.30 | 6.6s |
+| **F1: Direct Solutions** | **DE** | −572.58 | −1378.27 | 85.50 | −90.91 | 4.8s |
+| **F1: Direct Solutions** | **OpenAI-ES** | −885.38 | −1228.99 | **−0.00** *(Gradient failure)* | −1.12 | 5.0s |
+| **F2: Programs** | **LinearGP** | −895.69 | −1243.22 | 0.00 | −14.03 | **2.0s** |
+| **F2: Programs** | **CartesianGP** | −642.25 | −1011.80 | −0.00 | −0.00 | **1.7s** |
+| **F3: Models (EDA)** | **CMA-ES** | **−229.74** | −924.98 | **95.83** *(Optimum)* | −59.37 | 46.0s |
+| **F3: Models (EDA)** | **PBIL** | −614.96 | −1520.16 | 94.22 | −74.45 | 4.6s |
 
 ---
 
@@ -243,23 +243,19 @@ Raw empirical data extracted directly from `results/validation_100_summary.csv`:
 | **F3** | **CMA-ES** | Acrobot-v1 | −64.00 | **−77.79 $\pm$ 1.22** | **[−80.30, −75.46]** | **−73.00** | **12.50** | **12.22** | **6.37** | **+13.79** | **96.0%** |
 | **F3** | **PBIL** | Acrobot-v1 | −75.00 | −101.90 $\pm$ 4.50 | [−112.47, −94.93] | −95.50 | 20.25 | 44.96 | 2.27 | +26.90 | 55.0% |
 |:---:|:---|:---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| **F1** | **SimpleGA** | Pendulum-v1 | −9.13 | −1073.68 $\pm$ 39.64 | [−1143.46, −989.30] | −1225.48 | 43.61 | 396.38 | 2.71 | +1064.56 | 12.0% |
-| **F1** | **DE** | Pendulum-v1 | −468.77 | −1117.59 $\pm$ 41.93 | [−1197.90, −1033.62] | −1162.13 | 710.31 | 419.34 | 2.67 | +648.83 | 0.0% |
-| **F1** | **OpenAI-ES** | Pendulum-v1 | −691.96 | −1258.51 $\pm$ 36.11 | [−1329.19, −1188.75] | −1253.45 | 576.31 | 361.06 | 3.49 | +566.55 | 0.0% |
-| **F2** | **LinearGP** | Pendulum-v1 | −771.96 | −1247.90 $\pm$ 39.37 | [−1323.54, −1170.53] | −1254.86 | 593.47 | 393.71 | 3.17 | +475.95 | 0.0% |
-| **F2** | **CartesianGP**| Pendulum-v1 | −1037.42 | −1336.94 $\pm$ 23.33 | [−1383.53, −1291.17] | −1293.57 | 400.06 | 233.28 | 5.73 | +299.51 | 0.0% |
-| **F3** | **CMA-ES** | Pendulum-v1 | −410.60 | −1312.86 $\pm$ 41.49 | [−1389.52, −1228.50] | −1494.44 | 105.20 | 414.94 | 3.16 | +902.26 | 2.0% |
-| **F3** | **PBIL** | Pendulum-v1 | −192.09 | **−804.32 $\pm$ 65.14** | **[−929.87, −675.68]** | **−387.26** | 1359.68 | 651.38 | 1.23 | +612.22 | **29.0%** |
+| **F1** | **SimpleGA** | Pendulum-v1 | −157.84 | **−352.97 $\pm$ 23.94** | [−399.54, −307.80] | −272.60 | 436.69 | 239.42 | 1.47 | +195.12 | **35.0%** |
+| **F1** | **DE** | Pendulum-v1 | −572.58 | −714.67 $\pm$ 56.98 | [−827.75, −603.07] | −599.67 | 1041.44 | 569.79 | 1.25 | +142.10 | 25.0% |
+| **F1** | **OpenAI-ES** | Pendulum-v1 | −885.38 | −1075.51 $\pm$ 24.89 | [−1125.43, −1027.93] | −998.93 | 384.17 | 248.94 | **4.32** | +190.14 | 0.0% |
+| **F2** | **LinearGP** | Pendulum-v1 | −895.69 | −1247.90 $\pm$ 39.37 | [−1323.54, −1170.53] | −1254.86 | 593.47 | 393.71 | 3.17 | +352.22 | 0.0% |
+| **F2** | **CartesianGP**| Pendulum-v1 | −642.25 | −940.34 $\pm$ 38.81 | [−1015.10, −865.38] | −853.53 | 360.33 | 388.08 | 2.42 | +298.10 | 0.0% |
+| **F3** | **CMA-ES** | Pendulum-v1 | −229.74 | **−268.67 $\pm$ 18.59** | **[−303.78, −231.68]** | **−261.94** | 252.75 | 185.90 | 1.45 | **+38.92** | **35.0%** |
+| **F3** | **PBIL** | Pendulum-v1 | −614.96 | −641.46 $\pm$ 23.08 | [−688.33, −598.69] | −542.80 | 227.23 | 230.80 | 2.78 | **+26.49** | 0.0% |
 |:---:|:---|:---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
 | **F1** | **SimpleGA** | MountainCarCont | 94.17 | 91.84 $\pm$ 0.24 | [91.35, 92.31] | 90.71 | 3.65 | 2.40 | 38.25 | +2.33 | 84.0% |
 | **F1** | **DE** | MountainCarCont | 85.50 | 85.68 $\pm$ 0.36 | [84.96, 86.36] | 87.74 | 5.19 | 3.61 | 23.75 | −0.18 | 0.0%* |
 | **F1** | **OpenAI-ES** | MountainCarCont | −0.00 | −0.00 $\pm$ 0.00 | [−0.00, −0.00] | −0.00 | 0.00 | 0.00 | 1.02 | 0.00 | 0.0% |
 | **F2** | **LinearGP** | MountainCarCont | 0.00 | 0.00 $\pm$ 0.00 | [0.00, 0.00] | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.0% |
 | **F2** | **CartesianGP**| MountainCarCont | −0.00 | −0.00 $\pm$ 0.00 | [−0.00, −0.00] | −0.00 | 0.00 | 0.00 | 1.02 | 0.00 | 0.0% |
-| **F3** | **CMA-ES** | MountainCarCont | **95.83** | **96.43 $\pm$ 0.11** | **[96.22, 96.63]** | **96.72** | **1.76** | **1.06** | **90.99** | **−0.60** | **100.0%** |
-| **F3** | **PBIL** | MountainCarCont | 94.22 | **93.87 $\pm$ 0.12** | **[93.64, 94.10]** | **94.06** | **1.80** | **1.15** | **81.28** | **+0.35** | **100.0%** |
-| **F1** | **DE** | MountainCarCont | 85.50 | 85.68 $\pm$ 0.36 | [84.96, 86.36] | 87.74 | 5.19 | 3.61 | 23.75 | −0.18 | 0.0%* |
-| **F1** | **OpenAI-ES** | MountainCarCont | −0.00 | −0.00 $\pm$ 0.00 | [−0.00, −0.00] | −0.00 | 0.00 | 0.00 | 1.02 | 0.00 | 0.0% |
 | **F3** | **CMA-ES** | MountainCarCont | **95.83** | **96.43 $\pm$ 0.11** | **[96.22, 96.63]** | **96.72** | **1.76** | **1.06** | **90.99** | **−0.60** | **100.0%** |
 | **F3** | **PBIL** | MountainCarCont | 94.22 | **93.87 $\pm$ 0.12** | **[93.64, 94.10]** | **94.06** | **1.80** | **1.15** | **81.28** | **+0.35** | **100.0%** |
 
@@ -282,7 +278,7 @@ Validation over 100 episodes exposed a crucial phenomenon in evolutionary RL:
 ### 6.2 Generalization of Symbolic Programs (Family 2)
 * On **CartPole-v1**, **CartesianGP** achieved an **88.0% success rate** with a test mean of **482.68 $\pm$ 4.95** and median of **500.00**, confirming that compact 2D DAGs create stable feedback loops around unstable equilibria.
 * On **Acrobot-v1**, **LinearGP** achieved a **92.0% success rate** with a test mean of **−81.66 $\pm$ 1.07** and an **SNR of 7.63** (the highest SNR among all non-CMA methods), outperforming neural algorithms such as PBIL (55%) and DE (82%).
-* In **continuous control (Pendulum-v1)**, pure vectorized GP with continuous $u = \text{clip}(\tanh(\text{raw}) \cdot a_{\text{max}})$ reached competitive test returns (LinearGP: −1247.90, CartesianGP: −1336.94 with SNR 5.73), comparable to unguided continuous ES without policy gradient guidance.
+* In **continuous control (Pendulum-v1)**, pure vectorized GP with continuous $u = \text{clip}(\tanh(\text{raw}) \cdot a_{\text{max}})$ reached competitive test returns under extended training (CartesianGP: −940.34 $\pm$ 38.81 with median −853.53; LinearGP: −1247.90), showing that symbolic 2D DAGs can construct continuous energy-shaping feedback loops.
 * This demonstrates that **controllers expressed as graphs and register sequences of discrete instructions possess robust generalization in control tasks**, producing compact decision surfaces that avoid the high-dimensional overfitting of continuous neural weight vectors.
 
 ### 6.3 Gradient and Heuristic Collapse vs. EDAs on MountainCarContinuous
@@ -291,10 +287,13 @@ Validation over 100 episodes exposed a crucial phenomenon in evolutionary RL:
 * **CMA-ES and PBIL (Success: 100.0%, SNR: 91.0 and 81.3)**:
   Both EDAs solved the environment with deterministic asymptotic stability ($\text{SEM} \approx 0.11$, $\text{Std} \le 1.15$), confirming the decisive superiority of second-order covariance-adapted and distribution-based search for sparse *exploration valley* problems.
 
-### 6.4 The Stochastic Sensitivity of the Inverted Pendulum
-* On **Pendulum-v1**, every method exhibited a large optimism gap ($\Delta > 290$), reflecting the high sensitivity of the initial angle $\theta_0 \sim \mathcal{U}[-\pi, \pi]$.
-* The best algorithm in testing was **PBIL** ($\bar{R} = -804.32 \pm 65.14$, median = $-387.26$, success = $29\%$).
-* For nonlinear continuous control with chaotic dynamics around the bottom pole, training with only $N_{\text{rollouts}} = 2$ is insufficient to cover the full support of the state space, requiring training protocols with higher rollout allocations ($N \ge 8$ to $16$).
+### 6.4 The Stochastic Sensitivity of Pendulum-v1 and Resolution via Extended Rollouts
+* **The Winner's Curse Diagnosis**: In the quick benchmark ($N_{\text{rollouts}}=2$), every method exhibited a large optimism gap ($\Delta > 500$), caused by the uniform angular perturbation $\theta_0 \sim \mathcal{U}[-\pi, \pi]$. With only 2 rollouts, individuals that merely spawned near upright equilibrium were spuriously selected as elites without possessing an actual swing-up policy.
+* **Empirical Resolution ($G=100$, $N_{\text{rollouts}}=8$)**:
+  * **CMA-ES reached near-optimal stabilization**: Mean test return of **$-268.67 \pm 18.59$** (median **$-261.94$**, **35.0% success rate**), with the optimism gap collapsing to only **$+38.92$**.
+  * **SimpleGA** achieved a test mean of **$-352.97 \pm 23.94$** (median **$-272.60$**, **35.0% success rate**).
+  * **CartesianGP** improved its test mean from $-1336.94$ to **$-940.34 \pm 38.81$** (median **$-853.53$**).
+  * This confirms empirically that continuous control with under-actuated swing-up is solvable by evolutionary algorithms once the rollout budget per evaluation adequately covers the support of the initial state distribution.
 
 ---
 

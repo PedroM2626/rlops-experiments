@@ -30,6 +30,7 @@ os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "3")
 import json
 import csv
 import time
+import argparse
 import numpy as np
 import jax
 import jax.numpy as jnp
@@ -73,21 +74,41 @@ def build_gp_algorithms(obs_dim: int, act_dim: int):
 
 
 def main():
+    parser = argparse.ArgumentParser(description="Rigorous Scientific Validation (100 test episodes)")
+    parser.add_argument("--env", type=str, default=None, help="Run only this environment (e.g. Pendulum-v1)")
+    args = parser.parse_args()
+
     print("=" * 80)
     print("  RIGOROUS SCIENTIFIC VALIDATION PROTOCOL: 100 OUT-OF-SAMPLE TEST EPISODES")
     print(f"  Test Episodes: {N_TEST_EPISODES} | Test Seed: {TEST_SEED}")
     print("  Metrics: Mean, SEM, 95% Bootstrap CI, SNR, CV, Optimism Gap, Success Rate")
     print("=" * 80)
 
-    envs = ["CartPole-v1", "Acrobot-v1", "Pendulum-v1", "MountainCarContinuous-v0"]
-    validation_records = []
+    all_envs = ["CartPole-v1", "Acrobot-v1", "Pendulum-v1", "MountainCarContinuous-v0"]
+    envs_to_run = [args.env] if args.env else all_envs
+    new_records = []
+    trained_f13 = {}
+    trained_f2 = {}
 
-    for env_name in envs:
+    for env_name in envs_to_run:
         meta = ENV_META[env_name]
         obs_dim = meta["obs_dim"]
         act_dim = meta["act_dim"]
+
+        # Budget settings: Pendulum-v1 uses extended training to mitigate high variance
+        if env_name == "Pendulum-v1":
+            n_gen_param = 100
+            n_roll_param = 8
+            n_gen_gp = 40
+            n_roll_gp = 8
+        else:
+            n_gen_param = 30
+            n_roll_param = 2
+            n_gen_gp = 15
+            n_roll_gp = 3
+
         print(f"\n{'-'*80}")
-        print(f"  Environment: {env_name} (obs={obs_dim}, act={act_dim})")
+        print(f"  Environment: {env_name} (obs={obs_dim}, act={act_dim}) | G={n_gen_param} (GP: {n_gen_gp}), N_rollouts={n_roll_param}")
         print(f"{'-'*80}")
 
         # 1. Compile the JAX evaluator for 100 episodes on this environment
@@ -95,10 +116,11 @@ def main():
         test_rng = jax.random.PRNGKey(TEST_SEED)
 
         # 2. Train and validate Families 1 and 3
+        trained_f13[env_name] = []
         for alg_cfg in build_param_algorithms(pop=32):
             algo_name = alg_cfg["name"]
             family = alg_cfg["family"]
-            print(f"  -> Training [F{family}] {algo_name} (30 generations)...", end="", flush=True)
+            print(f"  -> Training [F{family}] {algo_name} ({n_gen_param} generations, N={n_roll_param})...", end="", flush=True)
 
             t_train_start = time.time()
             res = run_param_based_v2(
@@ -106,14 +128,25 @@ def main():
                 algo_name=algo_name,
                 env_name=env_name,
                 family=family,
-                n_generations=30,
-                n_rollouts=2,
+                n_generations=n_gen_param,
+                n_rollouts=n_roll_param,
                 seed=42,
                 log_every=999,
             )
             t_train = time.time() - t_train_start
             f_train_best = float(res.best_fitness[-1])
             print(f" Train: {t_train:.1f}s (Best Train: {f_train_best:.2f})")
+
+            trained_f13[env_name].append({
+                "algorithm":    res.algo_name,
+                "family":       res.family,
+                "generations":  res.generations,
+                "best_fitness": res.best_fitness,
+                "mean_fitness": res.mean_fitness,
+                "std_fitness":  res.std_fitness,
+                "total_time":   res.total_time,
+                "n_evals":      res.n_evals,
+            })
 
             # Test evaluation over 100 episodes
             best_params_jnp = jnp.array(res.best_params)
@@ -128,7 +161,7 @@ def main():
                 **stats,
                 "train_time_s": round(t_train, 2),
             }
-            validation_records.append(record)
+            new_records.append(record)
             print(f"     [TEST 100 eps] Mean={stats['test_mean']:>8.2f} ± {stats['test_sem']:<5.2f} | "
                   f"CI95%=[{stats['ci95_low']:>7.2f}, {stats['ci95_high']:>7.2f}] | "
                   f"Median={stats['test_median']:>7.2f} | Std={stats['test_std']:>6.2f} | "
@@ -136,10 +169,11 @@ def main():
                   f"Success={stats['success_rate_pct']:>5.1f}%")
 
         # 3. Family 2 (LinearGP and CartesianGP) on all environments (pure JAX)
+        trained_f2[env_name] = []
         for alg_cfg in build_gp_algorithms(obs_dim, act_dim):
             algo_name = alg_cfg["name"]
             family = 2
-            print(f"  -> Training [F2] {algo_name} (15 generations)...", end="", flush=True)
+            print(f"  -> Training [F2] {algo_name} ({n_gen_gp} generations, N={n_roll_gp})...", end="", flush=True)
 
             t_train_start = time.time()
             res = run_program_based(
@@ -147,8 +181,8 @@ def main():
                 algo_name=algo_name,
                 env_name=env_name,
                 family=2,
-                n_generations=15,
-                n_rollouts=3,
+                n_generations=n_gen_gp,
+                n_rollouts=n_roll_gp,
                 seed=42,
                 log_every=999,
                 pure_jax=True,
@@ -156,6 +190,17 @@ def main():
             t_train = time.time() - t_train_start
             f_train_best = float(res.best_fitness[-1])
             print(f" Train: {t_train:.1f}s (Best Train: {f_train_best:.2f})")
+
+            trained_f2[env_name].append({
+                "algorithm":    res.algo_name,
+                "family":       res.family,
+                "generations":  res.generations,
+                "best_fitness": res.best_fitness,
+                "mean_fitness": res.mean_fitness,
+                "std_fitness":  res.std_fitness,
+                "total_time":   res.total_time,
+                "n_evals":      res.n_evals,
+            })
 
             # Test over 100 episodes in pure JAX
             try:
@@ -171,15 +216,48 @@ def main():
                 **stats,
                 "train_time_s": round(t_train, 2),
             }
-            validation_records.append(record)
+            new_records.append(record)
             print(f"     [TEST 100 eps] Mean={stats['test_mean']:>8.2f} ± {stats['test_sem']:<5.2f} | "
                   f"CI95%=[{stats['ci95_low']:>7.2f}, {stats['ci95_high']:>7.2f}] | "
                   f"Median={stats['test_median']:>7.2f} | Std={stats['test_std']:>6.2f} | "
                   f"SNR={stats['snr']:>5.2f} | Gap={stats['optimism_gap']:>6.2f} | "
                   f"Success={stats['success_rate_pct']:>5.1f}%")
 
-    # Save the full JSON (including raw arrays for resampling/plots)
+    # Combine records with existing if running only one environment
     json_path = os.path.join(OUT_DIR, "validation_100_results.json")
+    if args.env and os.path.exists(json_path):
+        with open(json_path, "r") as f:
+            existing = json.load(f)
+        validation_records = [r for r in existing if r["environment"] != args.env] + new_records
+    else:
+        validation_records = new_records
+
+    # Maintain canonical environment order: CartPole, Acrobot, Pendulum, MountainCar
+    order_map = {e: i for i, e in enumerate(all_envs)}
+    validation_records.sort(key=lambda r: (order_map.get(r["environment"], 99), r["family"], r["algorithm"]))
+
+    # Update raw_results.json and gp_results.json for the evaluated environments
+    f13_path = os.path.join(OUT_DIR, "raw_results.json")
+    if os.path.exists(f13_path):
+        with open(f13_path, "r") as f:
+            try: existing_f13 = json.load(f)
+            except Exception: existing_f13 = {}
+    else: existing_f13 = {}
+    existing_f13.update(trained_f13)
+    with open(f13_path, "w") as f:
+        json.dump(existing_f13, f, indent=2)
+
+    gp_path = os.path.join(OUT_DIR, "gp_results.json")
+    if os.path.exists(gp_path):
+        with open(gp_path, "r") as f:
+            try: existing_gp = json.load(f)
+            except Exception: existing_gp = {}
+    else: existing_gp = {}
+    existing_gp.update(trained_f2)
+    with open(gp_path, "w") as f:
+        json.dump(existing_gp, f, indent=2)
+
+    # Save the full JSON (including raw arrays for resampling/plots)
     with open(json_path, "w") as f:
         json.dump(validation_records, f, indent=2)
     with open(os.path.join(ART_DIR, "validation_100_results.json"), "w") as f:
@@ -202,6 +280,35 @@ def main():
         writer.writeheader()
         writer.writerows(validation_records)
     print(f"[OK] Saved CSV: {csv_path}")
+
+    # Also update results_summary.csv
+    res_summary_path = os.path.join(OUT_DIR, "results_summary.csv")
+    summary_rows = []
+    if os.path.exists(res_summary_path):
+        with open(res_summary_path, "r", newline="") as f:
+            rdr = csv.DictReader(f)
+            for r in rdr:
+                if not (args.env and r["environment"] == args.env):
+                    summary_rows.append(r)
+    for env in envs_to_run:
+        for r in trained_f13.get(env, []):
+            summary_rows.append({
+                "algorithm": r["algorithm"], "family": r["family"], "environment": env,
+                "final_best_fitness": r["best_fitness"][-1], "final_mean_fitness": r["mean_fitness"][-1],
+                "total_time_s": f"{r['total_time']:.2f}", "n_evaluations": r["n_evals"],
+                "n_generations": len(r["generations"])
+            })
+        for r in trained_f2.get(env, []):
+            summary_rows.append({
+                "algorithm": r["algorithm"], "family": r["family"], "environment": env,
+                "final_best_fitness": r["best_fitness"][-1], "final_mean_fitness": r["mean_fitness"][-1],
+                "total_time_s": f"{r['total_time']:.2f}", "n_evaluations": r["n_evals"],
+                "n_generations": len(r["generations"])
+            })
+    with open(res_summary_path, "w", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=["algorithm", "family", "environment", "final_best_fitness", "final_mean_fitness", "total_time_s", "n_evaluations", "n_generations"])
+        w.writeheader()
+        w.writerows(summary_rows)
 
     # 4. Generate the rigorous statistical plots
     print("\nGenerating the validation statistical plots...")

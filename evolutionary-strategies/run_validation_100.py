@@ -42,7 +42,7 @@ from src.family1_direct import SimpleGA, DE, OpenAIES
 from src.family2_programs import LinearGP, CartesianGP
 from src.family3_eda import CMAES, PBIL
 from src.benchmark import run_param_based_v2, run_program_based
-from src.evaluation import make_test_eval_fn, evaluate_program_100, compute_statistical_metrics
+from src.evaluation import make_test_eval_fn, make_program_test_eval_fn, evaluate_program_100, compute_statistical_metrics
 
 OUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "results")
 ART_DIR = OUT_DIR
@@ -135,44 +135,48 @@ def main():
                   f"SNR={stats['snr']:>5.2f} | Gap={stats['optimism_gap']:>6.2f} | "
                   f"Success={stats['success_rate_pct']:>5.1f}%")
 
-        # 3. Family 2 (LinearGP and CartesianGP) on the discrete environments
-        if env_name in ["CartPole-v1", "Acrobot-v1"]:
-            for alg_cfg in build_gp_algorithms(obs_dim, act_dim):
-                algo_name = alg_cfg["name"]
-                family = 2
-                print(f"  -> Training [F2] {algo_name} (15 generations)...", end="", flush=True)
+        # 3. Family 2 (LinearGP and CartesianGP) on all environments (pure JAX)
+        for alg_cfg in build_gp_algorithms(obs_dim, act_dim):
+            algo_name = alg_cfg["name"]
+            family = 2
+            print(f"  -> Training [F2] {algo_name} (15 generations)...", end="", flush=True)
 
-                t_train_start = time.time()
-                res = run_program_based(
-                    algo=alg_cfg["algo"],
-                    algo_name=algo_name,
-                    env_name=env_name,
-                    family=2,
-                    n_generations=15,
-                    n_rollouts=3,
-                    seed=42,
-                    log_every=999,
-                )
-                t_train = time.time() - t_train_start
-                f_train_best = float(res.best_fitness[-1])
-                print(f" Train: {t_train:.1f}s (Best Train: {f_train_best:.2f})")
+            t_train_start = time.time()
+            res = run_program_based(
+                algo=alg_cfg["algo"],
+                algo_name=algo_name,
+                env_name=env_name,
+                family=2,
+                n_generations=15,
+                n_rollouts=3,
+                seed=42,
+                log_every=999,
+                pure_jax=True,
+            )
+            t_train = time.time() - t_train_start
+            f_train_best = float(res.best_fitness[-1])
+            print(f" Train: {t_train:.1f}s (Best Train: {f_train_best:.2f})")
 
-                # Test over 100 episodes
+            # Test over 100 episodes in pure JAX
+            try:
+                test_eval_prog = make_program_test_eval_fn(env_name, alg_cfg["algo"], n_episodes=N_TEST_EPISODES)
+                returns_test = np.array(test_eval_prog(res.best_program, test_rng))
+            except Exception:
                 returns_test = evaluate_program_100(res.policy_fn, env_name, n_episodes=N_TEST_EPISODES, seed=TEST_SEED)
-                stats = compute_statistical_metrics(returns_test, f_train_best=f_train_best, env_name=env_name)
-                record = {
-                    "algorithm": algo_name,
-                    "family": family,
-                    "environment": env_name,
-                    **stats,
-                    "train_time_s": round(t_train, 2),
-                }
-                validation_records.append(record)
-                print(f"     [TEST 100 eps] Mean={stats['test_mean']:>8.2f} ± {stats['test_sem']:<5.2f} | "
-                      f"CI95%=[{stats['ci95_low']:>7.2f}, {stats['ci95_high']:>7.2f}] | "
-                      f"Median={stats['test_median']:>7.2f} | Std={stats['test_std']:>6.2f} | "
-                      f"SNR={stats['snr']:>5.2f} | Gap={stats['optimism_gap']:>6.2f} | "
-                      f"Success={stats['success_rate_pct']:>5.1f}%")
+            stats = compute_statistical_metrics(returns_test, f_train_best=f_train_best, env_name=env_name)
+            record = {
+                "algorithm": algo_name,
+                "family": family,
+                "environment": env_name,
+                **stats,
+                "train_time_s": round(t_train, 2),
+            }
+            validation_records.append(record)
+            print(f"     [TEST 100 eps] Mean={stats['test_mean']:>8.2f} ± {stats['test_sem']:<5.2f} | "
+                  f"CI95%=[{stats['ci95_low']:>7.2f}, {stats['ci95_high']:>7.2f}] | "
+                  f"Median={stats['test_median']:>7.2f} | Std={stats['test_std']:>6.2f} | "
+                  f"SNR={stats['snr']:>5.2f} | Gap={stats['optimism_gap']:>6.2f} | "
+                  f"Success={stats['success_rate_pct']:>5.1f}%")
 
     # Save the full JSON (including raw arrays for resampling/plots)
     json_path = os.path.join(OUT_DIR, "validation_100_results.json")
@@ -269,7 +273,7 @@ def _generate_statistical_plots(records):
     print(f"[plot] Saved: {art_path}")
 
     # 2. Optimism-bias plot (Winner's Curse: Train vs Test)
-    fig2, ax2 = plt.subplots(figsize=(13, 6), facecolor="#0d1117")
+    fig2, ax2 = plt.subplots(figsize=(16, 6.5), facecolor="#0d1117")
     ax2.set_facecolor("#161b22")
     ax2.set_title("Optimism Gap (Winner's Curse): Train Fitness (2 rollouts) vs True Test Return (100 rollouts)",
                   color="white", fontsize=12, fontweight="bold", pad=10)

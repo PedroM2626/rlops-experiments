@@ -114,6 +114,8 @@ def plot_learning_curves(results_by_env: Dict, out_dir: str, smooth_w: int = 5):
 def plot_family_comparison(results_by_env: Dict, out_dir: str):
     """
     Grouped bar chart: final performance per algorithm × environment.
+    Uses independent subplots per environment when multiple environments with
+    different reward scales are evaluated (e.g. n_envs >= 4).
     """
     envs    = list(results_by_env.keys())
     all_res = [r for res_list in results_by_env.values() for r in res_list]
@@ -121,11 +123,6 @@ def plot_family_comparison(results_by_env: Dict, out_dir: str):
 
     n_envs  = len(envs)
     n_algos = len(algos)
-    x       = np.arange(n_envs)
-    width   = 0.8 / n_algos
-
-    fig, ax = plt.subplots(figsize=(max(10, 2.5*n_envs), 6), facecolor="#0d1117")
-    ax.set_facecolor("#161b22")
 
     fam_map = {r.algo_name: r.family for res_list in results_by_env.values()
                for r in res_list}
@@ -136,6 +133,57 @@ def plot_family_comparison(results_by_env: Dict, out_dir: str):
         cidx = fam_cidx[fam] % len(FAMILY_COLORS[fam])
         algo_colors[algo] = FAMILY_COLORS[fam][cidx]
         fam_cidx[fam] += 1
+
+    if n_envs >= 4:
+        fig, axes = plt.subplots(2, 2, figsize=(16, 11), facecolor="#0d1117")
+        fig.suptitle("Final Performance Comparison — 3 Families × Environments (JAX)",
+                     color="white", fontsize=15, fontweight="bold", y=0.995)
+        axes = axes.flatten()
+
+        for idx, env in enumerate(envs[:4]):
+            ax = axes[idx]
+            ax.set_facecolor("#161b22")
+            ax.set_title(env, color="white", fontsize=12, pad=8, fontweight="bold")
+            ax.set_ylabel("Final Best Fitness", color="#8b949e", fontsize=9.5)
+            ax.tick_params(colors="#8b949e", labelsize=8)
+            for spine in ax.spines.values():
+                spine.set_edgecolor("#30363d")
+            ax.grid(True, axis="y", color="#21262d", linewidth=0.5, linestyle="--")
+
+            res_list = results_by_env[env]
+            vals = []
+            for algo in algos:
+                match = [r for r in res_list if r.algo_name == algo]
+                vals.append(match[0].best_fitness[-1] if match and match[0].best_fitness else 0.0)
+
+            x_pos = np.arange(n_algos)
+            bars = ax.bar(x_pos, vals, width=0.72,
+                          color=[algo_colors[a] for a in algos], alpha=0.88,
+                          edgecolor="#0d1117", linewidth=0.5)
+
+            for bar, v in zip(bars, vals):
+                offset = abs(v) * 0.03 if v != 0 else (10.0 if "CartPole" in env else 1.0)
+                va = "bottom" if v >= 0 else "top"
+                ax.text(bar.get_x() + bar.get_width() / 2, v + (offset if v >= 0 else -offset),
+                        f"{v:.0f}", ha="center", va=va,
+                        color="white", fontsize=8, fontweight="bold")
+
+            ax.set_xticks(x_pos)
+            ax.set_xticklabels([f"{a}\n(F{fam_map.get(a, 1)})" for a in algos],
+                               color="#8b949e", fontsize=8.5)
+
+        plt.tight_layout()
+        path = os.path.join(out_dir, "family_comparison.png")
+        plt.savefig(path, dpi=150, bbox_inches="tight", facecolor=fig.get_facecolor())
+        plt.close()
+        print(f"[plot] Saved: {path}")
+        return path
+
+    x       = np.arange(n_envs)
+    width   = 0.8 / n_algos
+
+    fig, ax = plt.subplots(figsize=(max(10, 2.5*n_envs), 6), facecolor="#0d1117")
+    ax.set_facecolor("#161b22")
 
     for i, algo in enumerate(algos):
         vals = []

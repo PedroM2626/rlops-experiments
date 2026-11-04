@@ -18,7 +18,7 @@ from src.benchmark        import run_program_based
 from src.visualization    import plot_learning_curves, save_results_csv
 
 OUT_DIR = os.path.join(os.path.dirname(__file__), "results")
-ENVS    = ["CartPole-v1", "Acrobot-v1"]
+ENVS    = ["CartPole-v1", "Acrobot-v1", "Pendulum-v1", "MountainCarContinuous-v0"]
 
 def main():
     print("=" * 60)

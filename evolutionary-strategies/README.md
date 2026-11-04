@@ -324,7 +324,7 @@ To rigorously determine whether the remaining performance deficit on `Pendulum-v
 
 #### 6.5.2 Theoretical Hypotheses from Literature (External Context)
 > [!NOTE]
-> The performance metrics cited below for gradient-based Reinforcement Learning methods (SAC and TD3 achieving $-140$ to $-160$ return with $>90\%$ success) are **canonical reference baselines from published literature** (Haarnoja et al., 2018; Fujimoto et al., 2018), and were not internally re-executed in this repository.
+> SAC (Haarnoja et al., 2018) and TD3 (Fujimoto et al., 2018) were **not executed in this repository**. The figure sometimes quoted for them on `Pendulum-v1` (return around $-150$, high success) is **not a result reported in those two papers** (neither evaluates Pendulum) and is **not verified here**; it should be treated as an unverified expectation until SAC/TD3 are run under the same 100-episode protocol. The references are cited only for the algorithms themselves (off-policy actor-critic with a replay buffer).
 
 The fundamental performance gap between black-box Evolutionary Strategies and state-of-the-art Temporal Difference RL is explained by three distinct theoretical hypotheses:
 
@@ -549,7 +549,7 @@ python generate_final_plots.py
 2. **Henderson, P., Islam, R., Bachman, P., Pineau, J., Precup, D., & Meger, D.** (2018). Deep reinforcement learning that matters. *AAAI Conference on Artificial Intelligence*, 32(1).
 3. **Machado, M. C., et al.** (2018). Revisiting the Arcade Learning Environment: Evaluation Protocols and Open Problems for General Agents. *Journal of Artificial Intelligence Research*, 61, 523–562.
 4. **Haarnoja, T., Zhou, A., Abbeel, P., & Levine, S.** (2018). Soft Actor-Critic: Off-Policy Maximum Entropy Deep Reinforcement Learning with a Stochastic Actor. *International Conference on Machine Learning (ICML)*, PMLR 80, 1861–1870.
-5. **Fujimoto, S., Hoof, H., & van Hoof, D.** (2018). Addressing Function Approximation Error in Actor-Critic Methods. *International Conference on Machine Learning (ICML)*, PMLR 80, 1587–1596.
+5. **Fujimoto, S., van Hoof, H., & Meger, D.** (2018). Addressing Function Approximation Error in Actor-Critic Methods. *International Conference on Machine Learning (ICML)*, PMLR 80, 1587–1596.
 6. **Goldberg, D. E.** (1989). *Genetic Algorithms in Search, Optimization and Machine Learning*. Addison-Wesley.
 7. **Deb, K., & Agrawal, R. B.** (1995). Simulated binary crossover for continuous search space. *Complex Systems*, 9(2), 115–148.
 8. **Storn, R., & Price, K.** (1997). Differential Evolution – A Simple and Efficient Heuristic for Global Optimization over Continuous Spaces. *Journal of Global Optimization*, 11(4), 341–359.

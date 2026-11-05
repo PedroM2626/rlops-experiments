@@ -1,0 +1,218 @@
+{
+ "OpenAI-ES": [
+  {
+   "seed": 42,
+   "best_mean": -1.9019023966393434e-05,
+   "best_succ": 0.0,
+   "dist_mean": -1.120883584022522,
+   "dist_succ": 0.0
+  },
+  {
+   "seed": 101,
+   "best_mean": -4.7186800657073036e-05,
+   "best_succ": 0.0,
+   "dist_mean": -0.5410828590393066,
+   "dist_succ": 0.0
+  },
+  {
+   "seed": 202,
+   "best_mean": -0.0009379712282679975,
+   "best_succ": 0.0,
+   "dist_mean": -0.3546352684497833,
+   "dist_succ": 0.0
+  },
+  {
+   "seed": 303,
+   "best_mean": -2.5102821382461116e-05,
+   "best_succ": 0.0,
+   "dist_mean": -0.01985073834657669,
+   "dist_succ": 0.0
+  },
+  {
+   "seed": 404,
+   "best_mean": -4.0009745134739205e-06,
+   "best_succ": 0.0,
+   "dist_mean": -0.4323543608188629,
+   "dist_succ": 0.0
+  },
+  {
+   "seed": 505,
+   "best_mean": -3.368328543729149e-05,
+   "best_succ": 0.0,
+   "dist_mean": -0.05189886689186096,
+   "dist_succ": 0.0
+  },
+  {
+   "seed": 606,
+   "best_mean": -2.608136310300324e-05,
+   "best_succ": 0.0,
+   "dist_mean": -1.112755298614502,
+   "dist_succ": 0.0
+  },
+  {
+   "seed": 707,
+   "best_mean": -0.0001799347810447216,
+   "best_succ": 0.0,
+   "dist_mean": -0.2443123608827591,
+   "dist_succ": 0.0
+  },
+  {
+   "seed": 808,
+   "best_mean": -2.5871177058434114e-05,
+   "best_succ": 0.0,
+   "dist_mean": -0.609153687953949,
+   "dist_succ": 0.0
+  },
+  {
+   "seed": 909,
+   "best_mean": -0.00022636735229752958,
+   "best_succ": 0.0,
+   "dist_mean": -0.23321859538555145,
+   "dist_succ": 0.0
+  }
+ ],
+ "CMA-ES": [
+  {
+   "seed": 42,
+   "best_mean": 96.4256362915039,
+   "best_succ": 100.0,
+   "dist_mean": 16.136550903320312,
+   "dist_succ": 0.0
+  },
+  {
+   "seed": 101,
+   "best_mean": 95.0650405883789,
+   "best_succ": 98.0,
+   "dist_mean": -83.63542175292969,
+   "dist_succ": 0.0
+  },
+  {
+   "seed": 202,
+   "best_mean": 94.48001861572266,
+   "best_succ": 100.0,
+   "dist_mean": -48.978736877441406,
+   "dist_succ": 0.0
+  },
+  {
+   "seed": 303,
+   "best_mean": 75.72865295410156,
+   "best_succ": 78.0,
+   "dist_mean": -5.705749988555908,
+   "dist_succ": 0.0
+  },
+  {
+   "seed": 404,
+   "best_mean": 48.53487777709961,
+   "best_succ": 4.0,
+   "dist_mean": -29.310338973999023,
+   "dist_succ": 0.0
+  },
+  {
+   "seed": 505,
+   "best_mean": 82.87265014648438,
+   "best_succ": 0.0,
+   "dist_mean": -13.938153266906738,
+   "dist_succ": 0.0
+  },
+  {
+   "seed": 606,
+   "best_mean": 50.19796371459961,
+   "best_succ": 56.99999999999999,
+   "dist_mean": -47.118526458740234,
+   "dist_succ": 0.0
+  },
+  {
+   "seed": 707,
+   "best_mean": 94.56555938720703,
+   "best_succ": 98.0,
+   "dist_mean": 86.62995147705078,
+   "dist_succ": 16.0
+  },
+  {
+   "seed": 808,
+   "best_mean": 94.6910171508789,
+   "best_succ": 97.0,
+   "dist_mean": -32.33576202392578,
+   "dist_succ": 0.0
+  },
+  {
+   "seed": 909,
+   "best_mean": 70.25232696533203,
+   "best_succ": 0.0,
+   "dist_mean": -38.701576232910156,
+   "dist_succ": 0.0
+  }
+ ],
+ "PBIL": [
+  {
+   "seed": 42,
+   "best_mean": 93.86795043945312,
+   "best_succ": 100.0,
+   "dist_mean": -3.0238232612609863,
+   "dist_succ": 0.0
+  },
+  {
+   "seed": 101,
+   "best_mean": 92.40475463867188,
+   "best_succ": 89.0,
+   "dist_mean": -1.2243949174880981,
+   "dist_succ": 0.0
+  },
+  {
+   "seed": 202,
+   "best_mean": 93.05705261230469,
+   "best_succ": 97.0,
+   "dist_mean": -1.132720947265625,
+   "dist_succ": 0.0
+  },
+  {
+   "seed": 303,
+   "best_mean": 97.25065612792969,
+   "best_succ": 100.0,
+   "dist_mean": -9.420397758483887,
+   "dist_succ": 0.0
+  },
+  {
+   "seed": 404,
+   "best_mean": 92.73267364501953,
+   "best_succ": 98.0,
+   "dist_mean": -8.2520170211792,
+   "dist_succ": 0.0
+  },
+  {
+   "seed": 505,
+   "best_mean": 85.52705383300781,
+   "best_succ": 42.0,
+   "dist_mean": -28.339941024780273,
+   "dist_succ": 0.0
+  },
+  {
+   "seed": 606,
+   "best_mean": 71.57659912109375,
+   "best_succ": 76.0,
+   "dist_mean": -6.213904857635498,
+   "dist_succ": 0.0
+  },
+  {
+   "seed": 707,
+   "best_mean": 89.015380859375,
+   "best_succ": 45.0,
+   "dist_mean": -3.255324125289917,
+   "dist_succ": 0.0
+  },
+  {
+   "seed": 808,
+   "best_mean": 95.80359649658203,
+   "best_succ": 100.0,
+   "dist_mean": -1.4171593189239502,
+   "dist_succ": 0.0
+  },
+  {
+   "seed": 909,
+   "best_mean": 92.35769653320312,
+   "best_succ": 95.0,
+   "dist_mean": -44.95479965209961,
+   "dist_succ": 0.0
+  }
+ ]
+}

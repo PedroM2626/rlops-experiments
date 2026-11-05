@@ -7,7 +7,7 @@ Design (one factor changed at a time relative to the baseline G=30, N=2):
   * N-axis (G fixed = 30):   N in {2, 8, 16}
   * G-axis (N fixed = 2):    G in {30, 100}
   * joint point:             G=100, N=8
-Each configuration is run with S=5 training seeds, and each trained policy is
+Each configuration is run with S=10 training seeds, and each trained policy is
 evaluated on the SAME 100 out-of-sample episodes (test seed 99999).
 
 Also runs a determinism check (same seed twice must give identical results),
@@ -38,7 +38,7 @@ from run_multiseed_study import build_param_algorithms
 
 OUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "results")
 ENV = "CartPole-v1"
-SEEDS = [42, 101, 202, 303, 404]
+SEEDS = [42, 101, 202, 303, 404, 505, 606, 707, 808, 909]
 CONFIGS = [(30, 2), (30, 8), (30, 16), (100, 2), (100, 8)]  # (G, N)
 TEST_SEED = 99999
 

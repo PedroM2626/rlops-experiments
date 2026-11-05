@@ -44,7 +44,7 @@ from src.evaluation import (make_test_eval_fn, make_program_test_eval_fn,
 OUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "results")
 os.makedirs(OUT_DIR, exist_ok=True)
 
-DEFAULT_SEEDS = [42, 101, 202, 303, 404]
+DEFAULT_SEEDS = [42, 101, 202, 303, 404, 505, 606, 707, 808, 909]
 N_TEST_EPISODES = 100
 TEST_SEED = 99999
 
@@ -327,7 +327,8 @@ def _plot_multiseed_analysis(records, out_dir):
     """Generates the multi-seed variance and performance plot."""
     envs = list(dict.fromkeys(r["environment"] for r in records))
     fig, axes = plt.subplots(2, 2, figsize=(16, 11), facecolor="#0d1117")
-    fig.suptitle("Multi-Seed Benchmark Analysis (S=5 Seeds × 100 Test Eps) — Agarwal et al. (2021)",
+    n_seeds = records[0]["n_seeds"]
+    fig.suptitle(f"Multi-Seed Benchmark Analysis (S={n_seeds} Seeds × 100 Test Eps) — Agarwal et al. (2021)",
                  color="white", fontsize=14, fontweight="bold", y=0.995)
     axes = axes.flatten()
 
@@ -336,7 +337,7 @@ def _plot_multiseed_analysis(records, out_dir):
     for idx, env in enumerate(envs):
         ax = axes[idx]
         ax.set_facecolor("#161b22")
-        ax.set_title(f"{env} — Aggregate Mean across 5 Seeds (± 95% Stratified CI)",
+        ax.set_title(f"{env} — Aggregate Mean across {n_seeds} Seeds (± 95% Stratified CI)",
                      color="white", fontsize=11, fontweight="bold", pad=8)
         ax.set_ylabel("Evaluation Return", color="#8b949e", fontsize=9.5)
         ax.tick_params(colors="#8b949e", labelsize=8)
@@ -365,7 +366,8 @@ def _plot_multiseed_analysis(records, out_dir):
             offset = abs(v) * 0.03 if v != 0 else (10.0 if "CartPole" in env else 1.0)
             va = "bottom" if v >= 0 else "top"
             ax.text(b.get_x() + b.get_width() / 2, v + (offset if v >= 0 else -offset),
-                    f"{v:.0f}\n(ρ={r['variance_ratio_rho']:.1f})",
+                    (f"{v:.0f}\n(ρ={r['variance_ratio_rho']:.1f})" if r["sigma_eval"] > 1e-6
+                     else f"{v:.0f}\n(ρ n/a)"),
                     ha="center", va=va, color="white", fontsize=7.5, fontweight="bold")
 
         ax.set_xticks(x)

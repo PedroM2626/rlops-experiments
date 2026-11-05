@@ -34,6 +34,9 @@ def main():
         act_dim = meta["act_dim"]
         print(f"\n--- {env_name} (obs={obs_dim}, act={act_dim}) ---")
 
+        # Same budget regimes as run_validation_100.py / run_multiseed_study.py (README Section 3.3)
+        n_gen_gp, n_roll_gp = (40, 8) if env_name == "Pendulum-v1" else (15, 3)
+
         results_env = []
         for alg_cfg in [
             dict(algo=LinearGP(obs_dim=obs_dim, act_dim=act_dim,
@@ -50,8 +53,8 @@ def main():
                 algo_name     = alg_cfg["name"],
                 env_name      = env_name,
                 family        = 2,
-                n_generations = 15,
-                n_rollouts    = 3,
+                n_generations = n_gen_gp,
+                n_rollouts    = n_roll_gp,
                 seed          = 42,
                 log_every     = 5,
             )

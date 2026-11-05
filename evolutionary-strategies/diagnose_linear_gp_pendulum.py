@@ -21,13 +21,6 @@ ENV = "Pendulum-v1"
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "results", "linear_gp_pendulum_diagnosis.json")
 
 
-class ReevalLinearGP(LinearGP):
-    """LinearGP whose elite is the best of the CURRENT generation (re-evaluated every generation)
-    instead of a best-so-far individual selected on one noisy evaluation."""
-    def tell(self, state, fitness):
-        return super().tell(state._replace(best_fitness=jnp.array(-jnp.inf)), fitness)
-
-
 def probe(algo, prog, n=2000, seed=0):
     rng = np.random.default_rng(seed)
     th = rng.uniform(-np.pi, np.pi, n)
@@ -44,7 +37,8 @@ def main(seeds, generations, rollouts, pop, prog_len, extra, reeval):
     meta = ENV_META[ENV]
     out = {"config": dict(generations=generations, rollouts=rollouts, pop=pop, prog_len=prog_len, extra_regs=extra, reeval_elite=reeval), "seeds": {}}
     for seed in seeds:
-        algo = (ReevalLinearGP if reeval else LinearGP)(obs_dim=3, act_dim=1, pop_size=pop, prog_len=prog_len, n_extra_regs=extra, mut_rate=0.15)
+        algo = LinearGP(obs_dim=3, act_dim=1, pop_size=pop, prog_len=prog_len, n_extra_regs=extra, mut_rate=0.15,
+                        best_so_far=not reeval)
         state = algo.init(jax.random.PRNGKey(seed))
         init_progs = np.asarray(state.programs)
         init_nonzero = np.mean([probe(algo, p, n=200)["frac_nonzero"] > 0 for p in init_progs])
@@ -70,6 +64,7 @@ if __name__ == "__main__":
     ap.add_argument("--pop", type=int, default=16)
     ap.add_argument("--prog-len", type=int, default=48)
     ap.add_argument("--extra", type=int, default=8)
-    ap.add_argument("--reeval", action="store_true")
+    ap.add_argument("--best-so-far", action="store_true",
+                    help="legacy elite rule (best fitness ever seen); default is the current-generation best")
     a = ap.parse_args()
-    main(a.seeds, a.generations, a.rollouts, a.pop, a.prog_len, a.extra, a.reeval)
+    main(a.seeds, a.generations, a.rollouts, a.pop, a.prog_len, a.extra, not a.best_so_far)

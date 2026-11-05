@@ -38,6 +38,8 @@ class RunResult:
         self.wall_time:    List[float] = []
         self.total_time:   float = 0.0
         self.n_evals:      int   = 0
+        # Mean of the search distribution at the end of training (CMA-ES, OpenAI-ES, PBIL); None otherwise.
+        self.final_mean_params: Any = None
         self.best_params:  Any   = None
         self.best_program: Any   = None
         self.policy_fn:    Any   = None
@@ -205,6 +207,8 @@ def run_param_based_v2(
 
     result.total_time = time.time() - t0
     result.best_params = np.array(algo.best_params(state))
+    final_mean = getattr(state, 'mean', getattr(state, 'mu', None))
+    result.final_mean_params = None if final_mean is None else np.array(final_mean)
     return result
 
 

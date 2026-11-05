@@ -1,0 +1,218 @@
+{
+ "OpenAI-ES": [
+  {
+   "seed": 42,
+   "best_mean": 138.27000427246094,
+   "best_succ": 4.0,
+   "dist_mean": 80.05000305175781,
+   "dist_succ": 0.0
+  },
+  {
+   "seed": 101,
+   "best_mean": 185.75,
+   "best_succ": 26.0,
+   "dist_mean": 65.52999877929688,
+   "dist_succ": 0.0
+  },
+  {
+   "seed": 202,
+   "best_mean": 470.05999755859375,
+   "best_succ": 72.0,
+   "dist_mean": 500.0,
+   "dist_succ": 100.0
+  },
+  {
+   "seed": 303,
+   "best_mean": 499.04998779296875,
+   "best_succ": 99.0,
+   "dist_mean": 500.0,
+   "dist_succ": 100.0
+  },
+  {
+   "seed": 404,
+   "best_mean": 292.260009765625,
+   "best_succ": 19.0,
+   "dist_mean": 233.11000061035156,
+   "dist_succ": 0.0
+  },
+  {
+   "seed": 505,
+   "best_mean": 500.0,
+   "best_succ": 100.0,
+   "dist_mean": 500.0,
+   "dist_succ": 100.0
+  },
+  {
+   "seed": 606,
+   "best_mean": 409.79998779296875,
+   "best_succ": 43.0,
+   "dist_mean": 500.0,
+   "dist_succ": 100.0
+  },
+  {
+   "seed": 707,
+   "best_mean": 500.0,
+   "best_succ": 100.0,
+   "dist_mean": 500.0,
+   "dist_succ": 100.0
+  },
+  {
+   "seed": 808,
+   "best_mean": 495.7699890136719,
+   "best_succ": 96.0,
+   "dist_mean": 500.0,
+   "dist_succ": 100.0
+  },
+  {
+   "seed": 909,
+   "best_mean": 304.1300048828125,
+   "best_succ": 56.99999999999999,
+   "dist_mean": 500.0,
+   "dist_succ": 100.0
+  }
+ ],
+ "CMA-ES": [
+  {
+   "seed": 42,
+   "best_mean": 500.0,
+   "best_succ": 100.0,
+   "dist_mean": 500.0,
+   "dist_succ": 100.0
+  },
+  {
+   "seed": 101,
+   "best_mean": 459.0299987792969,
+   "best_succ": 67.0,
+   "dist_mean": 370.4700012207031,
+   "dist_succ": 39.0
+  },
+  {
+   "seed": 202,
+   "best_mean": 486.0299987792969,
+   "best_succ": 92.0,
+   "dist_mean": 311.6000061035156,
+   "dist_succ": 1.0
+  },
+  {
+   "seed": 303,
+   "best_mean": 484.2300109863281,
+   "best_succ": 80.0,
+   "dist_mean": 500.0,
+   "dist_succ": 100.0
+  },
+  {
+   "seed": 404,
+   "best_mean": 490.5899963378906,
+   "best_succ": 98.0,
+   "dist_mean": 500.0,
+   "dist_succ": 100.0
+  },
+  {
+   "seed": 505,
+   "best_mean": 467.1600036621094,
+   "best_succ": 84.0,
+   "dist_mean": 144.2100067138672,
+   "dist_succ": 0.0
+  },
+  {
+   "seed": 606,
+   "best_mean": 500.0,
+   "best_succ": 100.0,
+   "dist_mean": 266.3900146484375,
+   "dist_succ": 0.0
+  },
+  {
+   "seed": 707,
+   "best_mean": 499.69000244140625,
+   "best_succ": 99.0,
+   "dist_mean": 497.82000732421875,
+   "dist_succ": 97.0
+  },
+  {
+   "seed": 808,
+   "best_mean": 419.760009765625,
+   "best_succ": 70.0,
+   "dist_mean": 486.7099914550781,
+   "dist_succ": 83.0
+  },
+  {
+   "seed": 909,
+   "best_mean": 489.0899963378906,
+   "best_succ": 96.0,
+   "dist_mean": 490.8900146484375,
+   "dist_succ": 92.0
+  }
+ ],
+ "PBIL": [
+  {
+   "seed": 42,
+   "best_mean": 412.8999938964844,
+   "best_succ": 28.000000000000004,
+   "dist_mean": 9.34000015258789,
+   "dist_succ": 0.0
+  },
+  {
+   "seed": 101,
+   "best_mean": 454.9700012207031,
+   "best_succ": 81.0,
+   "dist_mean": 9.369999885559082,
+   "dist_succ": 0.0
+  },
+  {
+   "seed": 202,
+   "best_mean": 327.1700134277344,
+   "best_succ": 44.0,
+   "dist_mean": 18.799999237060547,
+   "dist_succ": 0.0
+  },
+  {
+   "seed": 303,
+   "best_mean": 79.23999786376953,
+   "best_succ": 1.0,
+   "dist_mean": 11.210000038146973,
+   "dist_succ": 0.0
+  },
+  {
+   "seed": 404,
+   "best_mean": 500.0,
+   "best_succ": 100.0,
+   "dist_mean": 40.04999923706055,
+   "dist_succ": 0.0
+  },
+  {
+   "seed": 505,
+   "best_mean": 304.9800109863281,
+   "best_succ": 2.0,
+   "dist_mean": 12.850000381469727,
+   "dist_succ": 0.0
+  },
+  {
+   "seed": 606,
+   "best_mean": 432.239990234375,
+   "best_succ": 45.0,
+   "dist_mean": 13.15999984741211,
+   "dist_succ": 0.0
+  },
+  {
+   "seed": 707,
+   "best_mean": 274.9700012207031,
+   "best_succ": 19.0,
+   "dist_mean": 9.34000015258789,
+   "dist_succ": 0.0
+  },
+  {
+   "seed": 808,
+   "best_mean": 372.3800048828125,
+   "best_succ": 64.0,
+   "dist_mean": 9.34000015258789,
+   "dist_succ": 0.0
+  },
+  {
+   "seed": 909,
+   "best_mean": 294.95001220703125,
+   "best_succ": 3.0,
+   "dist_mean": 24.059999465942383,
+   "dist_succ": 0.0
+  }
+ ]
+}

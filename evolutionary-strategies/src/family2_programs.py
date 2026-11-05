@@ -179,7 +179,13 @@ class LinearGP:
                  prog_len: int = 64,       # number of instructions per program
                  n_extra_regs: int = 16,   # auxiliary registers
                  mut_rate: float = 0.15,
-                 cx_prob: float = 0.7):
+                 cx_prob: float = 0.7,
+                 best_so_far: bool = False):
+        # best_so_far=False (default): the reported best program is the best of the CURRENT
+        # generation, which stays in the population and is re-evaluated on fresh episodes.
+        # best_so_far=True: legacy rule, the program with the highest single (noisy) fitness
+        # ever observed is retained; on noisy fitness this retains lucky individuals.
+        self.best_so_far  = best_so_far
         self.obs_dim      = obs_dim
         self.act_dim      = act_dim
         self.pop_size     = pop_size
@@ -260,7 +266,7 @@ class LinearGP:
         # Elite
         best_idx   = int(np.argmax(fitness_np))
         best_fit   = float(fitness_np[best_idx])
-        if best_fit > float(state.best_fitness):
+        if (not self.best_so_far) or best_fit > float(state.best_fitness):
             best_prog = programs[best_idx].copy()
             best_fit_ = jnp.array(best_fit)
         else:
@@ -324,7 +330,9 @@ class CartesianGP:
     def __init__(self, obs_dim: int, act_dim: int,
                  pop_size: int = 8,   # (1+λ): typically 1 parent + 7 offspring
                  n_cols: int = 40,    # number of computational nodes
-                 mut_rate: float = 0.05):
+                 mut_rate: float = 0.05,
+                 best_so_far: bool = False):
+        self.best_so_far = best_so_far  # see LinearGP
         self.obs_dim  = obs_dim
         self.act_dim  = act_dim
         self.pop_size = pop_size
@@ -398,7 +406,7 @@ class CartesianGP:
         best_fit = float(fitness_np[best_idx])
         parent   = programs[best_idx].copy()
 
-        if best_fit > float(state.best_fitness):
+        if (not self.best_so_far) or best_fit > float(state.best_fitness):
             best_prog = parent.copy()
             best_fit_ = jnp.array(best_fit)
         else:

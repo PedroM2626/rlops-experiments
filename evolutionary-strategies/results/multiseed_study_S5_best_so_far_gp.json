@@ -1,0 +1,1094 @@
+[
+  {
+    "algorithm": "SimpleGA",
+    "family": 1,
+    "environment": "CartPole-v1",
+    "n_seeds": 5,
+    "seeds": [
+      42,
+      101,
+      202,
+      303,
+      404
+    ],
+    "mean_across_seeds": 310.08,
+    "sem_across_seeds": 82.74,
+    "sigma_train": 185.02,
+    "sigma_eval": 99.83,
+    "variance_ratio_rho": 1.853,
+    "stratified_ci95_low": 167.12,
+    "stratified_ci95_high": 458.09,
+    "iqm": 345.61,
+    "success_rate_pct": 50.2,
+    "mean_train_best": 463.7,
+    "mean_optimism_gap": 153.62,
+    "mean_train_time_s": 6.8,
+    "per_seed_means": [
+      318.82,
+      106.4,
+      500.0,
+      140.43,
+      484.75
+    ],
+    "per_seed_train_bests": [
+      318.5,
+      500.0,
+      500.0,
+      500.0,
+      500.0
+    ]
+  },
+  {
+    "algorithm": "DE",
+    "family": 1,
+    "environment": "CartPole-v1",
+    "n_seeds": 5,
+    "seeds": [
+      42,
+      101,
+      202,
+      303,
+      404
+    ],
+    "mean_across_seeds": 283.3,
+    "sem_across_seeds": 66.85,
+    "sigma_train": 149.48,
+    "sigma_eval": 104.73,
+    "variance_ratio_rho": 1.427,
+    "stratified_ci95_low": 171.68,
+    "stratified_ci95_high": 402.0,
+    "iqm": 272.51,
+    "success_rate_pct": 38.8,
+    "mean_train_best": 474.4,
+    "mean_optimism_gap": 191.1,
+    "mean_train_time_s": 6.33,
+    "per_seed_means": [
+      123.84,
+      172.24,
+      270.13,
+      500.0,
+      350.27
+    ],
+    "per_seed_train_bests": [
+      500.0,
+      372.0,
+      500.0,
+      500.0,
+      500.0
+    ]
+  },
+  {
+    "algorithm": "OpenAI-ES",
+    "family": 1,
+    "environment": "CartPole-v1",
+    "n_seeds": 5,
+    "seeds": [
+      42,
+      101,
+      202,
+      303,
+      404
+    ],
+    "mean_across_seeds": 317.08,
+    "sem_across_seeds": 72.92,
+    "sigma_train": 163.06,
+    "sigma_eval": 105.01,
+    "variance_ratio_rho": 1.553,
+    "stratified_ci95_low": 186.77,
+    "stratified_ci95_high": 445.3,
+    "iqm": 350.16,
+    "success_rate_pct": 44.0,
+    "mean_train_best": 483.9,
+    "mean_optimism_gap": 166.82,
+    "mean_train_time_s": 6.16,
+    "per_seed_means": [
+      138.27,
+      185.75,
+      470.06,
+      499.05,
+      292.26
+    ],
+    "per_seed_train_bests": [
+      419.5,
+      500.0,
+      500.0,
+      500.0,
+      500.0
+    ]
+  },
+  {
+    "algorithm": "CMA-ES",
+    "family": 3,
+    "environment": "CartPole-v1",
+    "n_seeds": 5,
+    "seeds": [
+      42,
+      101,
+      202,
+      303,
+      404
+    ],
+    "mean_across_seeds": 483.98,
+    "sem_across_seeds": 6.81,
+    "sigma_train": 15.22,
+    "sigma_eval": 42.96,
+    "variance_ratio_rho": 0.354,
+    "stratified_ci95_low": 470.55,
+    "stratified_ci95_high": 494.53,
+    "iqm": 500.0,
+    "success_rate_pct": 87.4,
+    "mean_train_best": 500.0,
+    "mean_optimism_gap": 16.02,
+    "mean_train_time_s": 25.82,
+    "per_seed_means": [
+      500.0,
+      459.03,
+      486.03,
+      484.23,
+      490.59
+    ],
+    "per_seed_train_bests": [
+      500.0,
+      500.0,
+      500.0,
+      500.0,
+      500.0
+    ]
+  },
+  {
+    "algorithm": "PBIL",
+    "family": 3,
+    "environment": "CartPole-v1",
+    "n_seeds": 5,
+    "seeds": [
+      42,
+      101,
+      202,
+      303,
+      404
+    ],
+    "mean_across_seeds": 354.86,
+    "sem_across_seeds": 74.56,
+    "sigma_train": 166.73,
+    "sigma_eval": 84.61,
+    "variance_ratio_rho": 1.97,
+    "stratified_ci95_low": 210.58,
+    "stratified_ci95_high": 462.87,
+    "iqm": 423.78,
+    "success_rate_pct": 50.8,
+    "mean_train_best": 391.1,
+    "mean_optimism_gap": 36.24,
+    "mean_train_time_s": 5.42,
+    "per_seed_means": [
+      412.9,
+      454.97,
+      327.17,
+      79.24,
+      500.0
+    ],
+    "per_seed_train_bests": [
+      464.5,
+      362.0,
+      360.5,
+      268.5,
+      500.0
+    ]
+  },
+  {
+    "algorithm": "LinearGP",
+    "family": 2,
+    "environment": "CartPole-v1",
+    "n_seeds": 5,
+    "seeds": [
+      42,
+      101,
+      202,
+      303,
+      404
+    ],
+    "mean_across_seeds": 174.6,
+    "sem_across_seeds": 22.0,
+    "sigma_train": 49.2,
+    "sigma_eval": 53.98,
+    "variance_ratio_rho": 0.911,
+    "stratified_ci95_low": 128.81,
+    "stratified_ci95_high": 201.35,
+    "iqm": 179.5,
+    "success_rate_pct": 0.4,
+    "mean_train_best": 232.67,
+    "mean_optimism_gap": 58.07,
+    "mean_train_time_s": 1.26,
+    "per_seed_means": [
+      184.65,
+      200.3,
+      200.3,
+      87.43,
+      200.3
+    ],
+    "per_seed_train_bests": [
+      162.67,
+      238.67,
+      261.33,
+      249.0,
+      251.67
+    ]
+  },
+  {
+    "algorithm": "CartesianGP",
+    "family": 2,
+    "environment": "CartPole-v1",
+    "n_seeds": 5,
+    "seeds": [
+      42,
+      101,
+      202,
+      303,
+      404
+    ],
+    "mean_across_seeds": 306.65,
+    "sem_across_seeds": 66.82,
+    "sigma_train": 149.41,
+    "sigma_eval": 77.25,
+    "variance_ratio_rho": 1.934,
+    "stratified_ci95_low": 189.37,
+    "stratified_ci95_high": 415.51,
+    "iqm": 322.76,
+    "success_rate_pct": 31.0,
+    "mean_train_best": 375.2,
+    "mean_optimism_gap": 68.55,
+    "mean_train_time_s": 1.01,
+    "per_seed_means": [
+      482.68,
+      352.22,
+      353.59,
+      267.14,
+      77.6
+    ],
+    "per_seed_train_bests": [
+      500.0,
+      500.0,
+      439.33,
+      339.0,
+      97.67
+    ]
+  },
+  {
+    "algorithm": "SimpleGA",
+    "family": 1,
+    "environment": "Acrobot-v1",
+    "n_seeds": 5,
+    "seeds": [
+      42,
+      101,
+      202,
+      303,
+      404
+    ],
+    "mean_across_seeds": -86.58,
+    "sem_across_seeds": 1.09,
+    "sigma_train": 2.44,
+    "sigma_eval": 27.8,
+    "variance_ratio_rho": 0.088,
+    "stratified_ci95_low": -89.8,
+    "stratified_ci95_high": -83.6,
+    "iqm": -81.34,
+    "success_rate_pct": 82.8,
+    "mean_train_best": -65.2,
+    "mean_optimism_gap": 21.38,
+    "mean_train_time_s": 3.11,
+    "per_seed_means": [
+      -85.55,
+      -84.42,
+      -84.51,
+      -89.11,
+      -89.3
+    ],
+    "per_seed_train_bests": [
+      -64.0,
+      -69.0,
+      -65.0,
+      -65.0,
+      -63.0
+    ]
+  },
+  {
+    "algorithm": "DE",
+    "family": 1,
+    "environment": "Acrobot-v1",
+    "n_seeds": 5,
+    "seeds": [
+      42,
+      101,
+      202,
+      303,
+      404
+    ],
+    "mean_across_seeds": -101.54,
+    "sem_across_seeds": 12.74,
+    "sigma_train": 28.49,
+    "sigma_eval": 54.33,
+    "variance_ratio_rho": 0.524,
+    "stratified_ci95_low": -126.95,
+    "stratified_ci95_high": -85.5,
+    "iqm": -84.68,
+    "success_rate_pct": 80.2,
+    "mean_train_best": -71.2,
+    "mean_optimism_gap": 30.34,
+    "mean_train_time_s": 3.18,
+    "per_seed_means": [
+      -93.68,
+      -151.92,
+      -82.0,
+      -89.58,
+      -90.53
+    ],
+    "per_seed_train_bests": [
+      -78.0,
+      -73.0,
+      -68.0,
+      -64.5,
+      -72.5
+    ]
+  },
+  {
+    "algorithm": "OpenAI-ES",
+    "family": 1,
+    "environment": "Acrobot-v1",
+    "n_seeds": 5,
+    "seeds": [
+      42,
+      101,
+      202,
+      303,
+      404
+    ],
+    "mean_across_seeds": -92.47,
+    "sem_across_seeds": 6.57,
+    "sigma_train": 14.7,
+    "sigma_eval": 23.55,
+    "variance_ratio_rho": 0.624,
+    "stratified_ci95_low": -105.69,
+    "stratified_ci95_high": -84.49,
+    "iqm": -85.82,
+    "success_rate_pct": 74.4,
+    "mean_train_best": -73.1,
+    "mean_optimism_gap": 19.37,
+    "mean_train_time_s": 3.79,
+    "per_seed_means": [
+      -85.85,
+      -86.66,
+      -85.14,
+      -85.94,
+      -118.75
+    ],
+    "per_seed_train_bests": [
+      -64.0,
+      -63.5,
+      -63.5,
+      -64.5,
+      -110.0
+    ]
+  },
+  {
+    "algorithm": "CMA-ES",
+    "family": 3,
+    "environment": "Acrobot-v1",
+    "n_seeds": 5,
+    "seeds": [
+      42,
+      101,
+      202,
+      303,
+      404
+    ],
+    "mean_across_seeds": -105.73,
+    "sem_across_seeds": 18.15,
+    "sigma_train": 40.59,
+    "sigma_eval": 56.52,
+    "variance_ratio_rho": 0.718,
+    "stratified_ci95_low": -144.31,
+    "stratified_ci95_high": -80.39,
+    "iqm": -82.86,
+    "success_rate_pct": 79.0,
+    "mean_train_best": -64.3,
+    "mean_optimism_gap": 41.43,
+    "mean_train_time_s": 16.25,
+    "per_seed_means": [
+      -77.79,
+      -81.03,
+      -174.85,
+      -85.53,
+      -109.45
+    ],
+    "per_seed_train_bests": [
+      -64.0,
+      -63.5,
+      -64.5,
+      -64.5,
+      -65.0
+    ]
+  },
+  {
+    "algorithm": "PBIL",
+    "family": 3,
+    "environment": "Acrobot-v1",
+    "n_seeds": 5,
+    "seeds": [
+      42,
+      101,
+      202,
+      303,
+      404
+    ],
+    "mean_across_seeds": -131.86,
+    "sem_across_seeds": 34.0,
+    "sigma_train": 76.03,
+    "sigma_eval": 66.49,
+    "variance_ratio_rho": 1.144,
+    "stratified_ci95_low": -200.21,
+    "stratified_ci95_high": -93.31,
+    "iqm": -95.21,
+    "success_rate_pct": 60.2,
+    "mean_train_best": -76.5,
+    "mean_optimism_gap": 55.36,
+    "mean_train_time_s": 3.69,
+    "per_seed_means": [
+      -101.9,
+      -87.66,
+      -100.18,
+      -102.13,
+      -267.45
+    ],
+    "per_seed_train_bests": [
+      -75.0,
+      -60.0,
+      -82.0,
+      -86.0,
+      -79.5
+    ]
+  },
+  {
+    "algorithm": "LinearGP",
+    "family": 2,
+    "environment": "Acrobot-v1",
+    "n_seeds": 5,
+    "seeds": [
+      42,
+      101,
+      202,
+      303,
+      404
+    ],
+    "mean_across_seeds": -103.64,
+    "sem_across_seeds": 15.63,
+    "sigma_train": 34.94,
+    "sigma_eval": 26.73,
+    "variance_ratio_rho": 1.307,
+    "stratified_ci95_low": -134.41,
+    "stratified_ci95_high": -82.49,
+    "iqm": -90.06,
+    "success_rate_pct": 64.0,
+    "mean_train_best": -86.33,
+    "mean_optimism_gap": 17.3,
+    "mean_train_time_s": 18.87,
+    "per_seed_means": [
+      -81.66,
+      -86.52,
+      -104.5,
+      -81.66,
+      -163.84
+    ],
+    "per_seed_train_bests": [
+      -75.0,
+      -68.0,
+      -85.33,
+      -73.33,
+      -130.0
+    ]
+  },
+  {
+    "algorithm": "CartesianGP",
+    "family": 2,
+    "environment": "Acrobot-v1",
+    "n_seeds": 5,
+    "seeds": [
+      42,
+      101,
+      202,
+      303,
+      404
+    ],
+    "mean_across_seeds": -215.16,
+    "sem_across_seeds": 75.79,
+    "sigma_train": 169.48,
+    "sigma_eval": 34.58,
+    "variance_ratio_rho": 4.901,
+    "stratified_ci95_low": -364.82,
+    "stratified_ci95_high": -106.05,
+    "iqm": -154.97,
+    "success_rate_pct": 31.6,
+    "mean_train_best": -194.27,
+    "mean_optimism_gap": 20.89,
+    "mean_train_time_s": 29.01,
+    "per_seed_means": [
+      -93.56,
+      -93.02,
+      -500.0,
+      -234.63,
+      -154.57
+    ],
+    "per_seed_train_bests": [
+      -76.67,
+      -76.67,
+      -500.0,
+      -183.33,
+      -134.67
+    ]
+  },
+  {
+    "algorithm": "SimpleGA",
+    "family": 1,
+    "environment": "Pendulum-v1",
+    "n_seeds": 5,
+    "seeds": [
+      42,
+      101,
+      202,
+      303,
+      404
+    ],
+    "mean_across_seeds": -444.26,
+    "sem_across_seeds": 106.87,
+    "sigma_train": 238.98,
+    "sigma_eval": 387.93,
+    "variance_ratio_rho": 0.616,
+    "stratified_ci95_low": -664.4,
+    "stratified_ci95_high": -316.79,
+    "iqm": -288.52,
+    "success_rate_pct": 37.2,
+    "mean_train_best": -125.97,
+    "mean_optimism_gap": 318.29,
+    "mean_train_time_s": 18.39,
+    "per_seed_means": [
+      -352.97,
+      -340.88,
+      -871.09,
+      -316.14,
+      -340.23
+    ],
+    "per_seed_train_bests": [
+      -157.84,
+      -98.11,
+      -130.51,
+      -111.59,
+      -131.8
+    ]
+  },
+  {
+    "algorithm": "DE",
+    "family": 1,
+    "environment": "Pendulum-v1",
+    "n_seeds": 5,
+    "seeds": [
+      42,
+      101,
+      202,
+      303,
+      404
+    ],
+    "mean_across_seeds": -775.44,
+    "sem_across_seeds": 48.79,
+    "sigma_train": 109.11,
+    "sigma_eval": 565.39,
+    "variance_ratio_rho": 0.193,
+    "stratified_ci95_low": -874.32,
+    "stratified_ci95_high": -677.94,
+    "iqm": -748.06,
+    "success_rate_pct": 26.0,
+    "mean_train_best": -406.31,
+    "mean_optimism_gap": 369.13,
+    "mean_train_time_s": 8.51,
+    "per_seed_means": [
+      -714.67,
+      -848.39,
+      -696.32,
+      -931.58,
+      -686.21
+    ],
+    "per_seed_train_bests": [
+      -572.58,
+      -279.26,
+      -546.43,
+      -256.83,
+      -376.44
+    ]
+  },
+  {
+    "algorithm": "OpenAI-ES",
+    "family": 1,
+    "environment": "Pendulum-v1",
+    "n_seeds": 5,
+    "seeds": [
+      42,
+      101,
+      202,
+      303,
+      404
+    ],
+    "mean_across_seeds": -1025.61,
+    "sem_across_seeds": 14.86,
+    "sigma_train": 33.23,
+    "sigma_eval": 184.91,
+    "variance_ratio_rho": 0.18,
+    "stratified_ci95_low": -1059.85,
+    "stratified_ci95_high": -998.08,
+    "iqm": -1012.01,
+    "success_rate_pct": 0.0,
+    "mean_train_best": -873.18,
+    "mean_optimism_gap": 152.43,
+    "mean_train_time_s": 8.36,
+    "per_seed_means": [
+      -1075.51,
+      -995.83,
+      -1008.05,
+      -1005.27,
+      -1043.4
+    ],
+    "per_seed_train_bests": [
+      -885.38,
+      -897.17,
+      -929.11,
+      -889.45,
+      -764.79
+    ]
+  },
+  {
+    "algorithm": "CMA-ES",
+    "family": 3,
+    "environment": "Pendulum-v1",
+    "n_seeds": 5,
+    "seeds": [
+      42,
+      101,
+      202,
+      303,
+      404
+    ],
+    "mean_across_seeds": -452.54,
+    "sem_across_seeds": 122.26,
+    "sigma_train": 273.39,
+    "sigma_eval": 345.45,
+    "variance_ratio_rho": 0.791,
+    "stratified_ci95_low": -666.12,
+    "stratified_ci95_high": -247.93,
+    "iqm": -288.35,
+    "success_rate_pct": 38.6,
+    "mean_train_best": -185.97,
+    "mean_optimism_gap": 266.57,
+    "mean_train_time_s": 52.32,
+    "per_seed_means": [
+      -268.67,
+      -701.44,
+      -221.47,
+      -274.77,
+      -796.35
+    ],
+    "per_seed_train_bests": [
+      -229.74,
+      -199.19,
+      -167.59,
+      -91.3,
+      -242.01
+    ]
+  },
+  {
+    "algorithm": "PBIL",
+    "family": 3,
+    "environment": "Pendulum-v1",
+    "n_seeds": 5,
+    "seeds": [
+      42,
+      101,
+      202,
+      303,
+      404
+    ],
+    "mean_across_seeds": -789.78,
+    "sem_across_seeds": 91.63,
+    "sigma_train": 204.89,
+    "sigma_eval": 276.89,
+    "variance_ratio_rho": 0.74,
+    "stratified_ci95_low": -947.13,
+    "stratified_ci95_high": -625.84,
+    "iqm": -761.61,
+    "success_rate_pct": 6.2,
+    "mean_train_best": -676.19,
+    "mean_optimism_gap": 113.6,
+    "mean_train_time_s": 3.26,
+    "per_seed_means": [
+      -641.46,
+      -795.55,
+      -912.71,
+      -1055.13,
+      -544.07
+    ],
+    "per_seed_train_bests": [
+      -614.96,
+      -762.66,
+      -825.89,
+      -766.27,
+      -411.15
+    ]
+  },
+  {
+    "algorithm": "LinearGP",
+    "family": 2,
+    "environment": "Pendulum-v1",
+    "n_seeds": 5,
+    "seeds": [
+      42,
+      101,
+      202,
+      303,
+      404
+    ],
+    "mean_across_seeds": -1247.9,
+    "sem_across_seeds": 0.0,
+    "sigma_train": 0.0,
+    "sigma_eval": 393.71,
+    "variance_ratio_rho": 0.0,
+    "stratified_ci95_low": -1281.84,
+    "stratified_ci95_high": -1213.84,
+    "iqm": -1260.89,
+    "success_rate_pct": 0.0,
+    "mean_train_best": -892.05,
+    "mean_optimism_gap": 355.85,
+    "mean_train_time_s": 1.57,
+    "per_seed_means": [
+      -1247.9,
+      -1247.9,
+      -1247.9,
+      -1247.9,
+      -1247.9
+    ],
+    "per_seed_train_bests": [
+      -895.69,
+      -896.07,
+      -860.15,
+      -914.97,
+      -893.39
+    ]
+  },
+  {
+    "algorithm": "CartesianGP",
+    "family": 2,
+    "environment": "Pendulum-v1",
+    "n_seeds": 5,
+    "seeds": [
+      42,
+      101,
+      202,
+      303,
+      404
+    ],
+    "mean_across_seeds": -1016.59,
+    "sem_across_seeds": 118.96,
+    "sigma_train": 266.0,
+    "sigma_eval": 308.83,
+    "variance_ratio_rho": 0.861,
+    "stratified_ci95_low": -1207.92,
+    "stratified_ci95_high": -799.79,
+    "iqm": -966.27,
+    "success_rate_pct": 0.0,
+    "mean_train_best": -757.69,
+    "mean_optimism_gap": 258.9,
+    "mean_train_time_s": 1.15,
+    "per_seed_means": [
+      -940.34,
+      -597.92,
+      -1231.08,
+      -1247.9,
+      -1065.71
+    ],
+    "per_seed_train_bests": [
+      -642.25,
+      -535.33,
+      -881.85,
+      -914.97,
+      -814.06
+    ]
+  },
+  {
+    "algorithm": "SimpleGA",
+    "family": 1,
+    "environment": "MountainCarContinuous-v0",
+    "n_seeds": 5,
+    "seeds": [
+      42,
+      101,
+      202,
+      303,
+      404
+    ],
+    "mean_across_seeds": 86.36,
+    "sem_across_seeds": 4.97,
+    "sigma_train": 11.11,
+    "sigma_eval": 14.39,
+    "variance_ratio_rho": 0.772,
+    "stratified_ci95_low": 76.55,
+    "stratified_ci95_high": 91.98,
+    "iqm": 91.99,
+    "success_rate_pct": 69.4,
+    "mean_train_best": 93.39,
+    "mean_optimism_gap": 7.04,
+    "mean_train_time_s": 2.45,
+    "per_seed_means": [
+      91.84,
+      66.59,
+      92.17,
+      89.42,
+      91.77
+    ],
+    "per_seed_train_bests": [
+      94.17,
+      92.75,
+      93.59,
+      93.05,
+      93.41
+    ]
+  },
+  {
+    "algorithm": "DE",
+    "family": 1,
+    "environment": "MountainCarContinuous-v0",
+    "n_seeds": 5,
+    "seeds": [
+      42,
+      101,
+      202,
+      303,
+      404
+    ],
+    "mean_across_seeds": 91.44,
+    "sem_across_seeds": 1.8,
+    "sigma_train": 4.03,
+    "sigma_eval": 1.61,
+    "variance_ratio_rho": 2.505,
+    "stratified_ci95_low": 88.05,
+    "stratified_ci95_high": 94.4,
+    "iqm": 92.06,
+    "success_rate_pct": 60.2,
+    "mean_train_best": 91.42,
+    "mean_optimism_gap": -0.02,
+    "mean_train_time_s": 2.38,
+    "per_seed_means": [
+      85.68,
+      88.81,
+      95.11,
+      93.46,
+      94.13
+    ],
+    "per_seed_train_bests": [
+      85.5,
+      89.0,
+      95.14,
+      93.6,
+      93.84
+    ]
+  },
+  {
+    "algorithm": "OpenAI-ES",
+    "family": 1,
+    "environment": "MountainCarContinuous-v0",
+    "n_seeds": 5,
+    "seeds": [
+      42,
+      101,
+      202,
+      303,
+      404
+    ],
+    "mean_across_seeds": -0.0,
+    "sem_across_seeds": 0.0,
+    "sigma_train": 0.0,
+    "sigma_eval": 0.0,
+    "variance_ratio_rho": 2.114,
+    "stratified_ci95_low": -0.0,
+    "stratified_ci95_high": -0.0,
+    "iqm": -0.0,
+    "success_rate_pct": 0.0,
+    "mean_train_best": -0.0,
+    "mean_optimism_gap": 0.0,
+    "mean_train_time_s": 2.41,
+    "per_seed_means": [
+      -0.0,
+      -0.0,
+      -0.0,
+      -0.0,
+      -0.0
+    ],
+    "per_seed_train_bests": [
+      -0.0,
+      -0.0,
+      -0.0,
+      -0.0,
+      -0.0
+    ]
+  },
+  {
+    "algorithm": "CMA-ES",
+    "family": 3,
+    "environment": "MountainCarContinuous-v0",
+    "n_seeds": 5,
+    "seeds": [
+      42,
+      101,
+      202,
+      303,
+      404
+    ],
+    "mean_across_seeds": 82.05,
+    "sem_across_seeds": 9.2,
+    "sigma_train": 20.58,
+    "sigma_eval": 21.44,
+    "variance_ratio_rho": 0.96,
+    "stratified_ci95_low": 65.14,
+    "stratified_ci95_high": 95.63,
+    "iqm": 95.65,
+    "success_rate_pct": 76.0,
+    "mean_train_best": 94.25,
+    "mean_optimism_gap": 12.2,
+    "mean_train_time_s": 10.29,
+    "per_seed_means": [
+      96.43,
+      95.07,
+      94.48,
+      75.73,
+      48.53
+    ],
+    "per_seed_train_bests": [
+      95.83,
+      96.83,
+      94.48,
+      97.67,
+      86.42
+    ]
+  },
+  {
+    "algorithm": "PBIL",
+    "family": 3,
+    "environment": "MountainCarContinuous-v0",
+    "n_seeds": 5,
+    "seeds": [
+      42,
+      101,
+      202,
+      303,
+      404
+    ],
+    "mean_across_seeds": 93.86,
+    "sem_across_seeds": 0.88,
+    "sigma_train": 1.97,
+    "sigma_eval": 3.79,
+    "variance_ratio_rho": 0.52,
+    "stratified_ci95_low": 92.39,
+    "stratified_ci95_high": 95.71,
+    "iqm": 94.21,
+    "success_rate_pct": 96.8,
+    "mean_train_best": 94.63,
+    "mean_optimism_gap": 0.77,
+    "mean_train_time_s": 2.5,
+    "per_seed_means": [
+      93.87,
+      92.4,
+      93.06,
+      97.25,
+      92.73
+    ],
+    "per_seed_train_bests": [
+      94.22,
+      94.22,
+      93.12,
+      97.18,
+      94.44
+    ]
+  },
+  {
+    "algorithm": "LinearGP",
+    "family": 2,
+    "environment": "MountainCarContinuous-v0",
+    "n_seeds": 5,
+    "seeds": [
+      42,
+      101,
+      202,
+      303,
+      404
+    ],
+    "mean_across_seeds": 0.0,
+    "sem_across_seeds": 0.0,
+    "sigma_train": 0.0,
+    "sigma_eval": 0.0,
+    "variance_ratio_rho": 0.0,
+    "stratified_ci95_low": 0.0,
+    "stratified_ci95_high": 0.0,
+    "iqm": 0.0,
+    "success_rate_pct": 0.0,
+    "mean_train_best": 0.0,
+    "mean_optimism_gap": 0.0,
+    "mean_train_time_s": 1.39,
+    "per_seed_means": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "per_seed_train_bests": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ]
+  },
+  {
+    "algorithm": "CartesianGP",
+    "family": 2,
+    "environment": "MountainCarContinuous-v0",
+    "n_seeds": 5,
+    "seeds": [
+      42,
+      101,
+      202,
+      303,
+      404
+    ],
+    "mean_across_seeds": -0.0,
+    "sem_across_seeds": 0.0,
+    "sigma_train": 0.0,
+    "sigma_eval": 0.0,
+    "variance_ratio_rho": 2.285,
+    "stratified_ci95_low": -0.0,
+    "stratified_ci95_high": 0.0,
+    "iqm": -0.0,
+    "success_rate_pct": 0.0,
+    "mean_train_best": -0.0,
+    "mean_optimism_gap": 0.0,
+    "mean_train_time_s": 0.95,
+    "per_seed_means": [
+      -0.0,
+      -0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "per_seed_train_bests": [
+      -0.0,
+      -0.0,
+      0.0,
+      0.0,
+      0.0
+    ]
+  }
+]

@@ -63,7 +63,7 @@ def table_4_2():
 
 def table_5_2():
     V = {(r["algorithm"], r["environment"]): r for r in csv.DictReader(open(os.path.join(R, "validation_100_summary.csv"), encoding="utf-8"))}
-    out = ["| Family | Algorithm | Environment | Train Best ($N \\le 3$) | Test Mean $\\pm$ SEM | 95% Bootstrap CI | Median | IQR | Std Dev | SNR | Optimism Gap ($\\Delta$) | Success Rate (%) |",
+    out = ["| Family | Algorithm | Environment | Train Best (best noisy training fitness) | Test Mean $\\pm$ SEM | 95% Bootstrap CI | Median | IQR | Std Dev | SNR | Optimism Gap ($\\Delta$) | Success Rate (%) |",
            "|:---:|:---|:---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|"]
     sep = "|:---:|:---|:---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|"
     for i, env in enumerate(ENVS):

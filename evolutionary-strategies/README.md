@@ -138,7 +138,7 @@ To ensure reproducibility and formal clarity, the exact interaction budget with 
 
 #### A. Temporal Horizon per Episode ($H = \text{max\_steps}$)
 In each environment an episode has a maximum duration bounded by the horizon $H$:
-* **CartPole-v1**: $H = 500$ steps (success criterion: stay balanced for 500 steps, cumulative return = +500).
+* **CartPole-v1**: $H = 500$ steps (maximum return +500; the success threshold used in Section 5 is $R \ge 475$).
 * **Acrobot-v1**: $H = 500$ steps (cost of $-1.0$ per step until the tip reaches the target height; optimum around $-64$ to $-70$ steps).
 * **Pendulum-v1**: $H = 200$ steps (continuous penalty on normalized angle, angular velocity and torque effort; optimum around $-150$ to $-200$).
 * **MountainCarContinuous-v0**: $H = 999$ steps (per-step action cost, plus $+100$ upon reaching the top of the right hill; optimum around $+90$ to $+95$).
@@ -246,7 +246,7 @@ To quantify the true generalization capability and epistemic uncertainty, the be
 Raw empirical data extracted directly from `results/validation_100_summary.csv`:
 
 <!-- BEGIN:table_5_2 -->
-| Family | Algorithm | Environment | Train Best ($N \le 3$) | Test Mean $\pm$ SEM | 95% Bootstrap CI | Median | IQR | Std Dev | SNR | Optimism Gap ($\Delta$) | Success Rate (%) |
+| Family | Algorithm | Environment | Train Best (best noisy training fitness) | Test Mean $\pm$ SEM | 95% Bootstrap CI | Median | IQR | Std Dev | SNR | Optimism Gap ($\Delta$) | Success Rate (%) |
 |:---:|:---|:---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
 | **F1** | **SimpleGA** | CartPole-v1 | 318.50 | 318.82 $\pm$ 19.43 | [281.37, 356.55] | 500.00 | 395.50 | 194.29 | 1.64 | −0.32 | 51.0% |
 | **F1** | **DE** | CartPole-v1 | 500.00 | 123.84 $\pm$ 8.48 | [108.68, 141.80] | 101.00 | 40.00 | 84.79 | 1.46 | +376.16 | 2.0% |
@@ -362,7 +362,7 @@ To rigorously determine whether the remaining performance deficit on `Pendulum-v
 * **Measured**: over 10 seeds, $G=250$ is better than $G=100$ in 6 seeds, equal in 1 and worse in 3. The mean paired change is $+56.3$ with standard deviation $272.3$ ($t \approx 0.65$, Wilcoxon signed-rank $p \approx 0.57$), i.e. **no detectable difference** between $G=100$ and $G=250$. Between-seed dispersion is unchanged ($\approx 247$ at both budgets). Mean success is $37.6\%$ at $G=100$ and $39.5\%$ at $G=250$.
 * **Correction of an earlier reading**: with the first $S=5$ seeds the gain looked large ($+181$ mean, $\sigma_{\text{train}}$ from $273$ to $53$). The five additional seeds removed that effect (seeds 505 and 909 end near $-850$ at $G=250$), so the $S=5$ result was a small-sample artifact. This is an example of the imprecision warned about in Section 6.6.
 * **Reading**: the data are compatible with a plateau in mean return from $G=100$ to $G=250$ for CMA-ES, but the dominant feature is large seed-to-seed variability (final test means from $-211$ to $-850$ at $G=250$), not a systematic improvement with budget. Two seeds (505, and 101 at $G=100$) remain stuck near $-800$ to $-850$, which looks like convergence to a poor local solution; this was not analyzed further. The optimism gap stays large (train best $\approx -65$ to $-97$ versus test $-211$ to $-850$).
-* **Scope**: CMA-ES only, $S=10$; the other algorithms were not run at $G=250$.
+* **Scope**: CMA-ES only, $S=10$; the other parametric algorithms are in Section 6.5.1c.
 
 #### 6.5.1c Budget Test for the Other Parametric Algorithms (S=10)
 `run_pendulum_g250_all.py` repeats the $G=100$ vs. $G=250$ comparison for SimpleGA, DE, OpenAI-ES and PBIL ($N_{\text{rollouts}}=8$, 10 seeds, same test protocol; `results/pendulum_budget_other_algos.json`; $G=100$ for seeds $42$–$404$ from Section 6.6.2).
@@ -383,6 +383,23 @@ To rigorously determine whether the remaining performance deficit on `Pendulum-v
 #### 6.5.2 Theoretical Hypotheses (External Context, Not Tested Here)
 > [!NOTE]
 > SAC and TD3 were run in this repository (Section 6.5.3). The figure sometimes quoted for them on `Pendulum-v1` (return around $-150$) is not reported in the SAC or TD3 papers (neither evaluates Pendulum); the values measured here are the ones to cite.
+
+Section 6.5.3 measures a performance gap between SAC/TD3 and the evolutionary methods. Three hypotheses that could explain it, none tested in the experiments of this section:
+
+1. **Credit Assignment (Bellman Recursion vs. Episodic Sum)**:
+   * Temporal Difference RL optimizes individual transitions via recursive dynamic programming:
+     $$Q(s_t, a_t) = r(s_t, a_t) + \gamma \max_{a'} Q(s_{t+1}, a')$$
+   * In contrast, ES operates as an episodic black-box optimizer evaluating only the cumulative scalar sum:
+     $$f(\theta) = \sum_{t=0}^{H-1} r(s_t, a_t)$$
+   * In `Pendulum-v1`, control is non-linearly bipartite:
+     * **Phase 1 (Bottom energy pumping)**: Positive feedback (torque aligned with angular velocity $\dot{\theta}$ to amplify kinetic resonance and escape the gravitational potential well);
+     * **Phase 2 (Top upright balance)**: Damped negative feedback (torque opposing angular velocity to arrest overshoot as $\theta \to 0$).
+   * Under a single episode scalar $f(\theta)$, a parameter perturbation improving Phase 1 frequently degrades Phase 2. The optimizer lacks temporal credit information to distinguish which specific time-steps caused trajectory failure.
+2. **Initial Condition Sensitivity at Rest**:
+   * When $\theta_0 \approx \pm \pi$ and $\dot{\theta}_0 \approx 0$, the torque limit $|u| \le 2.0$ requires precise multi-cycle resonance. A phase error of mere centiseconds dissipates kinetic energy, which would force another oscillation cycle and incur extra penalty over the 200-step horizon (the magnitude was not measured here).
+3. **Population Scaling and Sample Reuse**:
+   * Salimans et al. (2017) ran ES with large parallel populations (their experiments used on the order of $10^3$ CPU cores). The populations here ($P = 32$, $\lambda = 25$) are orders of magnitude smaller, which may limit the quality of the gradient estimate; this was not tested.
+   * Unlike off-policy RL (e.g., SAC, TD3) which caches transitions in a Replay Buffer for thousands of gradient updates, ES discards all rollouts after each generation, achieving lower sample efficiency.
 
 #### 6.5.3 Measured SAC and TD3 Baselines (Same Out-of-Sample Protocol)
 `run_sac_pendulum.py` and `run_td3_pendulum.py` implement SAC (Haarnoja et al., 2018) and TD3 (Fujimoto et al., 2018) in JAX with standard defaults, **untuned**: $2\times64$ ReLU networks, Adam $3\times10^{-4}$, $\gamma=0.99$, $\tau=0.005$, batch 256, 1,000 random warm-up steps, one update per environment step; SAC with twin critics and automatic entropy tuning (target $-1$); TD3 with exploration noise $0.1$, target-policy noise $0.2$ clipped at $0.5$ and delayed policy updates (2). Both are evaluated with their deterministic policy on the same 100 test episodes (test seed $99999$, $H=200$, success $R \ge -200$), 5 training seeds (`results/sac_pendulum.json`, `results/td3_pendulum.json`). The episode reset keys are identical to those used for the evolutionary methods, so every method sees the same 100 initial states.
@@ -405,23 +422,6 @@ To rigorously determine whether the remaining performance deficit on `Pendulum-v
 
   The correlation between $|\theta_0|$ and return is $-0.89$ (SAC), $-0.88$ (TD3) and $-0.80$ (CMA-ES). SAC and TD3 solve every episode with $|\theta_0| < 2\pi/3$ and essentially none with $|\theta_0| \ge 5\pi/6$: with the 200-step horizon and the torque limit $|u| \le 2$, starts near the bottom need a swing-up whose cost exceeds $-200$, so the $-200$ criterion caps success near $64\%$ for any of these policies. This also confirms for CMA-ES what Section 6.4 had stated as an expectation: it handles favorable and intermediate angles (68% and 37% success) but 0% from $|\theta_0| \ge 2\pi/3$, and it is worse than SAC/TD3 in every bin, including the easiest.
 * **Not isolated**: why the evolutionary methods are worse in every bin (credit assignment, sample reuse, population size, Section 6.5.2) was not tested by any experiment here.
-
-Section 6.5.3 measures a performance gap between SAC/TD3 and the evolutionary methods. Three hypotheses that could explain it, none tested in this repository:
-
-1. **The Epistemic Credit Assignment Problem (Bellman Recursion vs. Episodic Sum)**:
-   * Temporal Difference RL optimizes individual transitions via recursive dynamic programming:
-     $$Q(s_t, a_t) = r(s_t, a_t) + \gamma \max_{a'} Q(s_{t+1}, a')$$
-   * In contrast, ES operates as an episodic black-box optimizer evaluating only the cumulative scalar sum:
-     $$f(\theta) = \sum_{t=0}^{H-1} r(s_t, a_t)$$
-   * In `Pendulum-v1`, control is non-linearly bipartite:
-     * **Phase 1 (Bottom energy pumping)**: Positive feedback (torque aligned with angular velocity $\dot{\theta}$ to amplify kinetic resonance and escape the gravitational potential well);
-     * **Phase 2 (Top upright balance)**: Damped negative feedback (torque opposing angular velocity to arrest overshoot as $\theta \to 0$).
-   * Under a single episode scalar $f(\theta)$, a parameter perturbation improving Phase 1 frequently degrades Phase 2. The optimizer lacks temporal credit information to distinguish which specific time-steps caused trajectory failure.
-2. **Initial Condition Sensitivity at Rest**:
-   * When $\theta_0 \approx \pm \pi$ and $\dot{\theta}_0 \approx 0$, the torque limit $|u| \le 2.0$ requires precise multi-cycle resonance. A phase error of mere centiseconds dissipates kinetic energy, forcing another oscillation cycle and which would incur extra penalty over the 200-step horizon (the magnitude was not measured here).
-3. **Population Scaling and Sample Reuse**:
-   * Salimans et al. (2017) demonstrated that ES in continuous control requires populations of $P = 1{,}440$ to $4{,}000$ to maintain gradient signal-to-noise ratio in high dimensions. Our budget ($P = 32$, $\lambda \approx 25$) maintains computational tractability on local CPU but limits exploration variance.
-   * Unlike off-policy RL (e.g., SAC, TD3) which caches transitions in a Replay Buffer for thousands of gradient updates, ES discards all rollouts after each generation, achieving lower sample efficiency.
 
 #### 6.5.4 Equal Environment-Step Budget: CMA-ES vs. SAC/TD3
 To separate sample efficiency from the earlier budget differences, `run_equal_budget.py` (`results/pendulum_equal_budget.json`) trains CMA-ES with a given number of simulated environment steps (steps per generation $=\lambda \cdot N_{\text{rollouts}} \cdot 200$ with $\lambda=25$), 10 seeds per row, same 100-episode test protocol.
@@ -502,7 +502,7 @@ Data extracted from `results/multiseed_study.json` / `results/multiseed_summary.
 †*LinearGP on Pendulum-v1: in 9 of 10 seeds the selected program is the zero-torque policy, see item 6 below.*
 
 > [!NOTE]
-> **Statistical scope.** $S=10$ seeds still give imprecise estimates of $\sigma_{	ext{train}}$ and $ho$ (a standard deviation estimated from 10 values has a relative error of roughly 24%), so small differences between $ho$ values should not be over-read. The causal ablation (Section 6.7) covers only CartPole. The $S=5$ analyses of the 250-generation test were revised once $S=10$ was available (Section 6.5.1b).
+> **Statistical scope.** $S=10$ seeds still give imprecise estimates of $\sigma_{\text{train}}$ and $\rho$ (a standard deviation estimated from 10 values has a relative error of roughly 24%), so small differences between $\rho$ values should not be over-read. The causal ablation (Section 6.7) covers only CartPole. The $S=5$ analyses of the 250-generation test were revised once $S=10$ was available (Section 6.5.1b).
 
 #### 6.6.3 Observations from the Multi-Seed Variance Decomposition
 > [!NOTE]

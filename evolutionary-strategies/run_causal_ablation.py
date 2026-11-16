@@ -37,13 +37,14 @@ from src.evaluation import make_test_eval_fn, SUCCESS_THRESHOLDS
 from run_multiseed_study import build_param_algorithms
 
 OUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "results")
-ENV = "CartPole-v1"
+ENV = "CartPole-v1"          # default; override with --env
 SEEDS = [42, 101, 202, 303, 404, 505, 606, 707, 808, 909]
 CONFIGS = [(30, 2), (30, 8), (30, 16), (100, 2), (100, 8)]  # (G, N)
 TEST_SEED = 99999
 
 
-def main():
+def main(ENV=ENV, SEEDS=SEEDS, CONFIGS=CONFIGS):
+    short = ENV.split("-")[0].lower().replace("mountaincarcontinuous", "mountaincar")
     threshold = SUCCESS_THRESHOLDS[ENV]
     test_fn = make_test_eval_fn(ENV, n_episodes=100)
     test_rng = jax.random.PRNGKey(TEST_SEED)
@@ -91,16 +92,22 @@ def main():
                   f"sig_train={rec['sigma_train']:>7.2f} gap={rec['optimism_gap']:>7.2f} "
                   f"succ={rec['success_pct']:>5.1f}% per_seed={rec['per_seed_test_means']}", flush=True)
 
-    with open(os.path.join(OUT_DIR, "causal_ablation_cartpole.json"), "w", encoding="utf-8") as f:
+    with open(os.path.join(OUT_DIR, f"causal_ablation_{short}.json"), "w", encoding="utf-8") as f:
         json.dump({"determinism_check": determinism, "records": records}, f, indent=2)
     keys = ["algorithm", "family", "G", "N", "mean_test", "sigma_train", "sigma_eval",
             "mean_train_best", "optimism_gap", "success_pct", "time_s"]
-    with open(os.path.join(OUT_DIR, "causal_ablation_cartpole.csv"), "w", newline="", encoding="utf-8") as f:
+    with open(os.path.join(OUT_DIR, f"causal_ablation_{short}.csv"), "w", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, fieldnames=keys, extrasaction="ignore")
         w.writeheader()
         w.writerows(records)
-    print("[OK] saved causal_ablation_cartpole.json/csv")
+    print(f"[OK] saved causal_ablation_{short}.json/csv")
 
 
 if __name__ == "__main__":
-    main()
+    import argparse
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--env", default=ENV)
+    ap.add_argument("--seeds", type=int, nargs="+", default=SEEDS)
+    ap.add_argument("--configs", nargs="+", default=[f"{g}x{n}" for g, n in CONFIGS], help="G x N pairs, e.g. 30x2 100x8")
+    a = ap.parse_args()
+    main(a.env, a.seeds, [tuple(int(v) for v in c.split("x")) for c in a.configs])

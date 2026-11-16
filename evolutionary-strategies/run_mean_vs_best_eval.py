@@ -20,8 +20,18 @@ ALGOS = ["OpenAI-ES", "CMA-ES", "PBIL"]
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "results", "mean_vs_best_eval_{}.json")
 
 ap = argparse.ArgumentParser(); ap.add_argument("--envs", nargs="+", default=["CartPole-v1", "Acrobot-v1", "Pendulum-v1", "MountainCarContinuous-v0"])
-for env in ap.parse_args().envs:
+ap.add_argument("--generations", type=int, default=None, help="override G (default: standard regime)")
+ap.add_argument("--rollouts", type=int, default=None, help="override N")
+ap.add_argument("--seeds", type=int, nargs="+", default=SEEDS)
+ap.add_argument("--tag", default="", help="suffix of the output file, e.g. large")
+args = ap.parse_args()
+SEEDS = args.seeds
+if args.tag:
+    OUT = OUT.replace("{}.json", "{}_" + args.tag + ".json")
+for env in args.envs:
     G, N = (100, 8) if env == "Pendulum-v1" else (30, 2)
+    G = args.generations or G
+    N = args.rollouts or N
     thr = SUCCESS_THRESHOLDS[env]; fn = make_test_eval_fn(env, n_episodes=100); key = jax.random.PRNGKey(99999)
     path = OUT.format(env)
     rec = json.load(open(path)) if os.path.exists(path) else {}          # resume

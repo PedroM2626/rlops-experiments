@@ -15,7 +15,7 @@ from src.benchmark import run_param_based_v2
 from src.evaluation import make_test_eval_fn, compute_statistical_metrics
 
 ENV = "Pendulum-v1"
-SEEDS = [42, 101, 202, 303, 404, 505, 606, 707, 808, 909]
+SEEDS = [42, 101, 202, 303, 404, 505, 606, 707, 808, 909] + list(range(1010, 1020))   # S=20
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "results", "pendulum_budget_other_algos.json")
 
 

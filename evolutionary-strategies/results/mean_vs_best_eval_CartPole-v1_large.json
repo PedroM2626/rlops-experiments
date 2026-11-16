@@ -1,0 +1,113 @@
+{
+ "OpenAI-ES": [
+  {
+   "seed": 42,
+   "best_mean": 335.29998779296875,
+   "best_succ": 57.99999999999999,
+   "dist_mean": 500.0,
+   "dist_succ": 100.0
+  },
+  {
+   "seed": 101,
+   "best_mean": 331.260009765625,
+   "best_succ": 59.0,
+   "dist_mean": 500.0,
+   "dist_succ": 100.0
+  },
+  {
+   "seed": 202,
+   "best_mean": 500.0,
+   "best_succ": 100.0,
+   "dist_mean": 500.0,
+   "dist_succ": 100.0
+  },
+  {
+   "seed": 303,
+   "best_mean": 500.0,
+   "best_succ": 100.0,
+   "dist_mean": 500.0,
+   "dist_succ": 100.0
+  },
+  {
+   "seed": 404,
+   "best_mean": 301.8999938964844,
+   "best_succ": 49.0,
+   "dist_mean": 500.0,
+   "dist_succ": 100.0
+  }
+ ],
+ "CMA-ES": [
+  {
+   "seed": 42,
+   "best_mean": 500.0,
+   "best_succ": 100.0,
+   "dist_mean": 500.0,
+   "dist_succ": 100.0
+  },
+  {
+   "seed": 101,
+   "best_mean": 396.6499938964844,
+   "best_succ": 64.0,
+   "dist_mean": 500.0,
+   "dist_succ": 100.0
+  },
+  {
+   "seed": 202,
+   "best_mean": 343.5299987792969,
+   "best_succ": 45.0,
+   "dist_mean": 500.0,
+   "dist_succ": 100.0
+  },
+  {
+   "seed": 303,
+   "best_mean": 500.0,
+   "best_succ": 100.0,
+   "dist_mean": 500.0,
+   "dist_succ": 100.0
+  },
+  {
+   "seed": 404,
+   "best_mean": 500.0,
+   "best_succ": 100.0,
+   "dist_mean": 500.0,
+   "dist_succ": 100.0
+  }
+ ],
+ "PBIL": [
+  {
+   "seed": 42,
+   "best_mean": 500.0,
+   "best_succ": 100.0,
+   "dist_mean": 499.0299987792969,
+   "dist_succ": 98.0
+  },
+  {
+   "seed": 101,
+   "best_mean": 500.0,
+   "best_succ": 100.0,
+   "dist_mean": 500.0,
+   "dist_succ": 100.0
+  },
+  {
+   "seed": 202,
+   "best_mean": 497.7300109863281,
+   "best_succ": 96.0,
+   "dist_mean": 500.0,
+   "dist_succ": 100.0
+  },
+  {
+   "seed": 303,
+   "best_mean": 500.0,
+   "best_succ": 100.0,
+   "dist_mean": 365.3900146484375,
+   "dist_succ": 41.0
+  },
+  {
+   "seed": 404,
+   "best_mean": 500.0,
+   "best_succ": 100.0,
+   "dist_mean": 500.0,
+   "dist_succ": 100.0
+  }
+ ]
+}

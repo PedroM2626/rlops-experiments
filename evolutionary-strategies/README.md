@@ -1,6 +1,6 @@
 # Scientific Benchmark: 3 Families of Evolutionary Algorithms for Reinforcement Learning with JAX
 
-A rigorous experimental, conceptual, and algorithmic comparison of **3 families of evolutionary algorithms** applied to canonical Reinforcement Learning (RL) problems, with evaluation accelerated through vectorized compilation in **JAX** (`vmap` + `jit`).
+A rigorous experimental, conceptual, and algorithmic comparison of **3 families of evolutionary algorithms** applied to canonical Reinforcement Learning (RL) problems, with evaluation accelerated through vectorized compilation in **JAX** (`vmap` + `jit`). SAC, TD3 and double DQN baselines, ablations, an equal-effort hyperparameter search and the statistical protocol are included; Section 6.11 summarizes what the experiments establish and what they do not.
 
 ---
 
@@ -140,7 +140,7 @@ To ensure reproducibility and formal clarity, the exact interaction budget with 
 In each environment an episode has a maximum duration bounded by the horizon $H$:
 * **CartPole-v1**: $H = 500$ steps (maximum return +500; the success threshold used in Section 5 is $R \ge 475$).
 * **Acrobot-v1**: $H = 500$ steps (cost of $-1.0$ per step until the tip reaches the target height; optimum around $-64$ to $-70$ steps).
-* **Pendulum-v1**: $H = 200$ steps (continuous penalty on normalized angle, angular velocity and torque effort; optimum around $-150$ to $-200$).
+* **Pendulum-v1**: $H = 200$ steps (continuous penalty on normalized angle, angular velocity and torque effort; the best mean return measured here is $\approx -153$, reached by SAC, Section 6.5.3; the exact optimum was not computed).
 * **MountainCarContinuous-v0**: $H = 999$ steps (per-step action cost, plus $+100$ upon reaching the top of the right hill; optimum around $+90$ to $+95$).
 
 #### B. Evaluation Episodes per Individual ($N_{\text{rollouts}}$)
@@ -295,7 +295,7 @@ Validation over 100 episodes exposed a crucial phenomenon in evolutionary RL:
    * During training ($N_{\text{rollouts}}=2$), DE reported an apparent optimal fitness of **500.00**.
    * In testing ($N=100$), the mean collapsed to **123.84** with a **success rate of only 2.0%** ($\Delta = +376.16$).
    * Across 10 seeds (Section 6.6.2) DE obtains $314.62 \pm 46.29$ with $43.7\%$ success, so seed 42 is a bad case for DE, not its typical outcome.
-   * *Interpretation (hypothesis, not tested)*: the large gap is consistent with selection on a noisy fitness estimate (best-of-run chosen on 2 episodes). The causal ablation of Section 6.7 tests this on CartPole; the specific individual selected here was not inspected.
+   * *Interpretation (hypothesis, not tested)*: the large gap is consistent with selection on a noisy fitness estimate (best-of-run chosen on 2 episodes). The causal ablation of Section 6.7 tests this on CartPole, Acrobot and MountainCar (it supports the role of noisy evaluation on CartPole, much less on the other two); the specific individual selected here was not inspected.
 2. **CMA-ES on CartPole (seed 42)**:
    * **CMA-ES** reached **500.00 $\pm$ 0.00** over the 100 out-of-sample episodes, with a **standard deviation of strictly 0.00** and **100% success**.
    * *Caveat (see Section 6.6)*: this is the seed-42 run only. Across 10 training seeds, CMA-ES obtained $479.56 \pm 7.94$ with $88.6\%$ success.
@@ -322,7 +322,7 @@ Multi-seed (S=10, Section 6.6.2):
 ### 6.4 The Stochastic Sensitivity of Pendulum-v1 and the Extended Rollout Budget
 * **Why the budget differs on Pendulum**: the uniform initial angle $\theta_0 \sim \mathcal{U}[-\pi, \pi]$ makes a fitness based on very few episodes extremely noisy (an individual that happens to start near the upright position scores well without swinging up). Pendulum is therefore run with $N_{\text{rollouts}}=8$ and $G=100$ (Families 1 and 3) or $G=40$ (GP), instead of $N=2$ and $G=30$. A quick $N=2$ run on Pendulum was not preserved, so no claim is made about its optimism gap.
 * **Seed-42 results ($G=100$, $N_{\text{rollouts}}=8$)**:
-  * **CMA-ES**: mean test return **$-268.67 \pm 18.59$** (median **$-261.94$**, **35.0% success**), optimism gap **$+38.92$**. This is *partial* stabilization: $35\%$ of the 100 test episodes reach $R \ge -200$ and the distribution is wide (IQR $252.75$). The breakdown by initial angle is measured in Section 6.5.3: 68% success for $|\theta_0| < \pi/3$, 37% for $[\pi/3, 2\pi/3)$ and 0% for $|\theta_0| \ge 2\pi/3$.
+  * **CMA-ES**: mean test return **$-268.67 \pm 18.59$** (median **$-261.94$**, **35.0% success**), optimism gap **$+38.92$**. This is *partial* stabilization: $35\%$ of the 100 test episodes reach $R \ge -200$ and the distribution is wide (IQR $252.75$). The breakdown by initial angle is measured in Section 6.5.3 (for CMA-ES at $G=250$, averaged over 10 seeds, not for this seed-42 run): 68% success for $|\theta_0| < \pi/3$, 37% for $[\pi/3, 2\pi/3)$ and 0% for $|\theta_0| \ge 2\pi/3$.
   * **SimpleGA**: test mean **$-352.97 \pm 23.94$** (median **$-272.60$**, **35.0% success**).
 * **Across 10 seeds (Section 6.6.2)**: CMA-ES -440.96 (37.6% success), SimpleGA -555.98 (30.7%), DE -709.68 (24.8%), PBIL -830.37 (6.6%), OpenAI-ES -1015.65 (0.0%). Partial swing-up is reproducible for CMA-ES and SimpleGA, but no evolutionary method solves the task consistently, and the role of the rollout budget was not isolated by an ablation on Pendulum.
 
@@ -364,29 +364,30 @@ To rigorously determine whether the remaining performance deficit on `Pendulum-v
 * **Reading**: the data are compatible with a plateau in mean return from $G=100$ to $G=250$ for CMA-ES, but the dominant feature is large seed-to-seed variability (final test means from $-211$ to $-850$ at $G=250$), not a systematic improvement with budget. Two seeds (505, and 101 at $G=100$) remain stuck near $-800$ to $-850$, which looks like convergence to a poor local solution; this was not analyzed further. The optimism gap stays large (train best $\approx -65$ to $-97$ versus test $-211$ to $-850$).
 * **Scope**: CMA-ES only, $S=10$; the other parametric algorithms are in Section 6.5.1c.
 
-#### 6.5.1c Budget Test for the Other Parametric Algorithms (S=10)
-`run_pendulum_g250_all.py` repeats the $G=100$ vs. $G=250$ comparison for SimpleGA, DE, OpenAI-ES and PBIL ($N_{\text{rollouts}}=8$, 10 seeds, same test protocol; `results/pendulum_budget_other_algos.json`; $G=100$ for seeds $42$–$404$ from Section 6.6.2).
+#### 6.5.1c Budget Test for the Other Parametric Algorithms (S=20)
+`run_pendulum_g250_all.py` repeats the $G=100$ vs. $G=250$ comparison for SimpleGA, DE, OpenAI-ES and PBIL ($N_{\text{rollouts}}=8$, same test protocol; `results/pendulum_budget_other_algos.json`). It was first run with $S=10$ seeds; because DE, SimpleGA and PBIL were borderline, 10 more seeds ($1010$–$1019$) were added, giving $S=20$ per algorithm. $G=100$ for seeds $42$–$404$ is taken from Section 6.6.2 (same configuration); all other runs are made by the script.
 
-| Algorithm | Mean test $G=100$ (SD over seeds) | Mean test $G=250$ (SD) | Paired change (SD) | Seeds improved | Wilcoxon $p$ | Success $G=100$ → $G=250$ |
+| Algorithm | Mean test $G=100$ (SD over seeds) | Mean test $G=250$ (SD) | Paired change (SD) | Seeds improved | Wilcoxon $p$ | Success $G=100$ → $G=250$ (15 seeds) |
 |:---|:---:|:---:|:---:|:---:|:---:|:---:|
-| SimpleGA | −556.0 (275.7) | −439.8 (254.8) | +116.2 (236.2) | 5/10 | 0.156 | 30.7% → 32.8% |
-| DE | −709.7 (145.0) | −550.0 (266.0) | +159.7 (264.7) | 7/10 | 0.129 | 24.8% → 29.2% |
-| OpenAI-ES | −1015.7 (28.2) | −662.4 (157.0) | +353.2 (147.9) | 10/10 | 0.002 | 0.0% → 5.2% |
-| PBIL | −830.4 (182.0) | −776.5 (248.2) | +53.9 (309.3) | 5/10 | 0.570 | 6.6%* → 17.7% |
-| CMA-ES (Section 6.5.1b) | −441.0 (247.2) | −384.6 (247.9) | +56.3 (272.3) | 6/10 | 0.570 | 37.6% → 39.5% |
+| SimpleGA | −575.8 (252.4) | −491.9 (240.6) | +84.0 (224.2) | 7/20 | 0.221 | 29.3% → 31.0% |
+| DE | −734.5 (227.9) | −514.2 (262.4) | +220.3 (278.5) | 15/20 | 0.003 | 23.3% → 32.7% |
+| OpenAI-ES | −1007.9 (71.9) | −619.3 (171.5) | +388.6 (133.1) | 20/20 | <0.001 | 0.0% → 7.7% |
+| PBIL | −848.8 (186.8) | −822.8 (213.6) | +26.0 (221.4) | 7/20 | 0.553 | 6.7% → 12.7% |
+| CMA-ES (Section 6.5.1b, $S=10$) | −441.0 (247.2) | −384.6 (247.9) | +56.3 (272.3) | 6/10 | 0.570 | 37.6% → 39.5% |
 
-*\*Success at $G=100$ is the mean of the 5-seed value of Section 6.6.2 and the 5 extra seeds. PBIL's success rises while its mean return barely changes, so success and mean return should not be conflated.*
+*Success columns are computed over the 15 seeds for which per-seed success at $G=100$ was stored (seeds $505$–$909$ and $1010$–$1019$), at both budgets, so the two values are comparable; Section 6.6.2 does not store per-seed success for seeds $42$–$404$. The mean-return columns use all 20 seeds. CMA-ES was not extended beyond $S=10$.*
 
-* **Measured**: only OpenAI-ES shows a statistically detectable gain with budget (all 10 seeds improve, $p=0.002$), but it still reaches only $5.2\%$ success. SimpleGA and DE improve on average by $116$ and $160$ points but not detectably with $S=10$ ($p \approx 0.13$–$0.16$). PBIL and CMA-ES show no detectable change. Between-seed SD stays $\approx 250$ for SimpleGA, DE, PBIL and CMA-ES.
-* **Reading**: none of the algorithms comes close to the SAC/TD3 level ($-156$, Section 6.5.3) at $G=250$; the best evolutionary mean is CMA-ES at $-384.6$. For OpenAI-ES the budget matters, for the others the data neither show a plateau nor a clear gain.
+* **Measured**: with $S=20$, $G=250$ improves the mean return of OpenAI-ES (all 20 seeds improve, $p<0.001$) and of DE ($15/20$ seeds, $p=0.003$; this survives a Bonferroni correction over the five algorithms, $0.05/5=0.01$). SimpleGA ($p=0.22$) and PBIL ($p=0.55$) show no detectable change, and neither does CMA-ES ($S=10$). Between-seed SD stays $\approx 220$–$260$ for SimpleGA, DE, PBIL and CMA-ES.
+* **Correction of an earlier reading**: with $S=10$ the DE gain ($+159.7$) was not detectable ($p=0.129$) and the text said the data showed neither a plateau nor a gain. The extra seeds make the DE effect detectable, so the $S=10$ result was underpowered, not evidence of a plateau. The same caution applies to SimpleGA and CMA-ES: a non-significant result with $S=10$ or $S=20$ and a between-seed SD of $\approx 250$ can only exclude large effects.
+* **Reading**: the generation budget helps OpenAI-ES (strongly) and DE, but even at $G=250$ the best mean among SimpleGA, DE, OpenAI-ES and PBIL is $-491.9$ (SimpleGA), against $-153.5$ for SAC (Section 6.5.3). Success stays below $33\%$ for these four algorithms (the angle ceiling of Section 6.5.3 is $\approx 64\%$).
 
-#### 6.5.2 Theoretical Hypotheses (External Context, Not Tested Here)
+#### 6.5.2 Hypotheses for the Gap and What Was Tested
 > [!NOTE]
 > SAC and TD3 were run in this repository (Section 6.5.3). The figure sometimes quoted for them on `Pendulum-v1` (return around $-150$) is not reported in the SAC or TD3 papers (neither evaluates Pendulum); the values measured here are the ones to cite.
 
-Section 6.5.3 measures a performance gap between SAC/TD3 and the evolutionary methods. Three hypotheses that could explain it, none tested in the experiments of this section:
+Section 6.5.3 measures a performance gap between SAC/TD3 and the evolutionary methods. Three hypotheses could explain it. Their status after the experiments of Sections 6.5.3 to 6.5.6 and 6.10:
 
-1. **Credit Assignment (Bellman Recursion vs. Episodic Sum)**:
+1. **Credit Assignment (Bellman Recursion vs. Episodic Sum), not tested.**
    * Temporal Difference RL optimizes individual transitions via recursive dynamic programming:
      $$Q(s_t, a_t) = r(s_t, a_t) + \gamma \max_{a'} Q(s_{t+1}, a')$$
    * In contrast, ES operates as an episodic black-box optimizer evaluating only the cumulative scalar sum:
@@ -394,34 +395,40 @@ Section 6.5.3 measures a performance gap between SAC/TD3 and the evolutionary me
    * In `Pendulum-v1`, control is non-linearly bipartite:
      * **Phase 1 (Bottom energy pumping)**: Positive feedback (torque aligned with angular velocity $\dot{\theta}$ to amplify kinetic resonance and escape the gravitational potential well);
      * **Phase 2 (Top upright balance)**: Damped negative feedback (torque opposing angular velocity to arrest overshoot as $\theta \to 0$).
-   * Under a single episode scalar $f(\theta)$, a parameter perturbation improving Phase 1 frequently degrades Phase 2. The optimizer lacks temporal credit information to distinguish which specific time-steps caused trajectory failure.
-2. **Initial Condition Sensitivity at Rest**:
-   * When $\theta_0 \approx \pm \pi$ and $\dot{\theta}_0 \approx 0$, the torque limit $|u| \le 2.0$ requires precise multi-cycle resonance. A phase error of mere centiseconds dissipates kinetic energy, which would force another oscillation cycle and incur extra penalty over the 200-step horizon (the magnitude was not measured here).
-3. **Population Scaling and Sample Reuse**:
-   * Salimans et al. (2017) ran ES with large parallel populations (their experiments used on the order of $10^3$ CPU cores). The populations here ($P = 32$, $\lambda = 25$) are orders of magnitude smaller, which may limit the quality of the gradient estimate; this was not tested.
-   * Unlike off-policy RL (e.g., SAC, TD3) which caches transitions in a Replay Buffer for thousands of gradient updates, ES discards all rollouts after each generation, achieving lower sample efficiency.
+   * Under a single episode scalar $f(\theta)$, a parameter perturbation improving Phase 1 frequently degrades Phase 2. The optimizer lacks temporal credit information to distinguish which specific time-steps caused trajectory failure. No experiment in this repository separates this effect from the others below.
+2. **Initial Condition Sensitivity at Rest, partly characterized.**
+   * When $\theta_0 \approx \pm \pi$ and $\dot{\theta}_0 \approx 0$, the torque limit $|u| \le 2.0$ requires precise multi-cycle resonance. The per-angle analysis of Section 6.5.3 shows that these starts cap success near $64\%$ for every method, but also that CMA-ES is worse than SAC/TD3 in every angle bin, including the easiest. Hard starts therefore do not explain the gap.
+3. **Population Scaling and Sample Reuse, tested in part.**
+   * Salimans et al. (2017) ran ES with large parallel populations (their experiments used on the order of $10^3$ CPU cores). The populations here ($P = 32$, $\lambda = 25$) are much smaller. **Tested** (Section 6.5.5): CMA-ES with $\lambda \in \{25, 100, 400\}$ does not improve with a larger population at $G=100$.
+   * Unlike off-policy RL (e.g., SAC, TD3) which caches transitions in a Replay Buffer for thousands of gradient updates, ES discards all rollouts after each generation. **Tested on the SAC side** (Section 6.5.4b): restricting SAC's replay to the most recent transitions degrades it strongly, so experience reuse is an important ingredient of SAC's result. This shows that SAC depends on reuse, not that its absence is the only cause of the ES deficit.
+   * **Network size is not the cause** (Section 6.5.4b): SAC with the same $32 \times 32$ `tanh` architecture as the evolved policy still reaches the same success rate ($64\%$).
+   * Equal-effort hyperparameter tuning of every algorithm (Section 6.10) did not close the gap either.
 
 #### 6.5.3 Measured SAC and TD3 Baselines (Same Out-of-Sample Protocol)
-`run_sac_pendulum.py` and `run_td3_pendulum.py` implement SAC (Haarnoja et al., 2018) and TD3 (Fujimoto et al., 2018) in JAX with standard defaults, **untuned**: $2\times64$ ReLU networks, Adam $3\times10^{-4}$, $\gamma=0.99$, $\tau=0.005$, batch 256, 1,000 random warm-up steps, one update per environment step; SAC with twin critics and automatic entropy tuning (target $-1$); TD3 with exploration noise $0.1$, target-policy noise $0.2$ clipped at $0.5$ and delayed policy updates (2). Both are evaluated with their deterministic policy on the same 100 test episodes (test seed $99999$, $H=200$, success $R \ge -200$), 5 training seeds (`results/sac_pendulum.json`, `results/td3_pendulum.json`). The episode reset keys are identical to those used for the evolutionary methods, so every method sees the same 100 initial states.
+`rl_baselines.py` (driven by `run_sac_pendulum.py`, `run_td3_pendulum.py` and `run_rl_baselines.py`) implements SAC (Haarnoja et al., 2018) and TD3 (Fujimoto et al., 2018) in plain JAX with standard defaults, **untuned** in this section: $2\times64$ ReLU networks, Adam $3\times10^{-4}$, $\gamma=0.99$, $\tau=0.005$, batch 256, 1,000 random warm-up steps, one update per environment step; SAC with twin critics and automatic entropy tuning (target $-1$); TD3 with exploration noise $0.1$, target-policy noise $0.2$ clipped at $0.5$ and delayed policy updates (2). Both are evaluated with their deterministic policy on the same 100 test episodes (test seed $99999$, $H=200$, success $R \ge -200$), 5 training seeds (`results/sac_pendulum.json`, `results/td3_pendulum.json`). The episode reset keys are identical to those used for the evolutionary methods, so every method sees the same 100 initial states.
+
+> [!NOTE]
+> **Correction of an earlier version of this section.** The first implementation ran in a loop that ignored that gymnax resets the environment inside `step`: at the last step of every 200-step episode it stored the *reset* observation as the next state (0.5% of the transitions), instead of the true final observation (`info["final_observation"]`). `rl_baselines.py` stores the true next observation and bootstraps unless the episode terminated (time-limit truncation does not stop bootstrapping). All SAC/TD3 numbers were regenerated; the earlier files are kept in `results/old_biased/` for reference. The 30,000-step means barely changed ($-156.4$ for both before; $-153.5$ and $-156.5$ now), but the learning curve changed (SAC at 10,000 steps: $-322.0$ before, $-160.9$ now), and the 5,000-step row is new.
 
 | Env. steps | SAC mean test return (SD over seeds) | SAC success | TD3 mean test return (SD) | TD3 success |
 |:---:|:---:|:---:|:---:|:---:|
-| 10,000 | −322.0 (254.2) | 37.8% | −676.4 (532.5) | 28.6% |
-| 20,000 | −159.7 (3.1) | 63.0% | −172.3 (32.0) | 57.6% |
-| **30,000** | **−156.4 (2.2)** | **63.8%** | **−156.4 (3.0)** | **64.0%** |
+| 5,000 | −864.9 (247.5) | 23.8% | −1053.3 (33.8) | 0.0% |
+| 10,000 | −160.9 (2.9) | 62.2% | −162.4 (6.2) | 63.0% |
+| 20,000 | −153.6 (2.3) | 64.0% | −160.1 (8.3) | 63.2% |
+| **30,000** | **−153.5 (1.1)** | **64.0%** | **−156.5 (2.8)** | **64.0%** |
 
-* **Measured**: after 30,000 environment steps SAC and TD3 reach the same mean ($-156.4$), with $\approx 64\%$ success and SD over seeds of $2$–$3$. Compared with CMA-ES at $G=100$ ($-441.0$, 10 seeds, $\approx 4\times10^{6}$ simulated steps) and $G=250$ ($-384.6$, $\approx 10^{7}$ steps), they are better by $\approx 230$ to $285$ points, far more reproducible across seeds, and use roughly $130\times$ to $330\times$ fewer environment steps. This comparison is untuned for every method.
-* **Why success saturates near 64% (measured, `run_pendulum_angle_analysis.py`, `results/pendulum_angle_analysis.json`)**: the 100 test episodes were binned by the initial angle $|\theta_0|$ (mean return and success over seeds):
+* **Measured**: after 30,000 environment steps SAC and TD3 reach $-153.5$ and $-156.5$, with $64\%$ success and SD over seeds of $1$–$3$. Compared with CMA-ES at $G=100$ ($-441.0$, 10 seeds, $\approx 4\times10^{6}$ simulated steps) and $G=250$ ($-384.6$, $\approx 10^{7}$ steps), they are better by $\approx 230$ to $290$ points, far more reproducible across seeds, and use roughly $130\times$ to $330\times$ fewer environment steps. This comparison is untuned for every method; the tuned comparison is in Section 6.10.
+* **Why success saturates near 64% (measured, `run_pendulum_angle_analysis.py`, `results/pendulum_angle_analysis.json`)**: the 100 test episodes were binned by the initial angle $|\theta_0|$ (mean return and success; SAC and TD3 over their 5 seeds, CMA-ES $G=250$ over its 10 seeds):
 
 | $\lvert\theta_0\rvert$ | Episodes | SAC mean / success | TD3 mean / success | CMA-ES $G=250$ mean / success |
 |:---:|:---:|:---:|:---:|:---:|
-| $[0, \pi/3)$ | 34 | −70.4 / 100% | −73.1 / 100% | −188.7 / 68% |
-| $[\pi/3, 2\pi/3)$ | 27 | −118.8 / 100% | −120.9 / 100% | −342.9 / 37% |
-| $[2\pi/3, 5\pi/6)$ | 18 | −220.4 / 17% | −223.5 / 17% | −511.0 / 0% |
-| $[5\pi/6, \pi]$ | 21 | −289.3 / 0% | −279.4 / 0% | −647.1 / 0% |
+| $[0, \pi/3)$ | 34 | −70.5 / 100% | −73.0 / 100% | −188.7 / 68% |
+| $[\pi/3, 2\pi/3)$ | 27 | −118.6 / 100% | −120.2 / 100% | −342.9 / 37% |
+| $[2\pi/3, 5\pi/6)$ | 18 | −216.9 / 17% | −221.1 / 17% | −511.0 / 0% |
+| $[5\pi/6, \pi]$ | 21 | −278.3 / 0% | −283.0 / 0% | −647.1 / 0% |
 
-  The correlation between $|\theta_0|$ and return is $-0.89$ (SAC), $-0.88$ (TD3) and $-0.80$ (CMA-ES). SAC and TD3 solve every episode with $|\theta_0| < 2\pi/3$ and essentially none with $|\theta_0| \ge 5\pi/6$: with the 200-step horizon and the torque limit $|u| \le 2$, starts near the bottom need a swing-up whose cost exceeds $-200$, so the $-200$ criterion caps success near $64\%$ for any of these policies. This also confirms for CMA-ES what Section 6.4 had stated as an expectation: it handles favorable and intermediate angles (68% and 37% success) but 0% from $|\theta_0| \ge 2\pi/3$, and it is worse than SAC/TD3 in every bin, including the easiest.
-* **Not isolated**: why the evolutionary methods are worse in every bin (credit assignment, sample reuse, population size, Section 6.5.2) was not tested by any experiment here.
+  The correlation between $|\theta_0|$ and return is $-0.89$ (SAC), $-0.88$ (TD3) and $-0.80$ (CMA-ES). SAC and TD3 solve every episode with $|\theta_0| < 2\pi/3$ and essentially none with $|\theta_0| \ge 5\pi/6$: with the 200-step horizon and the torque limit $|u| \le 2$, starts near the bottom need a swing-up whose cost exceeds $-200$, so the $-200$ criterion caps success near $64\%$ for any of these policies. For CMA-ES this shows that it handles favorable and intermediate angles (68% and 37% success) but 0% from $|\theta_0| \ge 2\pi/3$, and it is worse than SAC/TD3 in every bin, including the easiest.
+* **Not isolated**: which mechanism makes the evolutionary methods worse in every bin is discussed in Section 6.5.2; credit assignment was not tested.
 
 #### 6.5.4 Equal Environment-Step Budget: CMA-ES vs. SAC/TD3
 To separate sample efficiency from the earlier budget differences, `run_equal_budget.py` (`results/pendulum_equal_budget.json`) trains CMA-ES with a given number of simulated environment steps (steps per generation $=\lambda \cdot N_{\text{rollouts}} \cdot 200$ with $\lambda=25$), 10 seeds per row, same 100-episode test protocol.
@@ -435,11 +442,51 @@ To separate sample efficiency from the earlier budget differences, `run_equal_bu
 | 4 | 5 | 100,000 | −1134.3 (149.5) | −1140.0 | −813.6 | 2.3% |
 | 4 | 15 | 300,000 | −1010.6 (166.5) | −1071.2 | −727.0 | 6.7% |
 | 4 | 50 | 1,000,000 | −719.2 (352.4) | −683.3 | −286.8 | 22.1% |
-| *SAC* | | 30,000 | −156.4 (2.2) | | −153.8 | 63.8% |
-| *TD3* | | 30,000 | −156.4 (3.0) | | −153.0 | 64.0% |
+| *SAC* | | 30,000 | −153.5 (1.1) | −153.6 | −152.0 | 64.0% |
+| *TD3* | | 30,000 | −156.5 (2.8) | −157.9 | −152.8 | 64.0% |
 
-* **Measured**: with the same 30,000 environment steps, CMA-ES is far behind SAC and TD3 (−1131.8 against −156.4). Even with $33\times$ more steps (1,000,000), CMA-ES reaches a mean of $-720$ to $-920$ and its best seed ($-286.8$) is still worse than the worst SAC/TD3 seed at 30,000 steps. The earlier gap therefore is not an artifact of unequal budgets.
-* **Not isolated**: why the evolutionary methods need so many more steps (credit assignment, sample reuse, population size, Section 6.5.2) was not tested. $N=1$ and $N=4$ are only two points of the noise/step trade-off, and CMA-ES hyperparameters were not tuned.
+* **Measured**: with the same 30,000 environment steps, CMA-ES is far behind SAC and TD3 (−1131.8 against −153.5 and −156.5). Even with $33\times$ more steps (1,000,000), CMA-ES reaches a mean of $-720$ to $-920$ and its best seed ($-286.8$) is still worse than the worst SAC/TD3 seed at 30,000 steps ($-159.3$). The earlier gap therefore is not an artifact of unequal budgets.
+* **Not isolated**: $N=1$ and $N=4$ are only two points of the noise/step trade-off, and the CMA-ES hyperparameters of this table were not tuned (see Section 6.10 for tuning at the standard budget).
+
+#### 6.5.4b SAC Ablations: Network Size and Experience Reuse
+`run_rl_baselines.py --algo sac --hp ...` (`results/sac_ablation_*.json`) changes one ingredient of SAC at a time, 30,000 steps, the same 5 seeds and the same test protocol as Section 6.5.3.
+
+| SAC variant | Mean test return (SD over seeds) | Median | Success |
+|:---|:---:|:---:|:---:|
+| Default ($2\times64$ ReLU, replay from the whole history) | −153.5 (1.1) | −153.6 | 64.0% |
+| $2\times32$ `tanh` (the architecture of the evolved policy) | −183.0 (15.1) | −176.3 | 64.0% |
+| Replay restricted to the last 2,000 transitions | −287.4 (214.9) | −203.9 | 58.8% |
+| Replay restricted to the last 200 transitions | −567.4 (146.8) | −539.8 | 37.0% |
+
+* **Measured**: each variant is worse than the default in all 5 seeds (Mann-Whitney $p \approx 0.012$ for each, $5$ vs. $5$). The small `tanh` network costs $\approx 30$ return points but keeps $64\%$ success; shrinking the replay window degrades SAC progressively ($-287$ at 2,000 and $-567$ at 200 transitions, the latter being close to the last episode only).
+* **Reading**: network size/activation does not explain why the evolutionary methods stay far from SAC, and experience reuse is an important ingredient of SAC's performance in this setting. The experiment does not show that lack of reuse is the cause of the ES deficit. The variants were not tuned and $S=5$.
+
+#### 6.5.5 CMA-ES Population Size
+`run_cmaes_popsize.py` (`results/pendulum_cmaes_popsize.json`) trains CMA-ES with $\lambda \in \{25, 100, 400\}$ at $G=100$ and $N_{\text{rollouts}}=2$ (to keep the largest population affordable), 5 seeds ($42$–$404$), same test protocol. $\lambda=25$ is the default $4+\lfloor 3\ln d\rfloor$ of Section 8.
+
+| $\lambda$ | Env. steps | Mean test return (SEM over seeds) | Mean success |
+|:---:|:---:|:---:|:---:|
+| 25 | 1,000,000 | −930.8 (92.8) | 23.0% |
+| 100 | 4,000,000 | −1003.2 (85.0) | 24.8% |
+| 400 | 16,000,000 | −1177.7 (22.3) | 14.6% |
+
+* **Measured**: no benefit from a larger population ($\lambda=25$ vs. $100$: Mann-Whitney $p=0.84$; $25$ vs. $400$: $p=0.056$; $100$ vs. $400$: $p=0.095$), and a non-significant trend towards worse results at $\lambda=400$ even with $16\times$ the steps. These numbers use $N=2$ and are not comparable with the $N=8$ rows of Section 6.6.2.
+* **Scope**: $G=100$ fixed, $\sigma_0=0.5$ not tuned, 5 seeds. A larger population could need more generations to pay off; this was not explored beyond $G=100$, so the result only shows that, at this generation budget, a larger $\lambda$ does not help.
+
+#### 6.5.6 SAC, TD3 and DQN on the Other Environments
+`run_rl_baselines.py` (`results/dqn_cartpole.json`, `results/dqn_acrobot.json`, `results/sac_mountaincar.json`, `results/td3_mountaincar.json`) applies the same TD implementation and test protocol (100 episodes, seed $99999$, 5 seeds $42$–$404$) to the other environments. Discrete actions use double DQN (Huber loss, Adam $10^{-3}$, batch 64, $\varepsilon$ decayed linearly from 1 to 0.05 over the first 20% of the steps, hard target update every 250 steps, $2\times64$ ReLU); the continuous MountainCar uses the SAC and TD3 defaults of Section 6.5.3. None of them was tuned.
+
+| Environment | Algorithm | Env. steps | Mean test return (SD over seeds) | Mean success | Evolutionary reference (Section 6.6.2, $S=10$) |
+|:---|:---|:---:|:---:|:---:|:---|
+| CartPole-v1 | DQN | 25,000 | 67.8 (23.1) | 0.0% | CMA-ES 479.6 (88.6%), SimpleGA 362.7 (64.9%) |
+| CartPole-v1 | DQN | 50,000 | 157.6 (192.4) | 20.0% | |
+| Acrobot-v1 | DQN | 25,000 | −251.0 (227.4) | 52.2% | SimpleGA −89.7 (79.6%), CMA-ES −95.5 (84.0%) |
+| Acrobot-v1 | DQN | 50,000 | −87.3 (7.9) | 85.2% | |
+| MountainCarContinuous-v0 | SAC | 100,000 | −0.00 (SD < 0.01) | 0.0% | PBIL 90.4 (84.2%), DE 91.0 (62.7%), SimpleGA 88.8 (70.2%), CMA-ES 80.3 (63.2%) |
+| MountainCarContinuous-v0 | TD3 | 100,000 | −0.03 (SD 0.02) | 0.0% | |
+
+* **Measured**: the advantage of TD methods is **not uniform**. On Acrobot, DQN at 50,000 steps ($-87.3$, $85.2\%$) is on par with the best evolutionary results, which use $\approx 10^6$ simulated steps at most (Section 3.3); on CartPole the untuned DQN is still unstable at 50,000 steps (only 1 of 5 seeds reaches 500, mean 157.6) and is clearly below CMA-ES (479.6 over 10 seeds), so the evolutionary methods are better there at this DQN budget. On MountainCarContinuous SAC and TD3 end with a return of $\approx 0$ in all 5 seeds at both 50,000 and 100,000 steps (consistent with a policy that stays still and pays almost no action cost; the learned policies were not inspected), whereas PBIL, DE, SimpleGA and CMA-ES reach the goal in most seeds. The sparse reward and the default exploration noise are the likely reason (hypothesis, not tested).
+* **Reading**: the large SAC/TD3 advantage of Section 6.5.3 is specific to `Pendulum-v1` (dense reward, smooth dynamics). The CartPole DQN budget (50,000 steps) is short and DQN was not tuned, so that row says only that this baseline had not converged.
 
 ### 6.6 Multi-Seed Scientific Evaluation Protocol (Agarwal et al., NeurIPS 2021)
 
@@ -502,7 +549,7 @@ Data extracted from `results/multiseed_study.json` / `results/multiseed_summary.
 †*LinearGP on Pendulum-v1: in 9 of 10 seeds the selected program is the zero-torque policy, see item 6 below.*
 
 > [!NOTE]
-> **Statistical scope.** $S=10$ seeds still give imprecise estimates of $\sigma_{\text{train}}$ and $\rho$ (a standard deviation estimated from 10 values has a relative error of roughly 24%), so small differences between $\rho$ values should not be over-read. The causal ablation (Section 6.7) covers only CartPole. The $S=5$ analyses of the 250-generation test were revised once $S=10$ was available (Section 6.5.1b).
+> **Statistical scope.** $S=10$ seeds still give imprecise estimates of $\sigma_{\text{train}}$ and $\rho$ (a standard deviation estimated from 10 values has a relative error of roughly 24%), so small differences between $\rho$ values should not be over-read. The causal ablation (Section 6.7) covers CartPole ($S=10$), Acrobot and MountainCar ($S=5$), not Pendulum. The $S=5$ analyses of the 250-generation test were revised once $S=10$ was available (Section 6.5.1b).
 
 #### 6.6.3 Observations from the Multi-Seed Variance Decomposition
 > [!NOTE]
@@ -517,7 +564,9 @@ Data extracted from `results/multiseed_study.json` / `results/multiseed_summary.
 7. **Acrobot-v1 (Measured)**: SimpleGA has the best mean ($-89.67 \pm 1.66$, $\rho=0.20$); CMA-ES the highest success ($84.0\%$) with a lower mean ($-95.48$); CartesianGP is clearly the worst ($-181.07$, $\rho=3.27$).
 8. **CartesianGP on Pendulum-v1 (Measured)**: mean $-1097.95$, $0.0\%$ success; the 10 per-seed means range from $-598$ to $-1248$.
 
-### 6.7 Causal Ablation on CartPole-v1: Evaluation Noise ($N$) vs. Optimization Budget ($G$)
+### 6.7 Causal Ablation: Evaluation Noise ($N$) vs. Optimization Budget ($G$)
+
+#### 6.7.1 CartPole-v1 ($S=10$)
 
 **Question.** Is the large between-seed variance on CartPole caused by (a) noisy fitness estimation (few rollouts $N$ per evaluation) or (b) insufficient optimization budget (few generations $G$)?
 
@@ -543,7 +592,50 @@ Data extracted from `results/multiseed_study.json` / `results/multiseed_summary.
 
 **Answer to the question (CartPole only).** The between-seed variance is **not a single cause** and is **algorithm-dependent**: for SimpleGA it is mainly **noisy fitness evaluation** (small $N$); for OpenAI-ES, DE and PBIL, under-training also matters (the generation budget gives large gains at $N=8$); CMA-ES is already near its ceiling. The "seed" is not an independent cause: it changes the initial population and the sampled training start states, and the variance it induces is amplified when selection is made on a noisy fitness estimate or when the search has not converged.
 
-**Limitations:** single environment (CartPole), $S=10$ seeds, only five $(G,N)$ points (not a full factorial), and the best-so-far ceiling effect of item 5. The ablation was not run for Pendulum-v1, MountainCarContinuous-v0, Acrobot-v1, or for the GP families.
+**Limitations (CartPole):** $S=10$ seeds, only five $(G,N)$ points (not a full factorial), and the best-so-far ceiling effect of item 5. The same design on Acrobot and MountainCarContinuous is in Section 6.7.2; it was not run for Pendulum-v1 or for the GP families.
+
+#### 6.7.2 The Same Ablation on Acrobot-v1 and MountainCarContinuous-v0
+
+`run_causal_ablation.py --env Acrobot-v1 --seeds 42 101 202 303 404 --configs 30x2 30x8 100x2 100x8` (and the same for `MountainCarContinuous-v0`) repeats the design of Section 6.7 with the five parametric algorithms, $S=5$ seeds and the four $(G,N)$ points $\{30,100\} \times \{2,8\}$ (`results/causal_ablation_acrobot.json/csv`, `results/causal_ablation_mountaincar.json/csv`). Same test protocol, determinism check identical in both environments. Cells are the mean test return over 5 seeds, with $\sigma_{\text{train}}$ / optimism gap $\Delta$ in parentheses.
+
+**Acrobot-v1**
+
+| Algorithm | $G{=}30,N{=}2$ | $G{=}30,N{=}8$ | $G{=}100,N{=}2$ | $G{=}100,N{=}8$ |
+|:---|:---:|:---:|:---:|:---:|
+| SimpleGA | −86.6 (2.4 / 21.4) | −84.3 (2.9 / 12.7) | −90.9 (7.5 / 27.5) | −87.7 (6.8 / 19.7) |
+| DE | −101.5 (28.5 / 30.3) | −89.2 (1.8 / 9.4) | −87.3 (3.7 / 23.8) | −82.8 (4.5 / 13.4) |
+| OpenAI-ES | −92.5 (14.7 / 19.4) | −88.1 (11.9 / 17.1) | −87.5 (7.4 / 24.2) | −88.9 (12.2 / 19.3) |
+| CMA-ES | −105.7 (40.6 / 41.4) | −84.5 (2.6 / 13.4) | −86.2 (3.6 / 23.2) | −88.0 (5.7 / 20.5) |
+| PBIL | −131.9 (76.0 / 55.4) | −97.1 (6.5 / 13.7) | −89.4 (8.0 / 21.3) | −90.1 (6.1 / 14.9) |
+| *Mean over algorithms* | −103.6 (32.5 / 33.6) | −88.6 (5.2 / 13.3) | −88.3 (6.0 / 24.0) | −87.5 (7.1 / 17.6) |
+
+**MountainCarContinuous-v0**
+
+| Algorithm | $G{=}30,N{=}2$ | $G{=}30,N{=}8$ | $G{=}100,N{=}2$ | $G{=}100,N{=}8$ |
+|:---|:---:|:---:|:---:|:---:|
+| SimpleGA | 86.4 (11.1 / 7.0) | 92.1 (2.1 / 1.5) | 90.6 (2.6 / 3.4) | 92.3 (2.2 / 1.9) |
+| DE | 91.4 (4.0 / 0.0) | 91.0 (3.5 / 0.7) | 92.7 (3.4 / 1.3) | 93.0 (2.5 / 0.2) |
+| OpenAI-ES | 0.0 (0.0 / 0.0) | 0.0 (0.0 / 0.0) | 0.0 (0.0 / 0.0) | 0.0 (0.0 / 0.0) |
+| CMA-ES | 82.0 (20.6 / 12.2) | 82.8 (10.1 / 5.4) | 91.3 (8.7 / 4.8) | 91.2 (6.5 / 3.3) |
+| PBIL | 93.9 (2.0 / 0.8) | 90.3 (5.5 / 1.3) | 92.7 (3.8 / 3.6) | 93.3 (3.9 / 1.8) |
+| *Mean over algorithms* | 70.7 (7.5 / 4.0) | 71.2 (4.3 / 1.8) | 73.5 (3.7 / 2.6) | 74.0 (3.0 / 1.4) |
+
+Pooled paired effects (each of the 5 algorithms $\times$ seeds is a pair; the pairs are not independent across algorithms, so the $p$-values are exploratory; Wilcoxon signed-rank; CartPole is the $S=10$ table of Section 6.7 for comparison):
+
+| Effect | CartPole (50 pairs) | Acrobot (25 pairs) | MountainCar (25 pairs) |
+|:---|:---:|:---:|:---:|
+| $N: 2 \to 8$ at $G=30$ | +40.4, 27 improved, $p=0.115$ | +15.0, 19 improved, $p=0.059$ | +0.5, 6 improved, $p=0.25$ |
+| $N: 2 \to 8$ at $G=100$ | +74.8, 31 improved, $p<0.001$ | +0.8, 13 improved, $p=0.47$ | +0.5, 11 improved, $p=0.49$ |
+| $G: 30 \to 100$ at $N=2$ | +29.0, 12 improved, $p=0.126$ | +15.4, 12 improved, $p=0.077$ | +2.7, 4 improved, $p=0.51$ |
+| $G: 30 \to 100$ at $N=8$ | +63.3, 21 improved, $p<0.001$ | +1.1, 12 improved, $p=0.41$ | +2.7, 10 improved, $p=0.005$ |
+
+**What the data show (measured):**
+1. **Acrobot saturates early.** At $G=100$ every algorithm lies between $-82.8$ and $-90.9$, and neither $N$ nor $G$ changes the mean detectably there. The large effects are at the cheapest point $(30,2)$: raising $N$ to 8 lowers the mean $\sigma_{\text{train}}$ from $32.5$ to $5.2$ and the gap from $33.6$ to $13.3$ (and the mean test return from $-103.6$ to $-88.6$), most for PBIL, CMA-ES and DE.
+2. **At about equal evaluation cost, $N$ reduces the optimism gap more than $G$.** $(G{=}30, N{=}8)$ and $(G{=}100, N{=}2)$ have the same mean test return on Acrobot ($-88.6$ vs. $-88.3$) but the gap is $13.3$ vs. $24.0$; on CartPole the same pair gives $416.8$ vs. $405.3$ with gaps $28.9$ vs. $94.1$ (algorithm means from the Section 6.7 table). The two points cost $G \cdot N = 240$ and $200$ evaluation episodes per population member over the run, respectively.
+3. **MountainCar is almost insensitive to $N$ and $G$.** All gaps are below $12.2$ and mean $\Delta$ is $4.0$ or less; the only detectable pooled effect is $G=30 \to 100$ at $N=8$ ($+2.7$, driven mainly by CMA-ES, $82.8 \to 91.2$). A plausible explanation (not tested) is that evaluation noise matters little there because the start-state noise of the environment is small. OpenAI-ES is exactly $0.0$ in every configuration and seed, so neither $N$ nor $G$ rescues it (Section 6.3). Success rates move less regularly than mean returns (e.g. CMA-ES $76\%$ at $(30,2)$ and $52\%$ at $(30,8)$ with similar mean return), likely because the success threshold ($R \ge 90$) sits close to the typical return (not tested).
+4. **The CartPole conclusion (Section 6.7) is therefore environment-specific**: the evaluation-noise and budget effects are large on CartPole, moderate and confined to the lowest budget on Acrobot, and negligible on MountainCar.
+
+**Limitations:** $S=5$ seeds, four $(G,N)$ points, and the best-so-far ceiling of Section 6.7 item 5 can also apply here. No $N=16$ point.
 
 ---
 
@@ -604,7 +696,75 @@ Every Family 1 and 3 runner in this repository returns the **best sampled indivi
 | MountainCarCont | PBIL | 90.4 (84.2%) | −10.7 (0.0%) | −101.1 | 0/10 | 0.002 |
 
 * **Measured**: the best sampled individual is the better policy in most algorithm/environment pairs at these budgets. The largest differences are PBIL (the mean of its distribution is a very poor policy in every environment, e.g. $15.8$ with 0% success on CartPole and $-1507$ against $-830$ on Pendulum) and CMA-ES on MountainCarContinuous ($-19.7$ against $80.3$), with $p\approx0.002$. OpenAI-ES is roughly equal on CartPole and Acrobot and worse with the mean on Pendulum. CMA-ES's mean is comparable on Pendulum, better on Acrobot (lower variance across seeds) and worse on CartPole.
-* **Consequence**: all results in this README for Families 1 and 3 refer to the best sampled individual. They are exposed to selection on noisy fitness (the winner's-curse effect of Sections 6.1 and 6.7), but the distribution mean is not a better alternative at these budgets (it has not converged), so the optimism gaps should not be read as an artifact that a different reporting choice would remove. Whether the means would overtake the best individual at much larger budgets was not tested.
+* **Consequence**: all results in this README for Families 1 and 3 refer to the best sampled individual. They are exposed to selection on noisy fitness (the winner's-curse effect of Sections 6.1 and 6.7), but at the standard budgets the distribution mean is not a better alternative (it has not converged), so the optimism gaps should not be read as an artifact that a different reporting choice would remove. The larger-budget check below qualifies this.
+
+#### 6.9.1 Larger Budget ($G=200$, $N_{\text{rollouts}}=4$)
+The standard budgets above are small ($G=30$, $N=2$ on CartPole, Acrobot and MountainCar). `run_mean_vs_best_eval.py --generations 200 --rollouts 4 --seeds 42 101 202 303 404 --tag large` repeats the comparison with $G=200$ and $N=4$ ($\approx 13\times$ more evaluation episodes), 5 seeds, same test protocol (`results/mean_vs_best_eval_*_large.json`). Pendulum was not repeated (its standard budget is already $G=100$, $N=8$).
+
+| Environment | Algorithm | Best individual (success) | Distribution mean (success) | Mean difference (mean − best) | Seeds where mean is better |
+|:---|:---|:---:|:---:|:---:|:---:|
+| CartPole-v1 | OpenAI-ES | 393.7 (73.2%) | 500.0 (100.0%) | +106.3 | 3/5 (2 equal) |
+| CartPole-v1 | CMA-ES | 448.0 (81.8%) | 500.0 (100.0%) | +52.0 | 2/5 (3 equal) |
+| CartPole-v1 | PBIL | 499.5 (99.2%) | 472.9 (87.8%) | −26.7 | 1/5 |
+| Acrobot-v1 | OpenAI-ES | −82.7 (91.2%) | −81.9 (91.8%) | +0.8 | 3/5 |
+| Acrobot-v1 | CMA-ES | −117.0 (81.2%) | −79.9 (93.4%) | +37.1 | 5/5 |
+| Acrobot-v1 | PBIL | −86.5 (87.8%) | −86.3 (89.8%) | +0.2 | 3/5 |
+| MountainCarCont | OpenAI-ES | 0.0 (0.0%) | −9.5 (0.0%) | −9.5 | 0/5 |
+| MountainCarCont | CMA-ES | 94.6 (94.4%) | 70.8 (40.0%) | −23.8 | 0/5 |
+| MountainCarCont | PBIL | 89.9 (92.8%) | −2.3 (0.0%) | −92.1 | 0/5 |
+
+* **Measured**: with the larger budget the distribution mean becomes as good as the best individual or better on CartPole (CMA-ES and OpenAI-ES reach 500 in all 5 seeds) and Acrobot (all three algorithms; the CMA-ES best individual of $-117.0$ is worse than its mean of $-79.9$ in all 5 seeds), and the PBIL gap on CartPole and Acrobot shrinks from $-330$ at the standard budget to $-27$ and $+0.2$. On MountainCarContinuous the best individual is still better in all 5 seeds for all three algorithms, and the PBIL mean ($-2.3$) still does not solve the task.
+* **Scope**: with $S=5$ the smallest possible two-sided Wilcoxon $p$ is $0.0625$, so no row can be called significant; the differences should be read as directional. Seeds $42$–$404$ differ from the 10 seeds of the standard-budget table, so the two tables are not paired. The CartPole values at the ceiling ($500$) produce ties.
+* **Consequence**: reporting the best sampled individual is the right choice at the standard small budgets, but at larger budgets on CartPole and Acrobot the distribution mean is at least as good for CMA-ES and OpenAI-ES, so the choice of reported policy should not be taken as fixed across budgets.
+
+### 6.10 Equal-Effort Hyperparameter Search on Pendulum-v1
+
+Every comparison above uses default hyperparameters. `run_hparam_search.py` (`results/hparam_search_pendulum.json`, resumable) gives all seven parametric/TD algorithms the **same tuning effort** and re-evaluates the result on the reporting protocol:
+
+* **Search**: 12 random configurations per algorithm from the small spaces below (random generator seed 2026), each trained with 2 tuning seeds ($1001$, $1002$) and scored by the mean test return on 100 episodes with a **tuning test seed ($77777$)**, disjoint from the reporting test seed ($99999$) and from the reporting training seeds.
+* **Final evaluation**: the configuration with the best tuning score and the default configuration are each trained with the reporting seeds ($42$–$909$, 10 seeds; SAC and TD3: the first 5 seeds) and evaluated with test seed $99999$.
+* **Budget**: evolutionary algorithms $G=100$, $N_{\text{rollouts}}=8$ (population size is part of the search space); SAC/TD3 30,000 steps.
+
+| Algorithm | Search space |
+|:---|:---|
+| SimpleGA | population $\{32,64,128\}$, $\sigma_0 \in \{0.1,0.3,0.5,1.0\}$, $P_{\text{cx}} \in \{0.5,0.8,0.95\}$, $\sigma$ decay $\in \{0.99,0.995,0.999\}$ |
+| DE | population $\{32,64,128\}$, $F \in \{0.4,0.6,0.8,1.0\}$, $CR \in \{0.5,0.7,0.9,0.95\}$, initial scale $\{0.1,0.5,1.0\}$ |
+| OpenAI-ES | population $\{32,64,128\}$, $\sigma \in \{0.02,0.05,0.1,0.2\}$, learning rate $\{0.003,0.01,0.03,0.1\}$ |
+| PBIL | population $\{32,64,128\}$, $\alpha_\mu \in \{0.05,0.1,0.2,0.4\}$, $\alpha_\sigma \in \{0.02,0.05,0.1\}$, elite fraction $\{0.1,0.2,0.3\}$, $\sigma_{\text{init}} \in \{0.3,0.5,1.0\}$ |
+| CMA-ES | $\sigma_0 \in \{0.1,0.3,0.5,1.0\}$, $\lambda \in \{\text{default}, 50, 100\}$ |
+| SAC, TD3 | learning rate $\{10^{-4}, 3\cdot10^{-4}, 10^{-3}\}$, hidden units $\{64,128,256\}$, $\gamma \in \{0.98,0.99\}$, $\tau \in \{0.005,0.01\}$, batch $\{128,256\}$ |
+
+| Algorithm | Selected configuration | Tuned: mean test (success) | Default: mean test (success) | Gain | Seeds where tuned is better | Wilcoxon $p$ | Tuning-stage score of the selected configuration |
+|:---|:---|:---:|:---:|:---:|:---:|:---:|:---:|
+| SimpleGA | pop 32, $\sigma_0=0.3$, $P_{\text{cx}}=0.5$, decay $0.99$ | −443.4 (34.8%) | −556.0 (30.7%) | +112.6 | 6/10 | 0.32 | −272.9 |
+| DE | pop 128, $F=1.0$, $CR=0.9$, init scale $0.1$ | −508.5 (20.2%) | −709.7 (24.8%) | +201.2 | 9/10 | 0.006 | −372.9 |
+| OpenAI-ES | pop 128, $\sigma=0.02$, lr $0.03$ | −822.2 (25.1%) | −1015.7 (0.0%) | +193.5 | 7/10 | 0.064 | −485.8 |
+| PBIL | pop 128, $\alpha_\mu=0.4$, $\alpha_\sigma=0.1$, elite $0.3$, $\sigma_{\text{init}}=1.0$ | −569.6 (18.2%) | −830.4 (6.6%) | +260.8 | 8/10 | 0.014 | −279.8 |
+| CMA-ES | the default itself ($\sigma_0=0.5$, default $\lambda$) | −441.0 (37.6%) | −441.0 (37.6%) | 0 | – | – | −233.5 |
+| SAC | lr $10^{-3}$, 256 units, $\tau=0.01$, $\gamma=0.99$, batch 256 | −151.1 (64.0%) | −153.5 (64.0%) | +2.4 | 5/5 | – | −137.3 |
+| TD3 | lr $10^{-3}$, 256 units, $\tau=0.01$, $\gamma=0.99$, batch 256 | −154.4 (63.4%) | −156.5 (64.0%) | +2.1 | 4/5 | – | −139.9 |
+
+*Wilcoxon signed-rank on the paired seeds ($n=10$); SAC/TD3 have 5 seeds, for which no paired test can reach $p<0.0625$. "Default" for the evolutionary algorithms is the configuration of Section 8 (the same numbers as Section 6.6.2).*
+
+* **Measured**: tuning helps the evolutionary algorithms on average (gains of $+113$ to $+261$ return points), detectably for DE ($p=0.006$) and PBIL ($p=0.014$), not detectably for SimpleGA ($p=0.32$) and borderline for OpenAI-ES ($p=0.064$). It does nothing for CMA-ES, whose default was the best of its 12 random draws, and almost nothing for SAC and TD3 (about $+2$ points, with a seed SD of $1$–$3$).
+* **The gap to SAC/TD3 remains**: the best tuned evolutionary means are CMA-ES ($-441.0$) and SimpleGA ($-443.4$), about $290$ points below tuned SAC ($-151.1$) and TD3 ($-154.4$). The ranking of the evolutionary algorithms is unchanged (CMA-ES, SimpleGA, DE, PBIL, OpenAI-ES) except that SimpleGA now ties CMA-ES; the spread between the best and the worst evolutionary mean narrows from $575$ to $381$ points.
+* **Sensitivity to hyperparameters differs by family** (tuning-stage scores of the 12 random configurations, measured): for the evolutionary algorithms they span $-1219$ to $-373$ (DE), $-1166$ to $-486$ (OpenAI-ES), $-997$ to $-280$ (PBIL), $-1038$ to $-234$ (CMA-ES) and $-732$ to $-273$ (SimpleGA); for SAC $-143$ to $-137$ and for TD3 $-145$ to $-140$. In this search space the TD methods are almost insensitive to the choice, the evolutionary ones very sensitive.
+* **Caveats (important for reading the gains)**: (i) for DE, OpenAI-ES and PBIL the selected configuration has population $128$ instead of $32$, i.e. $\approx 2.05\times10^{7}$ instead of $5.1\times10^{6}$ simulated steps, so their gain mixes tuning with a $4\times$ larger budget; the equal-effort criterion is the number of trials, not environment steps. SimpleGA ($+112.6$, population 32 in both) and CMA-ES keep the same budget. (ii) The tuning-stage score of the selected configuration is optimistic: $-272.9$ became $-443.4$ for SimpleGA, $-233.5$ became $-441.0$ for CMA-ES and $-137.3$ became $-151.1$ for SAC, a selection effect (best of 12 on 2 seeds) plus the change of seeds and test seed, i.e. the same winner's curse as in Section 6.1, here applied to hyperparameters. (iii) Mean return and success do not always move together: tuned DE has a lower success ($20.2\%$) than the default ($24.8\%$) despite a higher mean return. (iv) The search spaces are small, random, and not equal in difficulty across algorithms; a larger search could change the evolutionary numbers.
+
+### 6.11 Summary: What the Experiments Establish and What They Do Not
+
+**Established (measured, with the stated seeds and budgets):**
+1. On `Pendulum-v1`, SAC and TD3 reach $\approx -154$ to $-157$ with $64\%$ success (the ceiling set by the initial angles, Section 6.5.3) in 30,000 environment steps. The best evolutionary means are $\approx -440$ at $G=100$ (CMA-ES default, SimpleGA tuned; $\approx 4$ to $5\times10^{6}$ simulated steps) and $-385$ for CMA-ES at $G=250$ ($\approx 10^{7}$ steps). The gap survives equal environment steps (Section 6.5.4), equal tuning effort (Section 6.10), a larger CMA-ES population (Section 6.5.5) and a larger generation budget (Sections 6.5.1b, 6.5.1c).
+2. The generation budget helps OpenAI-ES strongly and DE, but not detectably SimpleGA, PBIL and CMA-ES on Pendulum (Section 6.5.1c, $S=20$ for the first four).
+3. The SAC advantage depends on experience reuse (replay restriction) and not on network size (Section 6.5.4b), and it is **specific to Pendulum**: on Acrobot DQN is on par with the evolutionary methods, on CartPole the untuned DQN is behind CMA-ES, and on MountainCarContinuous SAC/TD3 fail (Section 6.5.6).
+4. Evaluation noise ($N$) and optimization budget ($G$) both matter on CartPole, only at the cheapest budget on Acrobot, and hardly on MountainCar (Sections 6.7, 6.7.2). The optimism gap (winner's curse) falls strongly when $N$ grows.
+5. Between-seed variability is large for most evolutionary configurations ($\sigma_{\text{train}}$ comparable to the differences between algorithms), so conclusions at $S=5$ can reverse at $S=10$ or $S=20$ (Sections 6.5.1b, 6.5.1c).
+6. Reporting the best sampled individual versus the distribution mean matters: at the standard budgets the best individual is better (PBIL's mean is very poor), at a larger budget the mean of CMA-ES and OpenAI-ES catches up on CartPole and Acrobot (Section 6.9).
+
+**Not established:**
+* **Why** the evolutionary methods need more samples: credit assignment (Section 6.5.2, hypothesis 1) was not tested; only network size, population size, experience reuse and tuning were.
+* Anything about GP (Family 2) beyond the diagnostics of Section 6.8: GP was not tuned, and LinearGP is degenerate on Pendulum.
+* Generality beyond these four environments, the `Pendulum-v1` tuning spaces, $S=5$ to $S=20$ seeds and budgets of $\le 2\times10^{7}$ simulated steps; the hyperparameter search covers Pendulum only and the TD baselines on the other environments are untuned.
 
 ---
 
@@ -628,7 +788,7 @@ All figures are rendered in a high-resolution academic dark-mode style and saved
 
 ## 8. Hyperparameter Table
 
-Values used for all reported results (the non-quick mode of `run_benchmark.py`, not used here, doubles the Family 1/3 populations to 64 and enlarges the GP programs). No hyperparameter was tuned for any algorithm.
+Values used for all reported results (the non-quick mode of `run_benchmark.py`, not used here, doubles the Family 1/3 populations to 64 and enlarges the GP programs). These are default values: no hyperparameter was tuned for any result outside Section 6.10, which reports an equal-effort random search on Pendulum-v1 (its selected configurations are listed there and are not used elsewhere). The TD baselines use the defaults of Section 6.5.3 (DQN: Section 6.5.6).
 
 | Algorithm | Family | Key Hyperparameters |
 |:---|:---:|:---|
@@ -656,15 +816,19 @@ evolutionary-strategies/
 │   └── visualization.py      # Dark-mode figure and table generation
 ├── run_validation_100.py     # Seed-42 training + 100-episode validation of all 28 configurations (Sections 4, 5.2)
 ├── run_multiseed_study.py    # S=10 multi-seed study (aleatoric vs epistemic variance, Agarwal et al., 2021; Section 6.6)
-├── run_causal_ablation.py    # CartPole ablation of N (rollouts) vs G (generations), S=10 (Section 6.7)
+├── run_causal_ablation.py    # Ablation of N (rollouts) vs G (generations): CartPole S=10, Acrobot/MountainCar S=5 via --env (Section 6.7)
 ├── run_pendulum_stress_test.py        # CMA-ES G=250 on Pendulum, seed 42 (Section 6.5.1)
 ├── run_pendulum_stress_multiseed.py   # Other seeds / budgets of the same test (Section 6.5.1b)
-├── run_pendulum_g250_all.py           # G=100 vs G=250 for SimpleGA, DE, OpenAI-ES, PBIL (Section 6.5.1c)
-├── run_sac_pendulum.py, run_td3_pendulum.py   # SAC and TD3 baselines (Section 6.5.3)
+├── run_pendulum_g250_all.py           # G=100 vs G=250 for SimpleGA, DE, OpenAI-ES, PBIL, S=20 (Section 6.5.1c)
+├── rl_baselines.py                    # SAC, TD3 and double DQN in plain JAX, same test protocol (Sections 6.5.3 to 6.5.6)
+├── run_rl_baselines.py                # CLI of rl_baselines.py (algorithm, environment, seeds, steps, --hp overrides, resumable)
+├── run_sac_pendulum.py, run_td3_pendulum.py   # Thin wrappers: SAC and TD3 on Pendulum (Section 6.5.3)
 ├── run_pendulum_angle_analysis.py     # Per-initial-angle breakdown (Section 6.5.3)
 ├── run_equal_budget.py                # CMA-ES at equal environment-step budgets (Section 6.5.4)
+├── run_cmaes_popsize.py               # CMA-ES population size lambda in {25, 100, 400} (Section 6.5.5)
+├── run_hparam_search.py               # Equal-effort random hyperparameter search for all algorithms (Section 6.10)
 ├── diagnose_linear_gp_pendulum.py     # LinearGP degeneracy diagnosis (Section 6.8)
-├── run_mean_vs_best_eval.py           # Best individual vs distribution mean (Section 6.9)
+├── run_mean_vs_best_eval.py           # Best individual vs distribution mean, standard and larger budget (Section 6.9)
 ├── generate_readme_tables.py          # Regenerates the data tables of this README from results/
 ├── run_benchmark.py, run_gp_only.py   # Standalone training scripts (not used for the reported tables, see Section 10)
 ├── generate_final_plots.py            # Training-curve / bar figures from raw_results.json and gp_results.json
@@ -672,11 +836,14 @@ evolutionary-strategies/
 │   ├── validation_100_*.{json,csv,png}, optimism_gap_analysis.png, results_summary.csv, raw_results.json, gp_results.json
 │   ├── multiseed_study.json, multiseed_summary.csv, multiseed_variance_analysis.png
 │   ├── multiseed_study_S5_best_so_far_gp.json/.csv      # legacy GP elite rule, S=5
-│   ├── causal_ablation_cartpole.json/.csv, causal_ablation_cartpole_S5.json/.csv
+│   ├── causal_ablation_{cartpole,acrobot,mountaincar}.json/.csv, causal_ablation_cartpole_S5.json/.csv
 │   ├── pendulum_stress_test_250.json, pendulum_stress_multiseed.json, pendulum_cmaes_G{100,250}_extra_seeds.json
 │   ├── pendulum_budget_other_algos.json, pendulum_equal_budget.json, pendulum_angle_analysis.json
-│   ├── sac_pendulum.json, td3_pendulum.json
-│   ├── linear_gp_pendulum_diagnosis_*.json, mean_vs_best_eval_*.json
+│   ├── pendulum_cmaes_popsize.json, hparam_search_pendulum.json
+│   ├── sac_pendulum.json, td3_pendulum.json, sac_ablation_{small_tanh,window200,window2000}.json
+│   ├── dqn_cartpole.json, dqn_acrobot.json, sac_mountaincar.json, td3_mountaincar.json
+│   ├── old_biased/                 # first SAC/TD3 Pendulum results, superseded (auto-reset bug, Section 6.5.3)
+│   ├── linear_gp_pendulum_diagnosis_*.json, mean_vs_best_eval_*.json (standard budget) and *_large.json (Section 6.9.1)
 │   └── all_families_curves.png, all_families_bar.png, family_comparison.png, learning_curves.png, time_vs_performance.png
 └── README.md
 ```
@@ -710,12 +877,28 @@ python run_sac_pendulum.py
 python run_td3_pendulum.py
 python run_pendulum_angle_analysis.py
 python run_equal_budget.py
+python run_cmaes_popsize.py
+
+# 4b. SAC ablations (6.5.4b) and TD baselines on other environments (6.5.6)
+python run_rl_baselines.py --algo sac --env Pendulum-v1 --steps 30000 --eval-at 30000 --hp hidden=32 act=tanh --out results/sac_ablation_small_tanh.json
+python run_rl_baselines.py --algo sac --env Pendulum-v1 --steps 30000 --eval-at 30000 --hp buffer_window=200 --out results/sac_ablation_window200.json
+python run_rl_baselines.py --algo sac --env Pendulum-v1 --steps 30000 --eval-at 30000 --hp buffer_window=2000 --out results/sac_ablation_window2000.json
+python run_rl_baselines.py --algo dqn --env CartPole-v1 --steps 50000 --eval-at 25000 50000 --hp lr=0.001 batch=64 --out results/dqn_cartpole.json
+python run_rl_baselines.py --algo dqn --env Acrobot-v1 --steps 50000 --eval-at 25000 50000 --hp lr=0.001 batch=64 --out results/dqn_acrobot.json
+python run_rl_baselines.py --algo sac --env MountainCarContinuous-v0 --steps 100000 --eval-at 50000 100000 --out results/sac_mountaincar.json
+python run_rl_baselines.py --algo td3 --env MountainCarContinuous-v0 --steps 100000 --eval-at 50000 100000 --out results/td3_mountaincar.json
+
+# 4c. Equal-effort hyperparameter search (Section 6.10; several hours on CPU)
+python run_hparam_search.py
 
 # 5. Causal ablation (Section 6.7), GP diagnosis (Section 6.8), best vs mean policy (Section 6.9)
 python run_causal_ablation.py
+python run_causal_ablation.py --env Acrobot-v1 --seeds 42 101 202 303 404 --configs 30x2 30x8 100x2 100x8
+python run_causal_ablation.py --env MountainCarContinuous-v0 --seeds 42 101 202 303 404 --configs 30x2 30x8 100x2 100x8
 python diagnose_linear_gp_pendulum.py --generations 40 --best-so-far
 python diagnose_linear_gp_pendulum.py --generations 200 --rollouts 32 --pop 64 --seeds 42 101 202 303 404 505 606 707 808 909
 python run_mean_vs_best_eval.py
+python run_mean_vs_best_eval.py --generations 200 --rollouts 4 --seeds 42 101 202 303 404 --tag large --envs CartPole-v1 Acrobot-v1 MountainCarContinuous-v0
 
 # 6. Regenerate the data tables of this README from results/
 python generate_readme_tables.py

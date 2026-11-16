@@ -1,0 +1,1476 @@
+{
+ "SimpleGA": {
+  "trials": [
+   {
+    "config": {
+     "pop": 128,
+     "sigma_init": 0.1,
+     "cx_prob": 0.5,
+     "sigma_decay": 0.995
+    },
+    "tune_score": -355.5268096923828,
+    "tune_success": 36.5
+   },
+   {
+    "config": {
+     "pop": 64,
+     "sigma_init": 0.3,
+     "cx_prob": 0.5,
+     "sigma_decay": 0.995
+    },
+    "tune_score": -732.2920532226562,
+    "tune_success": 44.0
+   },
+   {
+    "config": {
+     "pop": 64,
+     "sigma_init": 0.3,
+     "cx_prob": 0.95,
+     "sigma_decay": 0.999
+    },
+    "tune_score": -588.0579223632812,
+    "tune_success": 38.5
+   },
+   {
+    "config": {
+     "pop": 128,
+     "sigma_init": 1.0,
+     "cx_prob": 0.95,
+     "sigma_decay": 0.99
+    },
+    "tune_score": -581.7114562988281,
+    "tune_success": 41.0
+   },
+   {
+    "config": {
+     "pop": 128,
+     "sigma_init": 0.5,
+     "cx_prob": 0.5,
+     "sigma_decay": 0.99
+    },
+    "tune_score": -278.22996520996094,
+    "tune_success": 39.5
+   },
+   {
+    "config": {
+     "pop": 32,
+     "sigma_init": 1.0,
+     "cx_prob": 0.95,
+     "sigma_decay": 0.999
+    },
+    "tune_score": -619.3985137939453,
+    "tune_success": 25.5
+   },
+   {
+    "config": {
+     "pop": 32,
+     "sigma_init": 0.5,
+     "cx_prob": 0.8,
+     "sigma_decay": 0.999
+    },
+    "tune_score": -362.059326171875,
+    "tune_success": 36.5
+   },
+   {
+    "config": {
+     "pop": 32,
+     "sigma_init": 0.5,
+     "cx_prob": 0.8,
+     "sigma_decay": 0.999
+    },
+    "tune_score": -362.059326171875,
+    "tune_success": 36.5
+   },
+   {
+    "config": {
+     "pop": 64,
+     "sigma_init": 0.3,
+     "cx_prob": 0.8,
+     "sigma_decay": 0.995
+    },
+    "tune_score": -578.5145721435547,
+    "tune_success": 48.0
+   },
+   {
+    "config": {
+     "pop": 32,
+     "sigma_init": 0.3,
+     "cx_prob": 0.5,
+     "sigma_decay": 0.99
+    },
+    "tune_score": -272.9002227783203,
+    "tune_success": 46.0
+   },
+   {
+    "config": {
+     "pop": 128,
+     "sigma_init": 0.5,
+     "cx_prob": 0.5,
+     "sigma_decay": 0.995
+    },
+    "tune_score": -314.84356689453125,
+    "tune_success": 41.5
+   },
+   {
+    "config": {
+     "pop": 32,
+     "sigma_init": 0.5,
+     "cx_prob": 0.95,
+     "sigma_decay": 0.99
+    },
+    "tune_score": -375.9859924316406,
+    "tune_success": 37.0
+   }
+  ],
+  "final": {
+   "best": {
+    "42": {
+     "test_mean": -597.7262573242188,
+     "success_pct": 25.0
+    },
+    "101": {
+     "test_mean": -288.76971435546875,
+     "success_pct": 36.0
+    },
+    "202": {
+     "test_mean": -477.0312805175781,
+     "success_pct": 54.0
+    },
+    "303": {
+     "test_mean": -334.26019287109375,
+     "success_pct": 55.00000000000001
+    },
+    "404": {
+     "test_mean": -531.2362670898438,
+     "success_pct": 30.0
+    },
+    "505": {
+     "test_mean": -463.5907897949219,
+     "success_pct": 34.0
+    },
+    "606": {
+     "test_mean": -389.4488525390625,
+     "success_pct": 28.000000000000004
+    },
+    "707": {
+     "test_mean": -613.3997802734375,
+     "success_pct": 26.0
+    },
+    "808": {
+     "test_mean": -401.6788024902344,
+     "success_pct": 28.000000000000004
+    },
+    "909": {
+     "test_mean": -336.7939147949219,
+     "success_pct": 32.0
+    }
+   },
+   "default": {
+    "42": {
+     "test_mean": -352.9674072265625,
+     "success_pct": 35.0
+    },
+    "101": {
+     "test_mean": -340.8773498535156,
+     "success_pct": 43.0
+    },
+    "202": {
+     "test_mean": -871.086181640625,
+     "success_pct": 34.0
+    },
+    "303": {
+     "test_mean": -316.138671875,
+     "success_pct": 41.0
+    },
+    "404": {
+     "test_mean": -340.2271423339844,
+     "success_pct": 33.0
+    },
+    "505": {
+     "test_mean": -906.64111328125,
+     "success_pct": 0.0
+    },
+    "606": {
+     "test_mean": -464.1335144042969,
+     "success_pct": 26.0
+    },
+    "707": {
+     "test_mean": -843.1699829101562,
+     "success_pct": 35.0
+    },
+    "808": {
+     "test_mean": -262.7918395996094,
+     "success_pct": 44.0
+    },
+    "909": {
+     "test_mean": -861.81201171875,
+     "success_pct": 16.0
+    }
+   }
+  },
+  "best_config": {
+   "pop": 32,
+   "sigma_init": 0.3,
+   "cx_prob": 0.5,
+   "sigma_decay": 0.99
+  },
+  "default_config": {
+   "pop": 32,
+   "sigma_init": 0.5,
+   "cx_prob": 0.8,
+   "sigma_decay": 0.999
+  }
+ },
+ "DE": {
+  "trials": [
+   {
+    "config": {
+     "pop": 128,
+     "F": 0.4,
+     "CR": 0.5,
+     "init_scale": 0.5
+    },
+    "tune_score": -408.6761474609375,
+    "tune_success": 26.0
+   },
+   {
+    "config": {
+     "pop": 64,
+     "F": 0.6,
+     "CR": 0.5,
+     "init_scale": 0.5
+    },
+    "tune_score": -639.2135467529297,
+    "tune_success": 27.5
+   },
+   {
+    "config": {
+     "pop": 64,
+     "F": 0.6,
+     "CR": 0.95,
+     "init_scale": 1.0
+    },
+    "tune_score": -616.4109497070312,
+    "tune_success": 25.5
+   },
+   {
+    "config": {
+     "pop": 128,
+     "F": 1.0,
+     "CR": 0.9,
+     "init_scale": 0.1
+    },
+    "tune_score": -372.880615234375,
+    "tune_success": 28.0
+   },
+   {
+    "config": {
+     "pop": 128,
+     "F": 0.8,
+     "CR": 0.5,
+     "init_scale": 0.1
+    },
+    "tune_score": -936.6356811523438,
+    "tune_success": 0.0
+   },
+   {
+    "config": {
+     "pop": 32,
+     "F": 1.0,
+     "CR": 0.9,
+     "init_scale": 1.0
+    },
+    "tune_score": -848.2713470458984,
+    "tune_success": 21.0
+   },
+   {
+    "config": {
+     "pop": 32,
+     "F": 0.8,
+     "CR": 0.9,
+     "init_scale": 1.0
+    },
+    "tune_score": -648.8972778320312,
+    "tune_success": 21.0
+   },
+   {
+    "config": {
+     "pop": 32,
+     "F": 0.8,
+     "CR": 0.9,
+     "init_scale": 1.0
+    },
+    "tune_score": -648.8972778320312,
+    "tune_success": 21.0
+   },
+   {
+    "config": {
+     "pop": 64,
+     "F": 0.6,
+     "CR": 0.7,
+     "init_scale": 0.5
+    },
+    "tune_score": -514.1349182128906,
+    "tune_success": 39.5
+   },
+   {
+    "config": {
+     "pop": 32,
+     "F": 0.6,
+     "CR": 0.5,
+     "init_scale": 0.1
+    },
+    "tune_score": -1219.49853515625,
+    "tune_success": 0.0
+   },
+   {
+    "config": {
+     "pop": 128,
+     "F": 0.8,
+     "CR": 0.5,
+     "init_scale": 0.5
+    },
+    "tune_score": -481.7660675048828,
+    "tune_success": 31.5
+   },
+   {
+    "config": {
+     "pop": 32,
+     "F": 0.8,
+     "CR": 0.95,
+     "init_scale": 0.1
+    },
+    "tune_score": -467.8660583496094,
+    "tune_success": 28.0
+   }
+  ],
+  "final": {
+   "best": {
+    "42": {
+     "test_mean": -399.91046142578125,
+     "success_pct": 14.000000000000002
+    },
+    "101": {
+     "test_mean": -485.9483337402344,
+     "success_pct": 16.0
+    },
+    "202": {
+     "test_mean": -619.4501953125,
+     "success_pct": 30.0
+    },
+    "303": {
+     "test_mean": -568.1201171875,
+     "success_pct": 28.000000000000004
+    },
+    "404": {
+     "test_mean": -296.5930480957031,
+     "success_pct": 26.0
+    },
+    "505": {
+     "test_mean": -435.3614196777344,
+     "success_pct": 16.0
+    },
+    "606": {
+     "test_mean": -555.6376953125,
+     "success_pct": 0.0
+    },
+    "707": {
+     "test_mean": -402.61981201171875,
+     "success_pct": 27.0
+    },
+    "808": {
+     "test_mean": -804.4815673828125,
+     "success_pct": 18.0
+    },
+    "909": {
+     "test_mean": -517.23583984375,
+     "success_pct": 27.0
+    }
+   },
+   "default": {
+    "42": {
+     "test_mean": -714.6721801757812,
+     "success_pct": 25.0
+    },
+    "101": {
+     "test_mean": -848.3947143554688,
+     "success_pct": 9.0
+    },
+    "202": {
+     "test_mean": -696.317138671875,
+     "success_pct": 33.0
+    },
+    "303": {
+     "test_mean": -931.5820922851562,
+     "success_pct": 19.0
+    },
+    "404": {
+     "test_mean": -686.2139282226562,
+     "success_pct": 44.0
+    },
+    "505": {
+     "test_mean": -517.8258666992188,
+     "success_pct": 28.000000000000004
+    },
+    "606": {
+     "test_mean": -768.9473266601562,
+     "success_pct": 0.0
+    },
+    "707": {
+     "test_mean": -631.9121704101562,
+     "success_pct": 35.0
+    },
+    "808": {
+     "test_mean": -833.0572509765625,
+     "success_pct": 31.0
+    },
+    "909": {
+     "test_mean": -467.922119140625,
+     "success_pct": 24.0
+    }
+   }
+  },
+  "best_config": {
+   "pop": 128,
+   "F": 1.0,
+   "CR": 0.9,
+   "init_scale": 0.1
+  },
+  "default_config": {
+   "pop": 32,
+   "F": 0.8,
+   "CR": 0.9,
+   "init_scale": 0.5
+  }
+ },
+ "OpenAI-ES": {
+  "trials": [
+   {
+    "config": {
+     "pop": 128,
+     "sigma": 0.02,
+     "lr": 0.003
+    },
+    "tune_score": -1067.3742065429688,
+    "tune_success": 0.0
+   },
+   {
+    "config": {
+     "pop": 64,
+     "sigma": 0.05,
+     "lr": 0.01
+    },
+    "tune_score": -880.0736389160156,
+    "tune_success": 0.0
+   },
+   {
+    "config": {
+     "pop": 32,
+     "sigma": 0.05,
+     "lr": 0.03
+    },
+    "tune_score": -750.7915649414062,
+    "tune_success": 22.0
+   },
+   {
+    "config": {
+     "pop": 64,
+     "sigma": 0.2,
+     "lr": 0.1
+    },
+    "tune_score": -765.0991516113281,
+    "tune_success": 43.0
+   },
+   {
+    "config": {
+     "pop": 128,
+     "sigma": 0.2,
+     "lr": 0.03
+    },
+    "tune_score": -1061.1936645507812,
+    "tune_success": 0.0
+   },
+   {
+    "config": {
+     "pop": 32,
+     "sigma": 0.2,
+     "lr": 0.03
+    },
+    "tune_score": -944.8248596191406,
+    "tune_success": 0.0
+   },
+   {
+    "config": {
+     "pop": 32,
+     "sigma": 0.05,
+     "lr": 0.003
+    },
+    "tune_score": -1166.4750366210938,
+    "tune_success": 0.0
+   },
+   {
+    "config": {
+     "pop": 128,
+     "sigma": 0.1,
+     "lr": 0.1
+    },
+    "tune_score": -800.3533020019531,
+    "tune_success": 38.5
+   },
+   {
+    "config": {
+     "pop": 32,
+     "sigma": 0.1,
+     "lr": 0.03
+    },
+    "tune_score": -815.2989501953125,
+    "tune_success": 0.0
+   },
+   {
+    "config": {
+     "pop": 128,
+     "sigma": 0.02,
+     "lr": 0.03
+    },
+    "tune_score": -485.84022521972656,
+    "tune_success": 37.0
+   },
+   {
+    "config": {
+     "pop": 64,
+     "sigma": 0.2,
+     "lr": 0.03
+    },
+    "tune_score": -1024.4205627441406,
+    "tune_success": 0.0
+   },
+   {
+    "config": {
+     "pop": 64,
+     "sigma": 0.05,
+     "lr": 0.01
+    },
+    "tune_score": -880.0736389160156,
+    "tune_success": 0.0
+   }
+  ],
+  "final": {
+   "best": {
+    "42": {
+     "test_mean": -793.193359375,
+     "success_pct": 44.0
+    },
+    "101": {
+     "test_mean": -1067.3228759765625,
+     "success_pct": 0.0
+    },
+    "202": {
+     "test_mean": -801.987548828125,
+     "success_pct": 43.0
+    },
+    "303": {
+     "test_mean": -843.0847778320312,
+     "success_pct": 20.0
+    },
+    "404": {
+     "test_mean": -1093.2626953125,
+     "success_pct": 13.0
+    },
+    "505": {
+     "test_mean": -180.6757049560547,
+     "success_pct": 57.99999999999999
+    },
+    "606": {
+     "test_mean": -621.982666015625,
+     "success_pct": 0.0
+    },
+    "707": {
+     "test_mean": -764.1431884765625,
+     "success_pct": 44.0
+    },
+    "808": {
+     "test_mean": -952.3079833984375,
+     "success_pct": 28.999999999999996
+    },
+    "909": {
+     "test_mean": -1104.1295166015625,
+     "success_pct": 0.0
+    }
+   },
+   "default": {
+    "42": {
+     "test_mean": -1075.5142822265625,
+     "success_pct": 0.0
+    },
+    "101": {
+     "test_mean": -995.827392578125,
+     "success_pct": 0.0
+    },
+    "202": {
+     "test_mean": -1008.045166015625,
+     "success_pct": 0.0
+    },
+    "303": {
+     "test_mean": -1005.26708984375,
+     "success_pct": 0.0
+    },
+    "404": {
+     "test_mean": -1043.4049072265625,
+     "success_pct": 0.0
+    },
+    "505": {
+     "test_mean": -1014.1923217773438,
+     "success_pct": 0.0
+    },
+    "606": {
+     "test_mean": -1021.3336181640625,
+     "success_pct": 0.0
+    },
+    "707": {
+     "test_mean": -1021.8125610351562,
+     "success_pct": 0.0
+    },
+    "808": {
+     "test_mean": -971.794189453125,
+     "success_pct": 0.0
+    },
+    "909": {
+     "test_mean": -999.3526611328125,
+     "success_pct": 0.0
+    }
+   }
+  },
+  "best_config": {
+   "pop": 128,
+   "sigma": 0.02,
+   "lr": 0.03
+  },
+  "default_config": {
+   "pop": 32,
+   "sigma": 0.05,
+   "lr": 0.01
+  }
+ },
+ "PBIL": {
+  "trials": [
+   {
+    "config": {
+     "pop": 128,
+     "lr": 0.05,
+     "lr_sigma": 0.02,
+     "top_k_frac": 0.2,
+     "sigma_init": 0.5
+    },
+    "tune_score": -780.5958862304688,
+    "tune_success": 0.0
+   },
+   {
+    "config": {
+     "pop": 64,
+     "lr": 0.05,
+     "lr_sigma": 0.05,
+     "top_k_frac": 0.2,
+     "sigma_init": 0.5
+    },
+    "tune_score": -854.1904296875,
+    "tune_success": 0.0
+   },
+   {
+    "config": {
+     "pop": 128,
+     "lr": 0.4,
+     "lr_sigma": 0.1,
+     "top_k_frac": 0.3,
+     "sigma_init": 1.0
+    },
+    "tune_score": -279.84950256347656,
+    "tune_success": 36.0
+   },
+   {
+    "config": {
+     "pop": 32,
+     "lr": 0.4,
+     "lr_sigma": 0.05,
+     "top_k_frac": 0.1,
+     "sigma_init": 0.3
+    },
+    "tune_score": -609.0168151855469,
+    "tune_success": 19.5
+   },
+   {
+    "config": {
+     "pop": 32,
+     "lr": 0.4,
+     "lr_sigma": 0.1,
+     "top_k_frac": 0.3,
+     "sigma_init": 0.3
+    },
+    "tune_score": -891.6316528320312,
+    "tune_success": 0.0
+   },
+   {
+    "config": {
+     "pop": 64,
+     "lr": 0.2,
+     "lr_sigma": 0.1,
+     "top_k_frac": 0.1,
+     "sigma_init": 0.5
+    },
+    "tune_score": -858.0751647949219,
+    "tune_success": 0.0
+   },
+   {
+    "config": {
+     "pop": 64,
+     "lr": 0.4,
+     "lr_sigma": 0.05,
+     "top_k_frac": 0.2,
+     "sigma_init": 0.5
+    },
+    "tune_score": -978.5629577636719,
+    "tune_success": 21.5
+   },
+   {
+    "config": {
+     "pop": 64,
+     "lr": 0.05,
+     "lr_sigma": 0.02,
+     "top_k_frac": 0.1,
+     "sigma_init": 0.3
+    },
+    "tune_score": -931.587646484375,
+    "tune_success": 0.0
+   },
+   {
+    "config": {
+     "pop": 128,
+     "lr": 0.2,
+     "lr_sigma": 0.02,
+     "top_k_frac": 0.2,
+     "sigma_init": 0.3
+    },
+    "tune_score": -996.781494140625,
+    "tune_success": 0.0
+   },
+   {
+    "config": {
+     "pop": 64,
+     "lr": 0.4,
+     "lr_sigma": 0.02,
+     "top_k_frac": 0.2,
+     "sigma_init": 0.5
+    },
+    "tune_score": -586.4919738769531,
+    "tune_success": 6.0
+   },
+   {
+    "config": {
+     "pop": 128,
+     "lr": 0.1,
+     "lr_sigma": 0.02,
+     "top_k_frac": 0.1,
+     "sigma_init": 0.5
+    },
+    "tune_score": -824.5213928222656,
+    "tune_success": 0.0
+   },
+   {
+    "config": {
+     "pop": 64,
+     "lr": 0.1,
+     "lr_sigma": 0.05,
+     "top_k_frac": 0.2,
+     "sigma_init": 0.3
+    },
+    "tune_score": -969.8169860839844,
+    "tune_success": 0.0
+   }
+  ],
+  "final": {
+   "best": {
+    "42": {
+     "test_mean": -892.853271484375,
+     "success_pct": 27.0
+    },
+    "101": {
+     "test_mean": -806.7012329101562,
+     "success_pct": 15.0
+    },
+    "202": {
+     "test_mean": -614.0014038085938,
+     "success_pct": 8.0
+    },
+    "303": {
+     "test_mean": -772.9127197265625,
+     "success_pct": 2.0
+    },
+    "404": {
+     "test_mean": -466.00909423828125,
+     "success_pct": 44.0
+    },
+    "505": {
+     "test_mean": -442.124755859375,
+     "success_pct": 15.0
+    },
+    "606": {
+     "test_mean": -461.100341796875,
+     "success_pct": 0.0
+    },
+    "707": {
+     "test_mean": -649.4161987304688,
+     "success_pct": 0.0
+    },
+    "808": {
+     "test_mean": -313.1116027832031,
+     "success_pct": 38.0
+    },
+    "909": {
+     "test_mean": -277.6169738769531,
+     "success_pct": 33.0
+    }
+   },
+   "default": {
+    "42": {
+     "test_mean": -641.4567260742188,
+     "success_pct": 0.0
+    },
+    "101": {
+     "test_mean": -795.5486450195312,
+     "success_pct": 0.0
+    },
+    "202": {
+     "test_mean": -912.708251953125,
+     "success_pct": 0.0
+    },
+    "303": {
+     "test_mean": -1055.127685546875,
+     "success_pct": 0.0
+    },
+    "404": {
+     "test_mean": -544.07177734375,
+     "success_pct": 31.0
+    },
+    "505": {
+     "test_mean": -711.4296875,
+     "success_pct": 0.0
+    },
+    "606": {
+     "test_mean": -938.4580688476562,
+     "success_pct": 15.0
+    },
+    "707": {
+     "test_mean": -1071.2655029296875,
+     "success_pct": 20.0
+    },
+    "808": {
+     "test_mean": -679.2948608398438,
+     "success_pct": 0.0
+    },
+    "909": {
+     "test_mean": -954.3056030273438,
+     "success_pct": 0.0
+    }
+   }
+  },
+  "best_config": {
+   "pop": 128,
+   "lr": 0.4,
+   "lr_sigma": 0.1,
+   "top_k_frac": 0.3,
+   "sigma_init": 1.0
+  },
+  "default_config": {
+   "pop": 32,
+   "lr": 0.1,
+   "lr_sigma": 0.05,
+   "top_k_frac": 0.2,
+   "sigma_init": 1.0
+  }
+ },
+ "CMA-ES": {
+  "trials": [
+   {
+    "config": {
+     "sigma0": 1.0,
+     "pop": null
+    },
+    "tune_score": -376.25059509277344,
+    "tune_success": 34.5
+   },
+   {
+    "config": {
+     "sigma0": 0.1,
+     "pop": 50
+    },
+    "tune_score": -1010.6297607421875,
+    "tune_success": 0.0
+   },
+   {
+    "config": {
+     "sigma0": 0.3,
+     "pop": 50
+    },
+    "tune_score": -769.2505187988281,
+    "tune_success": 32.5
+   },
+   {
+    "config": {
+     "sigma0": 0.1,
+     "pop": 50
+    },
+    "tune_score": -1010.6297607421875,
+    "tune_success": 0.0
+   },
+   {
+    "config": {
+     "sigma0": 0.5,
+     "pop": 50
+    },
+    "tune_score": -392.90464782714844,
+    "tune_success": 48.5
+   },
+   {
+    "config": {
+     "sigma0": 1.0,
+     "pop": 100
+    },
+    "tune_score": -454.67877197265625,
+    "tune_success": 31.5
+   },
+   {
+    "config": {
+     "sigma0": 0.5,
+     "pop": 100
+    },
+    "tune_score": -472.14991760253906,
+    "tune_success": 43.5
+   },
+   {
+    "config": {
+     "sigma0": 0.5,
+     "pop": null
+    },
+    "tune_score": -233.5387191772461,
+    "tune_success": 62.0
+   },
+   {
+    "config": {
+     "sigma0": 1.0,
+     "pop": 50
+    },
+    "tune_score": -240.29833984375,
+    "tune_success": 53.0
+   },
+   {
+    "config": {
+     "sigma0": 0.1,
+     "pop": null
+    },
+    "tune_score": -815.3489379882812,
+    "tune_success": 0.0
+   },
+   {
+    "config": {
+     "sigma0": 0.1,
+     "pop": 100
+    },
+    "tune_score": -1038.4543762207031,
+    "tune_success": 0.0
+   },
+   {
+    "config": {
+     "sigma0": 0.5,
+     "pop": 100
+    },
+    "tune_score": -472.14991760253906,
+    "tune_success": 43.5
+   }
+  ],
+  "final": {
+   "best": {
+    "42": {
+     "test_mean": -268.6659240722656,
+     "success_pct": 35.0
+    },
+    "101": {
+     "test_mean": -701.437255859375,
+     "success_pct": 28.999999999999996
+    },
+    "202": {
+     "test_mean": -221.4702606201172,
+     "success_pct": 48.0
+    },
+    "303": {
+     "test_mean": -274.7728576660156,
+     "success_pct": 44.0
+    },
+    "404": {
+     "test_mean": -796.349853515625,
+     "success_pct": 37.0
+    },
+    "505": {
+     "test_mean": -849.6162719726562,
+     "success_pct": 35.0
+    },
+    "606": {
+     "test_mean": -247.9971466064453,
+     "success_pct": 44.0
+    },
+    "707": {
+     "test_mean": -430.6923522949219,
+     "success_pct": 30.0
+    },
+    "808": {
+     "test_mean": -234.27650451660156,
+     "success_pct": 42.0
+    },
+    "909": {
+     "test_mean": -384.31719970703125,
+     "success_pct": 32.0
+    }
+   },
+   "default": {
+    "42": {
+     "test_mean": -268.6659240722656,
+     "success_pct": 35.0
+    },
+    "101": {
+     "test_mean": -701.437255859375,
+     "success_pct": 28.999999999999996
+    },
+    "202": {
+     "test_mean": -221.4702606201172,
+     "success_pct": 48.0
+    },
+    "303": {
+     "test_mean": -274.7728576660156,
+     "success_pct": 44.0
+    },
+    "404": {
+     "test_mean": -796.349853515625,
+     "success_pct": 37.0
+    },
+    "505": {
+     "test_mean": -849.6162719726562,
+     "success_pct": 35.0
+    },
+    "606": {
+     "test_mean": -247.9971466064453,
+     "success_pct": 44.0
+    },
+    "707": {
+     "test_mean": -430.6923522949219,
+     "success_pct": 30.0
+    },
+    "808": {
+     "test_mean": -234.27650451660156,
+     "success_pct": 42.0
+    },
+    "909": {
+     "test_mean": -384.31719970703125,
+     "success_pct": 32.0
+    }
+   }
+  },
+  "best_config": {
+   "sigma0": 0.5,
+   "pop": null
+  },
+  "default_config": {
+   "sigma0": 0.5,
+   "pop": null
+  }
+ },
+ "SAC": {
+  "trials": [
+   {
+    "config": {
+     "lr": 0.001,
+     "hidden": 64,
+     "gamma": 0.98,
+     "tau": 0.01,
+     "batch": 128
+    },
+    "tune_score": -141.07,
+    "tune_success": 74.0
+   },
+   {
+    "config": {
+     "lr": 0.0003,
+     "hidden": 64,
+     "gamma": 0.98,
+     "tau": 0.01,
+     "batch": 128
+    },
+    "tune_score": -142.745,
+    "tune_success": 74.0
+   },
+   {
+    "config": {
+     "lr": 0.001,
+     "hidden": 256,
+     "gamma": 0.99,
+     "tau": 0.01,
+     "batch": 256
+    },
+    "tune_score": -137.27,
+    "tune_success": 74.0
+   },
+   {
+    "config": {
+     "lr": 0.0001,
+     "hidden": 256,
+     "gamma": 0.99,
+     "tau": 0.005,
+     "batch": 128
+    },
+    "tune_score": -139.28,
+    "tune_success": 74.0
+   },
+   {
+    "config": {
+     "lr": 0.0001,
+     "hidden": 256,
+     "gamma": 0.99,
+     "tau": 0.01,
+     "batch": 128
+    },
+    "tune_score": -139.04000000000002,
+    "tune_success": 74.0
+   },
+   {
+    "config": {
+     "lr": 0.0003,
+     "hidden": 128,
+     "gamma": 0.99,
+     "tau": 0.005,
+     "batch": 256
+    },
+    "tune_score": -140.10500000000002,
+    "tune_success": 74.0
+   },
+   {
+    "config": {
+     "lr": 0.0003,
+     "hidden": 256,
+     "gamma": 0.99,
+     "tau": 0.005,
+     "batch": 128
+    },
+    "tune_score": -139.695,
+    "tune_success": 74.0
+   },
+   {
+    "config": {
+     "lr": 0.0003,
+     "hidden": 64,
+     "gamma": 0.98,
+     "tau": 0.005,
+     "batch": 128
+    },
+    "tune_score": -141.715,
+    "tune_success": 74.0
+   },
+   {
+    "config": {
+     "lr": 0.001,
+     "hidden": 128,
+     "gamma": 0.98,
+     "tau": 0.005,
+     "batch": 128
+    },
+    "tune_score": -141.26,
+    "tune_success": 74.0
+   },
+   {
+    "config": {
+     "lr": 0.0003,
+     "hidden": 256,
+     "gamma": 0.98,
+     "tau": 0.005,
+     "batch": 128
+    },
+    "tune_score": -141.065,
+    "tune_success": 74.0
+   },
+   {
+    "config": {
+     "lr": 0.001,
+     "hidden": 128,
+     "gamma": 0.98,
+     "tau": 0.005,
+     "batch": 128
+    },
+    "tune_score": -141.26,
+    "tune_success": 74.0
+   },
+   {
+    "config": {
+     "lr": 0.0003,
+     "hidden": 64,
+     "gamma": 0.98,
+     "tau": 0.01,
+     "batch": 128
+    },
+    "tune_score": -142.745,
+    "tune_success": 74.0
+   }
+  ],
+  "final": {
+   "best": {
+    "42": {
+     "test_mean": -152.25,
+     "success_pct": 64.0
+    },
+    "101": {
+     "test_mean": -150.21,
+     "success_pct": 64.0
+    },
+    "202": {
+     "test_mean": -149.91,
+     "success_pct": 64.0
+    },
+    "303": {
+     "test_mean": -152.25,
+     "success_pct": 64.0
+    },
+    "404": {
+     "test_mean": -150.69,
+     "success_pct": 64.0
+    }
+   },
+   "default": {
+    "42": {
+     "test_mean": -155.16,
+     "success_pct": 64.0
+    },
+    "101": {
+     "test_mean": -151.98,
+     "success_pct": 64.0
+    },
+    "202": {
+     "test_mean": -153.57,
+     "success_pct": 64.0
+    },
+    "303": {
+     "test_mean": -153.57,
+     "success_pct": 64.0
+    },
+    "404": {
+     "test_mean": -153.26,
+     "success_pct": 64.0
+    }
+   }
+  },
+  "best_config": {
+   "lr": 0.001,
+   "hidden": 256,
+   "gamma": 0.99,
+   "tau": 0.01,
+   "batch": 256
+  },
+  "default_config": {
+   "lr": 0.0003,
+   "hidden": 64,
+   "gamma": 0.99,
+   "tau": 0.005,
+   "batch": 256
+  }
+ },
+ "TD3": {
+  "trials": [
+   {
+    "config": {
+     "lr": 0.001,
+     "hidden": 64,
+     "gamma": 0.98,
+     "tau": 0.01,
+     "batch": 128
+    },
+    "tune_score": -144.89,
+    "tune_success": 74.0
+   },
+   {
+    "config": {
+     "lr": 0.0003,
+     "hidden": 64,
+     "gamma": 0.98,
+     "tau": 0.01,
+     "batch": 128
+    },
+    "tune_score": -142.79,
+    "tune_success": 74.0
+   },
+   {
+    "config": {
+     "lr": 0.001,
+     "hidden": 256,
+     "gamma": 0.99,
+     "tau": 0.01,
+     "batch": 256
+    },
+    "tune_score": -139.865,
+    "tune_success": 74.0
+   },
+   {
+    "config": {
+     "lr": 0.0001,
+     "hidden": 256,
+     "gamma": 0.99,
+     "tau": 0.005,
+     "batch": 128
+    },
+    "tune_score": -142.09,
+    "tune_success": 74.0
+   },
+   {
+    "config": {
+     "lr": 0.0001,
+     "hidden": 256,
+     "gamma": 0.99,
+     "tau": 0.01,
+     "batch": 128
+    },
+    "tune_score": -141.005,
+    "tune_success": 74.0
+   },
+   {
+    "config": {
+     "lr": 0.0003,
+     "hidden": 128,
+     "gamma": 0.99,
+     "tau": 0.005,
+     "batch": 256
+    },
+    "tune_score": -143.725,
+    "tune_success": 74.0
+   },
+   {
+    "config": {
+     "lr": 0.0003,
+     "hidden": 256,
+     "gamma": 0.99,
+     "tau": 0.005,
+     "batch": 128
+    },
+    "tune_score": -140.28,
+    "tune_success": 74.0
+   },
+   {
+    "config": {
+     "lr": 0.0003,
+     "hidden": 64,
+     "gamma": 0.98,
+     "tau": 0.005,
+     "batch": 128
+    },
+    "tune_score": -142.39,
+    "tune_success": 74.0
+   },
+   {
+    "config": {
+     "lr": 0.001,
+     "hidden": 128,
+     "gamma": 0.98,
+     "tau": 0.005,
+     "batch": 128
+    },
+    "tune_score": -145.31,
+    "tune_success": 74.0
+   },
+   {
+    "config": {
+     "lr": 0.0003,
+     "hidden": 256,
+     "gamma": 0.98,
+     "tau": 0.005,
+     "batch": 128
+    },
+    "tune_score": -142.095,
+    "tune_success": 74.0
+   },
+   {
+    "config": {
+     "lr": 0.001,
+     "hidden": 128,
+     "gamma": 0.98,
+     "tau": 0.005,
+     "batch": 128
+    },
+    "tune_score": -145.31,
+    "tune_success": 74.0
+   },
+   {
+    "config": {
+     "lr": 0.0003,
+     "hidden": 64,
+     "gamma": 0.98,
+     "tau": 0.01,
+     "batch": 128
+    },
+    "tune_score": -142.79,
+    "tune_success": 74.0
+   }
+  ],
+  "final": {
+   "best": {
+    "42": {
+     "test_mean": -152.1,
+     "success_pct": 64.0
+    },
+    "101": {
+     "test_mean": -155.63,
+     "success_pct": 61.0
+    },
+    "202": {
+     "test_mean": -154.65,
+     "success_pct": 64.0
+    },
+    "303": {
+     "test_mean": -154.64,
+     "success_pct": 64.0
+    },
+    "404": {
+     "test_mean": -155.17,
+     "success_pct": 64.0
+    }
+   },
+   "default": {
+    "42": {
+     "test_mean": -154.14,
+     "success_pct": 64.0
+    },
+    "101": {
+     "test_mean": -159.27,
+     "success_pct": 64.0
+    },
+    "202": {
+     "test_mean": -158.47,
+     "success_pct": 64.0
+    },
+    "303": {
+     "test_mean": -157.85,
+     "success_pct": 64.0
+    },
+    "404": {
+     "test_mean": -152.83,
+     "success_pct": 64.0
+    }
+   }
+  },
+  "best_config": {
+   "lr": 0.001,
+   "hidden": 256,
+   "gamma": 0.99,
+   "tau": 0.01,
+   "batch": 256
+  },
+  "default_config": {
+   "lr": 0.0003,
+   "hidden": 64,
+   "gamma": 0.99,
+   "tau": 0.005,
+   "batch": 256
+  }
+ }
+}
